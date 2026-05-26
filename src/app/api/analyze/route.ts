@@ -3,31 +3,28 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 type Locale = "ar" | "en" | "ku" | "fr";
 
 type AnalysisResult = {
-  itemType: string;
+  title: string;
+  lookup: string;
+  timePeriod: string;
+  origin: string;
   material: string;
   style: string;
-  period: string;
   condition: string;
   authenticity: string;
-  priceRange: string;
+  estimatedValue: string;
   priceReasoning: string;
+  history: string;
   valueDrivers: string[];
   valueReducers: string[];
-  confidence: number;
-  confidenceNote: string;
-  title: string;
-  description: string;
-  conversationReply: string;
-  keywords: string[];
+  visualSearchKeywords: string[];
   neededPhotos: string[];
   followUpQuestion: string;
+  confidence: number;
+  confidenceNote: string;
+  disclaimer: string;
 };
 
 function normalizeLocale(locale: string): Locale {
@@ -43,7 +40,7 @@ function getLanguageName(locale: Locale) {
     case "en":
       return "English";
     case "ku":
-      return "Kurdish Sorani";
+      return "Sorani Kurdish";
     case "fr":
       return "French";
     case "ar":
@@ -58,20 +55,19 @@ function getLanguageInstruction(locale: Locale) {
       return `
 The visitor selected English.
 All user-facing JSON values must be written in English.
-Do not use Arabic, Kurdish, or French in the response.
+Do not use Arabic, Kurdish, or French.
 `;
     case "ku":
       return `
-The visitor selected Kurdish Sorani.
-All user-facing JSON values must be written in Kurdish Sorani.
-Use clear, natural Kurdish Sorani suitable for general visitors.
-Do not answer in Arabic, English, or French unless a necessary antique term has no natural Kurdish equivalent.
+The visitor selected Sorani Kurdish.
+All user-facing JSON values must be written in Sorani Kurdish.
+Use clear, natural Sorani Kurdish for normal visitors.
+Do not answer in Arabic, English, or French except for necessary antique terms.
 `;
     case "fr":
       return `
 The visitor selected French.
 All user-facing JSON values must be written in French.
-Use clear, natural French suitable for general visitors.
 Do not use Arabic, Kurdish, or English except for necessary antique terms.
 `;
     case "ar":
@@ -79,15 +75,19 @@ Do not use Arabic, Kurdish, or English except for necessary antique terms.
       return `
 The visitor selected Arabic.
 All user-facing JSON values must be written in Arabic.
-Use clear, natural Arabic. Avoid stiff wording.
+Use clear, natural Arabic suitable for normal visitors.
 Do not use English, Kurdish, or French except for necessary antique terms.
 `;
   }
 }
 
+function safeString(value: FormDataEntryValue | null) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function buildPrompt(fields: {
-  notes?: string;
   locale: Locale;
+  notes?: string;
   itemType?: string;
   material?: string;
   dimensions?: string;
@@ -99,305 +99,347 @@ function buildPrompt(fields: {
   const languageInstruction = getLanguageInstruction(fields.locale);
 
   return `
-You are Antiques Lens, a conversational AI specialist in antiques, collectibles, artworks, old objects, materials, styles, marks, stamps, restoration, and preliminary valuation.
+You are Antiques Lens, a mobile-first AI antique scanner.
+
+You are specialized ONLY in:
+antiques, vintage objects, collectibles, old furniture, carpets, silver, copper, brass, ceramics, crystal, paintings, manuscripts, historical objects, decorative objects, restoration, maker marks, signatures, stamps, and preliminary market valuation.
 
 You are not a generic chatbot.
-You are not a product listing writer.
 You are not a final certified appraiser.
+You are not allowed to claim certainty about authenticity.
 
-The visitor language is: ${language}.
+The visitor language is: ${language}
 
 ${languageInstruction}
 
-The visitor may:
-- Upload an image and ask for evaluation.
-- Ask about an antique type without uploading an image.
-- Ask about a material, style, age, mark, stamp, signature, restoration, or selling advice.
-- Ask whether something looks old, modern, handmade, factory-made, decorative, collectible, or valuable.
-- Continue the conversation with follow-up questions.
-
-User input:
+User provided:
 - Notes: ${fields.notes || "Not provided"}
-- Item type if provided: ${fields.itemType || "Not provided"}
-- Material if provided: ${fields.material || "Not provided"}
-- Dimensions if provided: ${fields.dimensions || "Not provided"}
-- Weight if provided: ${fields.weight || "Not provided"}
-- Signature / stamp / maker mark if provided: ${fields.hasMark || "Not provided"}
+- Item type: ${fields.itemType || "Not provided"}
+- Material: ${fields.material || "Not provided"}
+- Dimensions: ${fields.dimensions || "Not provided"}
+- Weight: ${fields.weight || "Not provided"}
+- Mark / signature / stamp: ${fields.hasMark || "Not provided"}
 - Image provided: ${fields.hasImage ? "Yes" : "No"}
 
-Core behavior:
-- Do not simply repeat what the visitor wrote.
-- Add new useful information based on visible clues, antique knowledge, material knowledge, and market reasoning.
-- If the visitor's assumption seems wrong, uncertain, or incomplete, politely correct or qualify it.
-- Speak like a helpful antique expert in a conversation.
-- Do not sound like a rigid report, product card, sales description, or catalog entry.
-- Do not give only a price.
-- Always explain why the price range was suggested.
-- If evidence is weak, say the estimate is uncertain and explain what is missing.
-- Ask for the next useful photo or detail.
-- Keep the conversation open.
-- Give practical next steps.
+Main task:
+Analyze the item from the uploaded image and/or the user's description, then return a clean structured JSON result for a mobile app screen.
 
-When evaluating an uploaded item:
-1. Start with what is actually visible.
-2. Explain what can and cannot be concluded from the current image.
-3. Discuss possible item type, material, style, age indicators, craftsmanship, and condition.
-4. If the visitor gave wrong or incomplete information, correct it carefully.
-5. Give a preliminary USD price range only if there is enough evidence.
-6. Explain the price range using material, age indicators, condition, craftsmanship, rarity, subject, size, visible marks, market demand, and missing evidence.
-7. Explain what could increase the value.
-8. Explain what could decrease the value.
-9. Ask for useful additional photos from specific angles:
-   - Full front view.
-   - Back side.
-   - Bottom/base.
-   - Close-up of any stamp, signature, number, label, or maker’s mark.
-   - Close-up of cracks, chips, repairs, paint loss, patina, oxidation, or material texture.
-   - A photo beside a common object for scale if dimensions are unknown.
-10. End with one natural follow-up question.
+Important behavior:
+- Do not simply repeat the user's words.
+- Add new useful information.
+- If the user's description seems inaccurate, politely correct or qualify it.
+- If the image is unclear, cropped, blurry, or from one angle only, say confidence is limited.
+- Never invent a maker, artist, country, age, mark, or origin if not visible or not provided.
+- Do not say "100% original".
+- Do not provide a final appraisal or certificate of authenticity.
+- Mention that the value is preliminary and visual only.
+- Give a price range, not a single exact number, unless evidence is insufficient.
+- Prefer USD unless the user asks for another currency.
+- The price must be explained with practical reasoning.
+- End with one useful follow-up question.
 
-When answering a general antique question without image:
-- Answer directly and naturally.
-- Explain the concept clearly.
-- Give examples when useful.
-- Suggest what photos or details would help if the visitor wants an evaluation.
-- Do not force a price estimate if no actual item is shown.
+When there is an image:
+Look carefully for:
+- Object type
+- Shape and construction
+- Visible material
+- Surface, patina, oxidation, polish, paint, or wear
+- Style or design influence
+- Possible production period
+- Condition issues
+- Missing parts
+- Visible marks, labels, numbers, signature, stamps
+- Whether the item looks handmade, industrial, decorative, collectible, or functional
 
-Strict rules:
-- Never claim authenticity with certainty.
-- Never say “100% original”.
-- Never give a final official appraisal.
-- Never invent a maker, artist, period, country, or origin if not visible or not provided.
-- If there is no visible mark, signature, or maker stamp, say that this limits the valuation.
-- If the photo is from only one angle, say the estimate may change after seeing other angles.
-- If the image is weak, blurred, cropped, or too dark, say confidence is low.
-- Always be honest about uncertainty.
-- Use USD for price range unless the visitor asks otherwise.
-- The answer should be valuable enough that a visitor feels they are talking to a real specialist.
+When there is no image:
+- Answer the antique-related question directly.
+- Do not force a valuation if there is not enough evidence.
+- Ask for images/details that would make the evaluation possible.
 
+Needed photos should be specific and useful:
+- Full front view
+- Back side
+- Bottom/base/underside
+- Close-up of any signature, maker mark, stamp, number, or label
+- Close-up of damage, repair, patina, oxidation, texture, or material
+- Scale photo beside a common object if dimensions are unknown
+
+JSON rules:
 Return JSON only.
 No markdown.
-No text outside JSON.
+No explanation outside JSON.
+No code block.
 
-Important JSON language rule:
-Every user-facing value inside the JSON must be written in ${language}.
-This includes:
-- itemType
-- material
-- style
-- period
-- condition
-- authenticity
-- priceRange
-- priceReasoning
-- valueDrivers
-- valueReducers
-- confidenceNote
-- title
-- description
-- conversationReply
-- keywords
-- neededPhotos
-- followUpQuestion
+All user-facing values must be in ${language}.
 
-JSON shape:
+Required JSON shape:
 {
-  "itemType": "likely item type or the topic being discussed",
-  "material": "likely material or relevant material explanation",
-  "style": "visual style, cultural influence, school, or design type",
-  "period": "careful estimated period, or say evidence is insufficient",
-  "condition": "visible condition or what needs checking",
-  "authenticity": "authenticity notes without certainty",
-  "priceRange": "preliminary USD price range, or say not enough evidence",
-  "priceReasoning": "why this range was suggested, based on material, age, condition, craftsmanship, rarity, marks, demand, and missing evidence",
-  "valueDrivers": ["things that may increase the value"],
-  "valueReducers": ["things that may reduce the value"],
-  "confidence": 1,
-  "confidenceNote": "why the confidence is low, medium, or high",
-  "title": "short natural title, not a marketing title",
-  "description": "short neutral summary",
-  "conversationReply": "the main answer. It must feel like a conversation, add new information, correct assumptions if needed, explain the price, mention missing photos/details, and end with a follow-up question.",
-  "keywords": ["keyword"],
+  "title": "short natural object title",
+  "lookup": "one or two sentence identification of what the item appears to be",
+  "timePeriod": "possible period or state that evidence is insufficient",
+  "origin": "possible origin or state that origin is unclear",
+  "material": "likely material or material explanation",
+  "style": "visual style, design influence, school, or type",
+  "condition": "visible condition and what still needs checking",
+  "authenticity": "authenticity indicators without certainty",
+  "estimatedValue": "preliminary USD price range or say not enough evidence",
+  "priceReasoning": "why this value range was suggested",
+  "history": "short historical/contextual explanation about this kind of object",
+  "valueDrivers": ["things that may increase value"],
+  "valueReducers": ["things that may reduce value"],
+  "visualSearchKeywords": ["short search keyword for finding similar items online"],
   "neededPhotos": ["specific photo needed"],
-  "followUpQuestion": "one clear next question"
+  "followUpQuestion": "one clear next question",
+  "confidence": 1,
+  "confidenceNote": "why confidence is low, medium, or high",
+  "disclaimer": "preliminary visual estimate, not an authenticity certificate or formal appraisal"
 }
 
-Make conversationReply the strongest and most useful part of the response.
+Confidence:
+- 1 to 3 = weak evidence
+- 4 to 6 = moderate evidence
+- 7 to 8 = good visual evidence
+- 9 to 10 = only if image and details are exceptionally clear, but still not final authenticity
 `;
-}
-
-function safeString(value: FormDataEntryValue | null) {
-  return typeof value === "string" ? value.trim() : "";
 }
 
 function buildFallbackResult(locale: Locale): AnalysisResult {
   if (locale === "en") {
     return {
-      itemType: "Unclear item",
+      title: "Insufficient information",
+      lookup:
+        "The item cannot be identified responsibly from the current information.",
+      timePeriod: "Insufficient evidence",
+      origin: "Unclear",
       material: "Unclear",
       style: "Unclear",
-      period: "Insufficient evidence",
       condition: "Cannot be assessed clearly",
       authenticity:
-        "No authenticity conclusion can be made from the provided information.",
-      priceRange: "Unable to estimate",
+        "No authenticity conclusion can be made from the current information.",
+      estimatedValue: "Unable to estimate",
       priceReasoning:
-        "The image or description is not sufficient to support a responsible price estimate.",
+        "A responsible value range needs clearer images, condition details, dimensions, and any visible marks.",
+      history:
+        "More context is needed before connecting this item to a specific historical period or production tradition.",
       valueDrivers: [],
-      valueReducers: ["Missing clear images", "No visible mark or signature"],
-      confidence: 1,
-      confidenceNote: "The provided evidence is too limited.",
-      title: "Insufficient information for evaluation",
-      description:
-        "More images and details are needed before giving a useful preliminary evaluation.",
-      conversationReply:
-        "I do not have enough information to evaluate this item responsibly yet. A price estimate would be weak without clearer evidence. Please upload a full image, the base or back side, and any signature, stamp, number, or maker’s mark if available. Is there any writing, mark, or label on the base or back?",
-      keywords: [],
+      valueReducers: [
+        "Missing clear images",
+        "No visible mark or signature",
+        "Unknown dimensions",
+        "Unknown condition",
+      ],
+      visualSearchKeywords: [],
       neededPhotos: [
-        "Full front image",
+        "Full front view",
         "Back side",
-        "Bottom or base",
-        "Close-up of any signature, stamp, number, label, or maker’s mark",
-        "Close-up of damage, repair, patina, or material texture",
+        "Bottom or underside",
+        "Close-up of any signature, stamp, number, label, or maker mark",
+        "Close-up of damage, repair, patina, oxidation, or material texture",
       ],
       followUpQuestion:
-        "Is there any signature, stamp, number, label, or writing on the base or back?",
+        "Can you upload a clear full photo and a close-up of any mark or writing?",
+      confidence: 1,
+      confidenceNote: "The provided evidence is too limited.",
+      disclaimer:
+        "This is a preliminary visual estimate only, not a certificate of authenticity or a formal appraisal.",
     };
   }
 
   if (locale === "fr") {
     return {
-      itemType: "Objet non identifié",
+      title: "Informations insuffisantes",
+      lookup:
+        "L’objet ne peut pas être identifié sérieusement avec les informations actuelles.",
+      timePeriod: "Éléments insuffisants",
+      origin: "Origine non claire",
       material: "Matière non claire",
       style: "Style non clair",
-      period: "Éléments insuffisants",
       condition: "L’état ne peut pas être évalué clairement",
       authenticity:
         "Aucune conclusion d’authenticité ne peut être donnée avec les informations actuelles.",
-      priceRange: "Estimation impossible",
+      estimatedValue: "Estimation impossible",
       priceReasoning:
-        "L’image ou la description ne suffit pas pour proposer une fourchette de prix responsable.",
+        "Une fourchette de valeur responsable nécessite des images plus claires, l’état, les dimensions et les marques visibles.",
+      history:
+        "Plus de contexte est nécessaire avant de relier cet objet à une période historique ou à une tradition de fabrication.",
       valueDrivers: [],
       valueReducers: [
         "Images insuffisantes",
         "Aucune marque ou signature visible",
+        "Dimensions inconnues",
+        "État inconnu",
       ],
-      confidence: 1,
-      confidenceNote: "Les éléments fournis sont trop limités.",
-      title: "Informations insuffisantes pour l’évaluation",
-      description:
-        "Des images et détails supplémentaires sont nécessaires pour une première évaluation utile.",
-      conversationReply:
-        "Je n’ai pas encore assez d’éléments pour évaluer cet objet sérieusement. Une estimation de prix serait trop fragile sans images plus précises. Il faudrait une vue complète, l’arrière ou la base, et un gros plan sur toute signature, marque, numéro ou étiquette éventuelle. Y a-t-il une inscription, une marque ou un cachet sous l’objet ou à l’arrière ?",
-      keywords: [],
+      visualSearchKeywords: [],
       neededPhotos: [
         "Vue complète de face",
         "Arrière de l’objet",
         "Dessous ou base",
         "Gros plan sur toute signature, marque, numéro ou étiquette",
-        "Gros plan sur les dommages, réparations, patine ou texture de la matière",
+        "Gros plan sur les dommages, réparations, patine, oxydation ou texture",
       ],
       followUpQuestion:
-        "Y a-t-il une signature, une marque, un numéro ou une inscription sous l’objet ou à l’arrière ?",
+        "Pouvez-vous ajouter une photo complète et un gros plan de toute marque ou inscription ?",
+      confidence: 1,
+      confidenceNote: "Les éléments fournis sont trop limités.",
+      disclaimer:
+        "Il s’agit d’une estimation visuelle préliminaire, pas d’un certificat d’authenticité ni d’une expertise officielle.",
     };
   }
 
   if (locale === "ku") {
     return {
-      itemType: "پارچەیەکی نەناسراو",
+      title: "زانیاری پێویست نییە",
+      lookup:
+        "بەم زانیارییەی ئێستا ناتوانرێت پارچەکە بە شێوەیەکی بەرپرسانە بناسرێتەوە.",
+      timePeriod: "بەڵگە پێویستەکان نییە",
+      origin: "سەرچاوەکە ڕوون نییە",
       material: "مادەکە ڕوون نییە",
       style: "شێوازەکە ڕوون نییە",
-      period: "بەڵگە پێویستەکان نییە",
       condition: "دۆخەکە بە ڕوونی هەڵسەنگاندن ناکرێت",
       authenticity:
         "لەسەر بنەمای زانیارییەکانی ئێستا ناتوانرێت بڕیاری ڕەسەنایەتی بدرێت.",
-      priceRange: "ناتوانرێت نرخ بخەمڵێنرێت",
+      estimatedValue: "ناتوانرێت نرخ بخەمڵێنرێت",
       priceReasoning:
-        "وێنە یان وەسفەکە بەس نییە بۆ ئەوەی نرخێکی بەرپرسانە پێشنیار بکرێت.",
+        "بۆ نرخدانانی بەرپرسانە پێویستە وێنەی ڕوونتر، دۆخ، قەبارە و هەر مۆر یان نیشانەیەک هەبێت.",
+      history:
+        "پێویستە زانیاری زیاتر هەبێت بۆ ئەوەی ئەم پارچەیە بە سەردەم یان شێوازی دروستکردنی دیاریکراوەوە ببەسترێتەوە.",
       valueDrivers: [],
-      valueReducers: ["وێنەی ڕوون نییە", "هیچ مۆر یان واژۆیەک دیار نییە"],
-      confidence: 1,
-      confidenceNote: "بەڵگەکان زۆر سنووردارن.",
-      title: "زانیاری پێویست نییە بۆ هەڵسەنگاندن",
-      description:
-        "پێویستە وێنە و وردەکاری زیاتر هەبێت بۆ هەڵسەنگاندنێکی سەرەتایی باشتر.",
-      conversationReply:
-        "هێشتا زانیاری پێویست نییە بۆ ئەوەی ئەم پارچەیە بە شێوەیەکی بەرپرسانە هەڵسەنگێنم. نرخدانان بەبێ وێنەی ڕوون زۆر لاواز دەبێت. تکایە وێنەی تەواوی پارچەکە، پشت یان بنەکە، و وێنەی نزیک لە هەر مۆر، واژۆ، ژمارە یان نیشانەیەک بنێرە. هیچ نووسین یان مۆرێک لە بن یان پشتەوە هەیە؟",
-      keywords: [],
+      valueReducers: [
+        "وێنەی ڕوون نییە",
+        "هیچ مۆر یان واژۆیەک دیار نییە",
+        "قەبارە نەزانراوە",
+        "دۆخ نەزانراوە",
+      ],
+      visualSearchKeywords: [],
       neededPhotos: [
         "وێنەی تەواوی پێشەوە",
         "پشتی پارچەکە",
-        "بنەکە یان ژێرەوە",
+        "بن یان ژێرەوە",
         "وێنەی نزیک لە واژۆ، مۆر، ژمارە یان نیشانە",
-        "وێنەی نزیک لە زیان، چاککردنەوە، پاتینا یان تێکستی مادەکە",
+        "وێنەی نزیک لە زیان، چاککردنەوە، پاتینا، ئۆکسیدبوون یان تێکستی مادەکە",
       ],
       followUpQuestion:
-        "هیچ واژۆ، مۆر، ژمارە، نیشانە یان نووسینێک لە بن یان پشتی پارچەکە هەیە؟",
+        "دەتوانیت وێنەی تەواو و وێنەی نزیک لە هەر مۆر یان نووسینێک زیاد بکەیت؟",
+      confidence: 1,
+      confidenceNote: "بەڵگەکان زۆر سنووردارن.",
+      disclaimer:
+        "ئەمە تەنها خەملاندنێکی سەرەتایییە لەسەر بنەمای وێنە، نەک بڕوانامەی ڕەسەنایەتی یان هەڵسەنگاندنی فەرمی.",
     };
   }
 
   return {
-    itemType: "قطعة غير واضحة",
+    title: "معلومات غير كافية",
+    lookup: "لا يمكن تحديد القطعة بشكل مسؤول من المعلومات الحالية.",
+    timePeriod: "الأدلة غير كافية",
+    origin: "المنشأ غير واضح",
     material: "المادة غير واضحة",
     style: "النمط غير واضح",
-    period: "الأدلة غير كافية",
     condition: "لا يمكن تقييم الحالة بوضوح",
-    authenticity: "لا يمكن إعطاء ملاحظة أصالة مسؤولة من المعلومات الحالية.",
-    priceRange: "لا يمكن تقدير السعر",
+    authenticity:
+      "لا يمكن إعطاء حكم أصالة من المعلومات الحالية، ولا توجد أدلة كافية للجزم.",
+    estimatedValue: "لا يمكن تقدير السعر",
     priceReasoning:
-      "الصورة أو الوصف غير كافيين لإعطاء نطاق سعري مسؤول.",
+      "إعطاء نطاق سعري مسؤول يحتاج صور أوضح، ومعرفة الحالة، والقياسات، وأي ختم أو توقيع ظاهر.",
+    history:
+      "نحتاج معلومات أكثر قبل ربط القطعة بحقبة تاريخية أو مدرسة صناعية محددة.",
     valueDrivers: [],
-    valueReducers: ["عدم توفر صور واضحة", "لا يوجد ختم أو توقيع ظاهر"],
-    confidence: 1,
-    confidenceNote: "الأدلة المتوفرة قليلة جداً.",
-    title: "معلومات غير كافية للتقييم",
-    description:
-      "تحتاج القطعة إلى صور وتفاصيل إضافية قبل إعطاء تقييم أولي مفيد.",
-    conversationReply:
-      "لا أملك معلومات كافية لتقييم القطعة بشكل مسؤول. إعطاء سعر الآن سيكون ضعيفاً لأن الصورة أو الوصف لا يوضحان التفاصيل المهمة. أحتاج صورة كاملة، وصورة للخلف أو القاعدة، وصورة قريبة لأي توقيع أو ختم أو رقم أو ملصق إن وجد. هل توجد أي كتابة أو علامة أسفل القطعة أو خلفها؟",
-    keywords: [],
+    valueReducers: [
+      "عدم توفر صور واضحة",
+      "لا يوجد ختم أو توقيع ظاهر",
+      "القياسات غير معروفة",
+      "الحالة غير معروفة",
+    ],
+    visualSearchKeywords: [],
     neededPhotos: [
       "صورة كاملة من الأمام",
       "صورة الخلف",
       "صورة القاعدة أو الأسفل",
       "صورة قريبة للختم أو التوقيع أو الرقم أو الملصق",
-      "صورة قريبة لأي كسر أو ترميم أو أثر قدم أو ملمس المادة",
+      "صورة قريبة لأي كسر أو ترميم أو أثر قدم أو أكسدة أو ملمس المادة",
     ],
-    followUpQuestion: "هل توجد أي كتابة أو ختم أو توقيع أسفل القطعة أو خلفها؟",
+    followUpQuestion:
+      "هل يمكنك رفع صورة كاملة وصورة قريبة لأي ختم أو كتابة أو توقيع؟",
+    confidence: 1,
+    confidenceNote: "الأدلة المتوفرة قليلة جداً.",
+    disclaimer:
+      "هذا تقدير بصري مبدئي فقط، وليس شهادة أصالة أو تقييماً رسمياً.",
   };
 }
 
-function normalizeResult(parsed: Partial<AnalysisResult>, fallback: AnalysisResult) {
+function normalizeString(value: unknown, fallback: string) {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function normalizeArray(value: unknown, fallback: string[]) {
+  if (!Array.isArray(value)) return fallback;
+
+  const clean = value
+    .filter((item) => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return clean.length ? clean : fallback;
+}
+
+function normalizeResult(
+  parsed: Partial<AnalysisResult>,
+  fallback: AnalysisResult
+): AnalysisResult {
   const confidence =
     typeof parsed.confidence === "number"
       ? Math.min(10, Math.max(1, parsed.confidence))
       : fallback.confidence;
 
   return {
-    ...fallback,
-    ...parsed,
+    title: normalizeString(parsed.title, fallback.title),
+    lookup: normalizeString(parsed.lookup, fallback.lookup),
+    timePeriod: normalizeString(parsed.timePeriod, fallback.timePeriod),
+    origin: normalizeString(parsed.origin, fallback.origin),
+    material: normalizeString(parsed.material, fallback.material),
+    style: normalizeString(parsed.style, fallback.style),
+    condition: normalizeString(parsed.condition, fallback.condition),
+    authenticity: normalizeString(parsed.authenticity, fallback.authenticity),
+    estimatedValue: normalizeString(parsed.estimatedValue, fallback.estimatedValue),
+    priceReasoning: normalizeString(parsed.priceReasoning, fallback.priceReasoning),
+    history: normalizeString(parsed.history, fallback.history),
+    valueDrivers: normalizeArray(parsed.valueDrivers, fallback.valueDrivers),
+    valueReducers: normalizeArray(parsed.valueReducers, fallback.valueReducers),
+    visualSearchKeywords: normalizeArray(
+      parsed.visualSearchKeywords,
+      fallback.visualSearchKeywords
+    ),
+    neededPhotos: normalizeArray(parsed.neededPhotos, fallback.neededPhotos),
+    followUpQuestion: normalizeString(
+      parsed.followUpQuestion,
+      fallback.followUpQuestion
+    ),
     confidence,
-    valueDrivers: Array.isArray(parsed.valueDrivers)
-      ? parsed.valueDrivers
-      : fallback.valueDrivers,
-    valueReducers: Array.isArray(parsed.valueReducers)
-      ? parsed.valueReducers
-      : fallback.valueReducers,
-    keywords: Array.isArray(parsed.keywords) ? parsed.keywords : fallback.keywords,
-    neededPhotos: Array.isArray(parsed.neededPhotos)
-      ? parsed.neededPhotos
-      : fallback.neededPhotos,
+    confidenceNote: normalizeString(parsed.confidenceNote, fallback.confidenceNote),
+    disclaimer: normalizeString(parsed.disclaimer, fallback.disclaimer),
   };
+}
+
+async function fileToDataUrl(file: File) {
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const base64 = buffer.toString("base64");
+  const mimeType = file.type || "image/jpeg";
+
+  return `data:${mimeType};base64,${base64}`;
 }
 
 export async function POST(request: Request) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    const apiKey = process.env.OPENAI_API_KEY;
+
+    if (!apiKey) {
       return NextResponse.json(
         { error: "OPENAI_API_KEY is missing" },
         { status: 500 }
       );
     }
+
+    const client = new OpenAI({ apiKey });
 
     const formData = await request.formData();
 
@@ -420,6 +462,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (hasImage && image instanceof File && image.size > 8 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: "Image is too large. Please upload an image smaller than 8MB." },
+        { status: 400 }
+      );
+    }
+
     const inputContent: Array<
       | { type: "input_text"; text: string }
       | {
@@ -431,8 +480,8 @@ export async function POST(request: Request) {
       {
         type: "input_text",
         text: buildPrompt({
-          notes,
           locale,
+          notes,
           itemType,
           material,
           dimensions,
@@ -443,18 +492,13 @@ export async function POST(request: Request) {
       },
     ];
 
-    if (hasImage) {
-      const uploadedImage = image as File;
-      const arrayBuffer = await uploadedImage.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      const base64Image = buffer.toString("base64");
-      const mimeType = uploadedImage.type || "image/jpeg";
-      const dataUrl = `data:${mimeType};base64,${base64Image}`;
+    if (hasImage && image instanceof File) {
+      const dataUrl = await fileToDataUrl(image);
 
       inputContent.push({
         type: "input_image",
         image_url: dataUrl,
-        detail: "high",
+        detail: "auto",
       });
     }
 
@@ -471,6 +515,8 @@ export async function POST(request: Request) {
           type: "json_object",
         },
       },
+      temperature: 0.25,
+      max_output_tokens: 1800,
     });
 
     const rawText = response.output_text;
@@ -494,11 +540,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json(normalized);
   } catch (error) {
-    console.error(error);
+    console.error("Analyze API error:", error);
 
     return NextResponse.json(
       {
-        error: "Failed to analyze item",
+        error:
+          error instanceof Error ? error.message : "Failed to analyze item",
       },
       { status: 500 }
     );
