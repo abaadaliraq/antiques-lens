@@ -17,7 +17,7 @@ export default function MobileTopBar({
   return (
     <header className="fixed inset-x-0 top-0 z-40 bg-black/20 px-4 pt-3 backdrop-blur-xl lg:pl-[306px]">
       <div className="mx-auto flex h-12 max-w-[430px] items-center justify-between">
-        <LanguagePills locale={locale} setLocale={setLocale} />
+        <LanguagePills lang={locale} setLang={setLocale} />
 
         <button
           type="button"
