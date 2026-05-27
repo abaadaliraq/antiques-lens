@@ -74,6 +74,11 @@ export default function EvaluationComposer({
     removeImage();
   }
 
+  function autoResizeTextarea(element: HTMLTextAreaElement) {
+    element.style.height = "0px";
+    element.style.height = `${Math.min(element.scrollHeight, 132)}px`;
+  }
+
   return (
     <section className="flex min-h-dvh items-start justify-center px-4 pb-24 pt-[125px] md:pt-[150px] lg:pt-[175px]">
       <div className="w-full max-w-[780px]">
@@ -121,84 +126,93 @@ export default function EvaluationComposer({
           </div>
         )}
 
-        <div className="mx-auto mt-8 max-w-[700px]">
-          {/* Search / actions bar فقط، بدون صور داخله */}
+        <div className="mx-auto mt-8 w-full max-w-[700px]">
           <div
             className={[
-              "rounded-[2rem] border p-2 backdrop-blur-2xl transition md:rounded-full",
+              "w-full rounded-[1.75rem] border backdrop-blur-2xl transition",
+              "px-3 py-2",
               isLight
-                ? "border-white/70 bg-white/52 shadow-[0_28px_90px_rgba(55,105,160,0.22)]"
+                ? "border-black/10 bg-white/70 shadow-[0_24px_80px_rgba(55,105,160,0.18)]"
                 : "border-white/12 bg-white/[0.085] shadow-[0_28px_90px_rgba(0,0,0,0.38)]",
             ].join(" ")}
           >
-            <div className="flex min-h-13 items-center gap-1.5 md:h-14 md:gap-2">
+            <div className="flex w-full items-end gap-2">
+              <div className="flex shrink-0 items-center gap-1 pb-1">
+                <label
+                  title={labels.upload}
+                  className={[
+                    "grid h-9 w-9 cursor-pointer place-items-center rounded-full transition",
+                    isLight
+                      ? "text-black/58 hover:bg-black/5 hover:text-black"
+                      : "text-white/60 hover:bg-white/[0.1] hover:text-white",
+                  ].join(" ")}
+                >
+                  <ImagePlus className="h-[18px] w-[18px]" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
+
+                <label
+                  title={labels.camera}
+                  className={[
+                    "grid h-9 w-9 cursor-pointer place-items-center rounded-full transition",
+                    isLight
+                      ? "text-black/58 hover:bg-black/5 hover:text-black"
+                      : "text-white/60 hover:bg-white/[0.1] hover:text-white",
+                  ].join(" ")}
+                >
+                  <Camera className="h-[18px] w-[18px]" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              <textarea
+                value={prompt}
+                onChange={(event) => {
+                  setPrompt(event.target.value);
+                  autoResizeTextarea(event.currentTarget);
+                }}
+                onInput={(event) => autoResizeTextarea(event.currentTarget)}
+                rows={1}
+                aria-label={labels.placeholder}
+                placeholder={labels.placeholder}
+                className={[
+                  "min-h-[38px] max-h-[132px] flex-1 resize-none overflow-y-auto bg-transparent",
+                  "px-2 py-2 text-[15px] leading-6 outline-none",
+                  "placeholder:text-white/30",
+                  isLight ? "text-black placeholder:text-black/35" : "text-white",
+                ].join(" ")}
+              />
+
               <button
                 type="button"
                 onClick={handleAnalyze}
                 disabled={isAnalyzing || !canAnalyze}
                 className={[
-                  "grid h-11 w-11 shrink-0 place-items-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-35",
+                  "mb-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full transition",
+                  "disabled:cursor-not-allowed disabled:opacity-35",
                   isLight
-                    ? "bg-[#101318] text-white shadow-[0_16px_34px_rgba(0,0,0,0.18)] hover:scale-[1.03]"
-                    : "bg-white text-black shadow-[0_16px_34px_rgba(255,255,255,0.12)] hover:scale-[1.03]",
+                    ? "bg-[#101318] text-white shadow-[0_12px_28px_rgba(0,0,0,0.18)] hover:scale-[1.03]"
+                    : "bg-white text-black shadow-[0_12px_28px_rgba(255,255,255,0.12)] hover:scale-[1.03]",
                 ].join(" ")}
                 aria-label={isAnalyzing ? labels.analyzing : labels.send}
               >
                 <Send className="h-4 w-4" />
               </button>
-
-              <label
-                title={labels.camera}
-                className={[
-                  "grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-full transition",
-                  isLight
-                    ? "text-black/58 hover:bg-white/70 hover:text-black"
-                    : "text-white/58 hover:bg-white/[0.1] hover:text-white",
-                ].join(" ")}
-              >
-                <Camera className="h-[18px] w-[18px]" />
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-              </label>
-
-              <label
-                title={labels.upload}
-                className={[
-                  "grid h-10 w-10 shrink-0 cursor-pointer place-items-center rounded-full transition",
-                  isLight
-                    ? "text-black/58 hover:bg-white/70 hover:text-black"
-                    : "text-white/58 hover:bg-white/[0.1] hover:text-white",
-                ].join(" ")}
-              >
-                <ImagePlus className="h-[18px] w-[18px]" />
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-              </label>
-
-              <input
-                value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-                aria-label={labels.placeholder}
-                placeholder={labels.placeholder}
-                className={[
-                  "h-full min-w-0 flex-1 bg-transparent px-4 text-[15px] font-normal outline-none placeholder:text-transparent",
-                  isLight ? "text-black" : "text-white",
-                ].join(" ")}
-              />
             </div>
           </div>
 
-          {/* الصور تحت الشريط بمربعات متوسطة */}
           {previews.length > 0 && (
             <div
               className={[

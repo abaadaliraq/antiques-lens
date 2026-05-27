@@ -105,15 +105,22 @@ export default function HistorySidebar({
 
   return (
     <>
-      <button
-        onClick={onOpen}
-        aria-label={labels.archive}
-        className={`fixed left-3 top-1/2 z-30 grid h-11 w-8 -translate-y-1/2 place-items-center rounded-full border border-white/15 bg-white/10 text-white/70 shadow-[0_0_30px_rgba(0,0,0,0.25)] backdrop-blur-xl transition lg:hidden ${
-          open ? "pointer-events-none opacity-0" : "opacity-100"
-        }`}
-      >
-        <span className="h-8 w-1 rounded-full bg-white/45" />
-      </button>
+     <button
+  type="button"
+  onClick={onOpen}
+  aria-label="Open history"
+  className={[
+    "fixed left-3 top-24 z-50",
+    "flex h-10 w-10 items-center justify-center",
+    "rounded-full border border-white/10",
+    "bg-white/[0.07] text-white/70 shadow-[0_10px_35px_rgba(0,0,0,0.35)]",
+    "backdrop-blur-xl transition-all duration-300",
+    "hover:bg-white/[0.12] hover:text-white hover:scale-105",
+    "md:left-4 md:top-28",
+  ].join(" ")}
+>
+  <Archive className="h-4 w-4" />
+</button>
 
       <div
         onClick={onClose}

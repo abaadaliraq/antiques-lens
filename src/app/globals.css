@@ -40,3 +40,16 @@ option {
   background: #0b0d15;
   color: white;
 }
+html,
+body {
+  overflow-x: hidden;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}

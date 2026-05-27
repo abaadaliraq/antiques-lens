@@ -3,10 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
 
+
 import { content, HISTORY_KEY, normalizeResult } from "./antiqueContent";
 import { createShareImage } from "./createShareImage";
-import type { AnalysisResult, HistoryItem, Locale, ThemeMode } from "./types";
-
+import type {
+  AnalysisResult,
+  HistoryItem,
+  Locale,
+  ThemeMode,
+  SimilarImageResult,
+} from "./types";
 const MAX_IMAGES = 6;
 const MAX_IMAGE_SIZE_MB = 8;
 
@@ -64,8 +70,10 @@ async function copyFallbackSummary(result: AnalysisResult) {
     result.condition,
     result.authenticity,
     result.estimatedValue,
+    
     "",
     result.disclaimer,
+    
   ]
     .filter(Boolean)
     .join("\n");
@@ -168,11 +176,215 @@ async function createHistoryThumbnails(files: File[]) {
     return [];
   }
 }
+async function resizeImageForAnalysis(
+  file: File,
+  maxWidth = 1400,
+  quality = 0.72,
+): Promise<File> {
+  const dataUrl = await fileToDataUrl(file);
+
+  return new Promise((resolve) => {
+    const image = new Image();
+
+    image.onload = () => {
+      const ratio = image.width / image.height;
+
+      const width = image.width > maxWidth ? maxWidth : image.width;
+      const height = width / ratio;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(width);
+      canvas.height = Math.round(height);
+
+      const ctx = canvas.getContext("2d");
+
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+
+          const resizedFile = new File(
+            [blob],
+            file.name.replace(/\.[^.]+$/, ".jpg"),
+            {
+              type: "image/jpeg",
+              lastModified: Date.now(),
+            },
+          );
+
+          resolve(resizedFile);
+        },
+        "image/jpeg",
+        quality,
+      );
+    };
+
+    image.onerror = () => resolve(file);
+    image.src = dataUrl;
+  });
+}
+function buildPinterestSearchQuery(result: AnalysisResult) {
+  const rawText = [
+    result.title,
+    result.lookup,
+    result.material,
+    result.style,
+    result.description,
+    result.history,
+    ...(result.visualSearchKeywords || []),
+    ...(result.keywords || []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  /*
+    أهم قاعدة:
+    نوع القطعة لازم يكون أول البحث.
+    إذا نوع القطعة غلط أو عام، Pinterest يجيب نتائج بعيدة.
+  */
+
+  const itemTerms: string[] = [];
+  const materialTerms: string[] = [];
+  const colorTerms: string[] = [];
+  const styleTerms: string[] = [];
+
+  // شيشة / أركيلة / نركيلة
+  if (
+    /شيشة|أركيلة|اركيلة|نركيلة|نرجيلة|نارجيلة|hookah|shisha|narghile|nargile|water pipe|waterpipe/.test(
+      rawText,
+    )
+  ) {
+    itemTerms.push(
+      "antique hookah",
+      "vintage shisha pipe",
+      "middle eastern hookah",
+      "ottoman hookah",
+      "brass hookah",
+    );
+  }
+
+  // إبريق / دلة / جك
+  else if (/إبريق|ابريق|دلة|دله|ewer|pitcher|jug|decanter|coffee pot/.test(rawText)) {
+    itemTerms.push(
+      "antique ewer",
+      "decorative pitcher",
+      "vintage coffee pot",
+    );
+  }
+
+  // مزهرية
+  else if (/مزهرية|فازة|vase/.test(rawText)) {
+    itemTerms.push("antique vase", "decorative vase");
+  }
+
+  // كأس / قدح
+  else if (/كأس|كاس|قدح|goblet|cup|chalice/.test(rawText)) {
+    itemTerms.push("antique goblet", "decorative chalice");
+  }
+
+  // صحن / طبق
+  else if (/صحن|طبق|plate|dish/.test(rawText)) {
+    itemTerms.push("antique decorative plate");
+  }
+
+  // تمثال
+  else if (/تمثال|figure|statue|figurine/.test(rawText)) {
+    itemTerms.push("antique figurine");
+  }
+
+  // fallback إذا ما عرف نوع القطعة
+  else {
+    itemTerms.push(
+      result.title || "",
+      result.lookup || "",
+      ...(result.visualSearchKeywords || []),
+    );
+  }
+
+  // المواد
+  if (/نحاس|brass|copper|برونز|bronze/.test(rawText)) {
+    materialTerms.push("brass", "copper", "bronze");
+  }
+
+  if (/فضة|silver|مطلي فضة|silver plated/.test(rawText)) {
+    materialTerms.push("silver plated", "silver");
+  }
+
+  if (/كريستال|crystal|glass|زجاج/.test(rawText)) {
+    materialTerms.push("crystal glass");
+  }
+
+  if (/خشب|wood|wooden/.test(rawText)) {
+    materialTerms.push("wooden");
+  }
+
+  if (/بورسلين|porcelain|ceramic|خزف/.test(rawText)) {
+    materialTerms.push("porcelain ceramic");
+  }
+
+  // الألوان
+  if (/أزرق|ازرق|blue|كحلي/.test(rawText)) {
+    colorTerms.push("blue");
+  }
+
+  if (/ذهبي|gold|gilded/.test(rawText)) {
+    colorTerms.push("gold");
+  }
+
+  if (/أسود|اسود|black/.test(rawText)) {
+    colorTerms.push("black");
+  }
+
+  if (/بني|brown/.test(rawText)) {
+    colorTerms.push("brown");
+  }
+
+  // الأسلوب / المنشأ
+  if (/عثماني|ottoman/.test(rawText)) {
+    styleTerms.push("ottoman");
+  }
+
+  if (/شرقي|middle eastern|islamic|arabic/.test(rawText)) {
+    styleTerms.push("middle eastern", "islamic");
+  }
+
+  if (/مزخرف|زخرفة|engraved|etched|ornate|decorated/.test(rawText)) {
+    styleTerms.push("engraved", "ornate");
+  }
+
+  if (/قديم|antique|vintage/.test(rawText)) {
+    styleTerms.push("antique", "vintage");
+  }
+
+  const query = [
+    ...itemTerms,
+    ...materialTerms.slice(0, 2),
+    ...colorTerms.slice(0, 1),
+    ...styleTerms.slice(0, 3),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return query;
+}
 
 export function useAntiqueLens() {
   const [locale, setLocale] = useState<Locale>("ar");
   const [theme, setTheme] = useState<ThemeMode>("dark");
-
+const [similarImages, setSimilarImages] = useState<SimilarImageResult[]>([]);
+const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -245,7 +457,8 @@ export function useAntiqueLens() {
 
   function resetEvaluation() {
     revokePreviewUrls(imagePreviews);
-
+setSimilarImages([]);
+setIsLoadingSimilar(false);
     setPrompt("");
     setSelectedFiles([]);
     setImagePreviews([]);
@@ -403,70 +616,105 @@ export function useAntiqueLens() {
       return next;
     });
   }
+async function fetchSimilarImages(query: string) {
+  if (!query.trim()) return;
 
+  setIsLoadingSimilar(true);
+  setSimilarImages([]);
+
+  try {
+    const response = await fetch("/api/pinterest-search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data?.error || "Pinterest search failed.");
+    }
+
+    setSimilarImages(Array.isArray(data.items) ? data.items : []);
+  } catch (error) {
+    console.error("Pinterest similar images failed:", error);
+    setSimilarImages([]);
+  } finally {
+    setIsLoadingSimilar(false);
+  }
+}
   async function handleAnalyze() {
-    if (!selectedFiles.length && !prompt.trim()) {
-      setError(t.emptyError);
-      return;
-    }
-
-    setIsAnalyzing(true);
-    setError("");
-    setResult(null);
-
-    try {
-      const formData = new FormData();
-
-      selectedFiles.forEach((file) => {
-        formData.append("images", file);
-      });
-
-      /*
-        fallback للـ API القديم إذا بعده ينتظر image.
-        لا تعتمدين عليه للأبد، لازم route التحليل يقرأ images كلها.
-      */
-      if (selectedFiles[0]) {
-        formData.append("image", selectedFiles[0]);
-      }
-
-      formData.append("notes", prompt);
-      formData.append("locale", locale);
-
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data?.error || "Failed to analyze request.");
-      }
-
-      const analyzedResult = normalizeResult(data);
-
-      setResult(analyzedResult);
-
-      const savedThumbnails = historyImagePreviews.length
-        ? historyImagePreviews
-        : await createHistoryThumbnails(selectedFiles);
-
-      saveHistory({
-        id: createId(),
-        title: createHistoryTitle(analyzedResult),
-        prompt,
-        createdAt: new Date().toISOString(),
-        imagePreview: savedThumbnails[0] || null,
-        imagePreviews: savedThumbnails,
-        result: analyzedResult,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unexpected error.");
-    } finally {
-      setIsAnalyzing(false);
-    }
+  if (!selectedFiles.length && !prompt.trim()) {
+    setError(t.emptyError);
+    return;
   }
 
+  setIsAnalyzing(true);
+  setError("");
+  setResult(null);
+  setSimilarImages([]);
+  setIsLoadingSimilar(false);
+
+  try {
+    const formData = new FormData();
+
+    const optimizedFiles = await Promise.all(
+      selectedFiles.slice(0, 6).map((file) => resizeImageForAnalysis(file)),
+    );
+
+    optimizedFiles.forEach((file) => {
+      formData.append("images", file);
+    });
+
+    if (optimizedFiles[0]) {
+      formData.append("image", optimizedFiles[0]);
+    }
+
+    formData.append("notes", prompt);
+    formData.append("locale", locale);
+
+    const response = await fetch("/api/analyze", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data?.error || "Failed to analyze request.");
+    }
+
+    const analyzedResult = normalizeResult(data);
+
+    setResult(analyzedResult);
+
+    const searchQuery = buildPinterestSearchQuery(analyzedResult);
+
+    if (searchQuery) {
+      void fetchSimilarImages(searchQuery);
+    }
+
+    const savedThumbnails = historyImagePreviews.length
+      ? historyImagePreviews
+      : await createHistoryThumbnails(selectedFiles);
+
+    saveHistory({
+      id: createId(),
+      title: createHistoryTitle(analyzedResult),
+      prompt,
+      createdAt: new Date().toISOString(),
+      imagePreview: savedThumbnails[0] || null,
+      imagePreviews: savedThumbnails,
+      result: analyzedResult,
+    });
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Unexpected error.");
+  } finally {
+    setIsAnalyzing(false);
+  }
+}   
   async function handleShare() {
     if (!result) return;
 
@@ -491,6 +739,7 @@ export function useAntiqueLens() {
         followUp: t.followUp,
         confidence: t.confidence,
         notice: t.notice,
+        similarImages,
       };
 
       const file = await createShareImage({
@@ -574,7 +823,8 @@ export function useAntiqueLens() {
     handleAnalyze,
     handleShare,
     handleAddInfo,
-
+similarImages,
+isLoadingSimilar,
     openHistoryItem,
     clearHistory,
     deleteHistoryItem,

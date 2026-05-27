@@ -27,6 +27,13 @@ export type AnalysisResult = {
   priceRange?: string;
   period?: string;
   keywords?: string[];
+  
+};
+export type SimilarImageResult = {
+  title: string;
+  imageUrl: string;
+  link: string;
+  source?: string;
 };
 
 export type HistoryItem = {
@@ -37,4 +44,5 @@ export type HistoryItem = {
   imagePreview: string | null;
   imagePreviews?: string[];
   result: AnalysisResult;
+  
 };

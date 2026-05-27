@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Share2 } from "lucide-react";
+import { Share2 } from "lucide-react";
 import type { AnalysisResult } from "./types";
 
 type ResultLabels = {
@@ -25,11 +25,20 @@ type ResultLabels = {
   notice: string;
 };
 
+type SimilarImageResult = {
+  title: string;
+  imageUrl: string;
+  link: string;
+  source?: string;
+};
+
 type Props = {
   labels: ResultLabels;
   result: AnalysisResult | null;
   imagePreview: string | null;
   imagePreviews?: string[];
+  similarImages?: SimilarImageResult[];
+  isLoadingSimilar?: boolean;
   onShare: () => void;
 };
 
@@ -38,6 +47,8 @@ export default function ResultView({
   result,
   imagePreview,
   imagePreviews = [],
+  similarImages = [],
+  isLoadingSimilar = false,
   onShare,
 }: Props) {
   if (!result) return null;
@@ -47,17 +58,6 @@ export default function ResultView({
 
   const mainImage = galleryImages[0] || null;
   const secondaryImages = galleryImages.slice(1);
-
-  const similarKeywords = result.visualSearchKeywords?.length
-    ? result.visualSearchKeywords
-    : [
-        result.title,
-        result.lookup,
-        result.material,
-        result.timePeriod,
-        result.style,
-        result.origin,
-      ].filter(Boolean);
 
   return (
     <article className="pb-10 text-white">
@@ -86,7 +86,7 @@ export default function ResultView({
                 {labels.result}
               </p>
 
-              <h1 className="max-w-[460px] text-[32px] font-semibold leading-[1.12] tracking-[-0.055em] text-white md:text-[42px]">
+              <h1 className="max-w-[520px] text-[32px] font-semibold leading-[1.12] tracking-[-0.055em] text-white md:text-[42px]">
                 {result.title || labels.result}
               </h1>
             </div>
@@ -125,7 +125,7 @@ export default function ResultView({
                 {labels.result}
               </p>
 
-              <h1 className="max-w-[440px] text-[34px] font-semibold leading-[1.12] tracking-[-0.055em] text-white">
+              <h1 className="max-w-[520px] text-[34px] font-semibold leading-[1.12] tracking-[-0.055em] text-white">
                 {result.title || labels.result}
               </h1>
             </div>
@@ -159,11 +159,13 @@ export default function ResultView({
 
         <div className="grid grid-cols-2 gap-x-7 gap-y-7">
           <CleanInfo label={labels.age} value={result.timePeriod || result.period} />
+
           <CleanInfo
             label={labels.value}
             value={result.estimatedValue || result.priceRange}
             gold
           />
+
           <CleanInfo label={labels.material} value={result.material} />
           <CleanInfo label={labels.origin} value={result.origin} />
         </div>
@@ -180,7 +182,7 @@ export default function ResultView({
         <FreeList title={labels.valueDrivers} items={result.valueDrivers} />
         <FreeList title={labels.valueReducers} items={result.valueReducers} />
 
-        {similarKeywords.length > 0 && (
+        {(isLoadingSimilar || similarImages.length > 0) && (
           <section className="mt-11 border-t border-white/10 pt-8">
             <div className="mb-3 flex items-center justify-between gap-3">
               <h2 className="text-[19px] font-semibold tracking-[-0.03em] text-white">
@@ -188,7 +190,7 @@ export default function ResultView({
               </h2>
 
               <span className="rounded-full bg-[#d6a25f]/10 px-3 py-1 text-[11px] font-medium text-[#d6a25f]/90">
-                {labels.soon}
+                Pinterest
               </span>
             </div>
 
@@ -196,24 +198,46 @@ export default function ResultView({
               {labels.similarHint}
             </p>
 
-            <div className="flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {similarKeywords.slice(0, 8).map((keyword, index) => (
-                <div
-                  key={`${keyword}-${index}`}
-                  className="min-w-[148px] rounded-[24px] bg-white/[0.045] p-4"
-                >
-                  <Search className="mb-6 h-6 w-6 text-[#d6a25f]/90" />
+            {isLoadingSimilar ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="aspect-[3/4] animate-pulse rounded-[24px] bg-white/[0.06]"
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                {similarImages.map((item, index) => (
+                  <a
+                    key={`${item.imageUrl}-${index}`}
+                    href={item.link || item.imageUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.045] transition hover:border-[#d6a25f]/35"
+                  >
+                    <div className="aspect-[3/4] overflow-hidden bg-black">
+                      <img
+                        src={item.imageUrl}
+                        alt={item.title || "Pinterest result"}
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                      />
+                    </div>
 
-                  <p className="line-clamp-3 text-[14px] font-light leading-6 tracking-[-0.01em] text-white/76">
-                    {keyword}
-                  </p>
+                    <div className="p-3">
+                      <p className="line-clamp-2 text-[12px] leading-5 text-white/62">
+                        {item.title || "Pinterest result"}
+                      </p>
 
-                  <p className="mt-4 text-[11px] font-light text-white/30">
-                    market keyword
-                  </p>
-                </div>
-              ))}
-            </div>
+                      <p className="mt-2 text-[11px] text-[#d6a25f]/80">
+                        {item.source || "Pinterest"}
+                      </p>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            )}
           </section>
         )}
 

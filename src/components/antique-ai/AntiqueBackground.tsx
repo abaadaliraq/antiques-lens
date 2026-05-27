@@ -7,14 +7,27 @@ type AntiqueBackgroundProps = {
 };
 
 export default function AntiqueBackground({
+  imageSrc = "/bg.png",
 }: AntiqueBackgroundProps) {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      
+    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-black">
+      <Image
+        src={imageSrc}
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="object-cover object-bottom opacity-80"
+      />
 
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(152,109,255,0.34),transparent_34%),radial-gradient(circle_at_15%_85%,rgba(0,220,255,0.22),transparent_30%),linear-gradient(180deg,rgba(7,8,18,0.18)_0%,rgba(7,8,18,0.65)_55%,rgba(7,8,18,0.94)_100%)]" />
+      {/* تغميق من الأعلى حتى تندمج الصورة مع الأسود */}
+      <div className="absolute inset-x-0 top-0 h-[62%] bg-gradient-to-b from-black via-black/90 to-transparent" />
 
-      <div className="absolute inset-0 backdrop-blur-[1.5px]" />
+      {/* طبقة سوداء خفيفة بدون ألوان */}
+      <div className="absolute inset-0 bg-black/20" />
+
+      {/* تلاشي سفلي خفيف */}
+      <div className="absolute inset-x-0 bottom-0 h-[22%] bg-gradient-to-t from-black via-black/45 to-transparent" />
     </div>
   );
 }
