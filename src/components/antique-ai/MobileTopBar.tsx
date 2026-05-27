@@ -1,8 +1,8 @@
 "use client";
 
 import { Archive } from "lucide-react";
-import LanguagePills, { type Locale } from "./LanguagePills";
-
+import LanguagePills from "./LanguagePills";
+import type { Locale } from "./types";
 type Props = {
   locale: Locale;
   setLocale: (locale: Locale) => void;
