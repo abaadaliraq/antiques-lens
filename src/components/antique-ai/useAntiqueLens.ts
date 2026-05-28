@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
-
+import { useFollowUpEvaluation } from "./useFollowUpEvaluation";
 
 import { content, HISTORY_KEY, normalizeResult } from "./antiqueContent";
 import { createShareImage } from "./createShareImage";
@@ -393,11 +393,28 @@ const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
   );
 
   const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [error, setError] = useState("");
+  
+const [translatedResults, setTranslatedResults] = useState<
+  Partial<Record<Locale, AnalysisResult>>
+>({});
 
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [history, setHistory] = useState<HistoryItemWithImages[]>([]);
+const [isTranslatingResult, setIsTranslatingResult] = useState(false);
+const [isAnalyzing, setIsAnalyzing] = useState(false);
+const [error, setError] = useState("");
+
+const followUp = useFollowUpEvaluation({
+  result,
+  locale,
+  setResult,
+  setError,
+  setTranslatedResults,
+  setImagePreviews,
+  setSelectedFiles,
+  normalizeResult,
+});
+
+const [historyOpen, setHistoryOpen] = useState(false);
+const [history, setHistory] = useState<HistoryItemWithImages[]>([]);
 
   const t = useMemo(() => content[locale], [locale]);
 
@@ -442,10 +459,66 @@ const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
     };
   }, [imagePreviews]);
 
-  function changeLocale(nextLocale: Locale) {
-    setLocale(nextLocale);
-    window.localStorage.setItem("antiques-lens:locale", nextLocale);
+async function translateCurrentResult(
+  currentResult: AnalysisResult,
+  nextLocale: Locale,
+) {
+  try {
+    setIsTranslatingResult(true);
+    setError("");
+
+    const response = await fetch("/api/translate-result", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        locale: nextLocale,
+        result: currentResult,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data?.error || "Failed to translate result.");
+    }
+
+    const translated = normalizeResult(data.result || data);
+
+    setTranslatedResults((current) => ({
+      ...current,
+      [nextLocale]: translated,
+    }));
+
+    setResult(translated);
+  } catch (error) {
+    console.error("translateCurrentResult error:", error);
+    setError(
+      error instanceof Error
+        ? error.message
+        : "Failed to translate result.",
+    );
+  } finally {
+    setIsTranslatingResult(false);
   }
+}
+
+async function changeLocale(nextLocale: Locale) {
+  setLocale(nextLocale);
+  window.localStorage.setItem("antiques-lens:locale", nextLocale);
+
+  if (!result) return;
+
+  const cached = translatedResults[nextLocale];
+
+  if (cached) {
+    setResult(cached);
+    return;
+  }
+
+  await translateCurrentResult(result, nextLocale);
+}
 
   function toggleTheme() {
     setTheme((current) => {
@@ -465,6 +538,7 @@ setIsLoadingSimilar(false);
     setHistoryImagePreviews([]);
     setResult(null);
     setError("");
+    
   }
 
   async function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
@@ -595,9 +669,14 @@ setIsLoadingSimilar(false);
         ? [fallbackImage]
         : [];
 
-    setPrompt(item.prompt);
-    setResult(normalizeResult(item.result));
-    setSelectedFiles([]);
+   const savedResult = normalizeResult(item.result);
+
+setPrompt(item.prompt);
+setResult(savedResult);
+setTranslatedResults({
+  [locale]: savedResult,
+});
+setSelectedFiles([]);
     setImagePreviews(finalImages);
     setHistoryImagePreviews(finalImages);
     setError("");
@@ -807,23 +886,28 @@ async function handleAnalyze() {
       throw new Error(data?.error || "Failed to analyze request.");
     }
 
-    const analyzedResult = normalizeResult(data);
+   const analyzedResult = normalizeResult(data);
 
-    setResult(analyzedResult);
+setResult(analyzedResult);
+setTranslatedResults({
+  [locale]: analyzedResult,
+});
 
-    const savedThumbnails = historyImagePreviews.length
-      ? historyImagePreviews
-      : await createHistoryThumbnails(selectedFiles);
+const savedThumbnails = historyImagePreviews.length
+  ? historyImagePreviews
+  : await createHistoryThumbnails(selectedFiles);
 
-    saveHistory({
-      id: createId(),
-      title: createHistoryTitle(analyzedResult),
-      prompt,
-      createdAt: new Date().toISOString(),
-      imagePreview: savedThumbnails[0] || null,
-      imagePreviews: savedThumbnails,
-      result: analyzedResult,
-    });
+saveHistory({
+  id: createId(),
+  title: createHistoryTitle(analyzedResult),
+  prompt,
+  createdAt: new Date().toISOString(),
+  imagePreview: savedThumbnails[0] || null,
+  imagePreviews: savedThumbnails,
+  result: analyzedResult,
+});
+
+
   } catch (err) {
     setError(err instanceof Error ? err.message : "Unexpected error.");
   } finally {
@@ -896,15 +980,6 @@ async function handleShare() {
   }
 }
 
-function handleAddInfo() {
-  setResult(null);
-
-  window.setTimeout(() => {
-    const input = document.querySelector("input, textarea");
-    input?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, 80);
-}
-
 return {
   locale,
   theme,
@@ -915,38 +990,29 @@ return {
 
   selectedFiles,
   imagePreviews,
-
-  /*
-    fallback للكومبوننتات القديمة.
-    أي ملف بعده يستخدم selectedFile/imagePreview راح يشتغل على أول صورة.
-  */
   selectedFile: selectedFiles[0] || null,
   imagePreview: imagePreviews[0] || null,
-
-  result,
-  isAnalyzing,
-  error,
-
+ result,
+isAnalyzing,
+isTranslatingResult,
+error,
   historyOpen,
   setHistoryOpen,
   history,
-
   changeLocale,
   toggleTheme,
-
   resetEvaluation,
   handleImageChange,
   removeImage,
   removeImageAt,
   handleAnalyze,
   handleShare,
-  handleAddInfo,
-
   similarImages,
   isLoadingSimilar,
-
   openHistoryItem,
   clearHistory,
   deleteHistoryItem,
+    ...followUp,
+
 };
 }

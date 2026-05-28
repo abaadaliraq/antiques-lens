@@ -1,7 +1,10 @@
 "use client";
 
-import { Share2 } from "lucide-react";
+import { Printer, Share2 } from "lucide-react";
 import type { AnalysisResult } from "./types";
+import AntiqueReportDocument from "./AntiqueReportDocument";
+
+type Locale = "ar" | "en" | "ku" | "fr";
 
 type ResultLabels = {
   result: string;
@@ -23,6 +26,7 @@ type ResultLabels = {
   followUp: string;
   confidence: string;
   notice: string;
+  addInfo?: string;
 };
 
 type SimilarImageResult = {
@@ -33,31 +37,99 @@ type SimilarImageResult = {
 };
 
 type Props = {
+  locale: Locale;
   labels: ResultLabels;
   result: AnalysisResult | null;
   imagePreview: string | null;
   imagePreviews?: string[];
   similarImages?: SimilarImageResult[];
   isLoadingSimilar?: boolean;
+  followUpPanel?: React.ReactNode;
   onShare: () => void;
+  onAddInfo?: () => void;
 };
 
+function getFallbackText(locale: Locale) {
+  if (locale === "en") return "Not clear";
+  if (locale === "fr") return "Non clair";
+  if (locale === "ku") return "ڕوون نییە";
+  return "غير واضح";
+}
+
+function getAddInfoText(locale: Locale) {
+  if (locale === "en") return "Add photos or information";
+  if (locale === "fr") return "Ajouter des photos ou informations";
+  if (locale === "ku") return "وێنە یان زانیاری زیاد بکە";
+  return "إضافة صور أو معلومات";
+}
+
+function getPremiumLabels(locale: Locale) {
+  if (locale === "en") {
+    return {
+      eyebrow: "Premium Report",
+      title: "Printable evaluation report",
+      hint: "A clean A4-style report prepared for PDF export, traders, auctions, and paid subscriptions.",
+      print: "PDF / Print",
+    };
+  }
+
+  if (locale === "fr") {
+    return {
+      eyebrow: "Rapport Premium",
+      title: "Rapport imprimable",
+      hint: "Un rapport propre au format A4, adapté à l’export PDF, aux marchands, aux enchères et aux abonnements payants.",
+      print: "PDF / Imprimer",
+    };
+  }
+
+  if (locale === "ku") {
+    return {
+      eyebrow: "ڕاپۆرتی Premium",
+      title: "ڕاپۆرتی چاپکردن",
+      hint: "ڕاپۆرتێکی پاک بە شێوەی A4 بۆ PDF، بازرگانان، مزایدەکان و بەستەکانی پارەدان.",
+      print: "PDF / چاپ",
+    };
+  }
+
+  return {
+    eyebrow: "تقرير احترافي",
+    title: "تقرير تقييم قابل للطباعة",
+    hint: "نموذج A4 مرتب للتصدير PDF، مناسب لاحقاً لباقات التجار والمزادات والاشتراكات المدفوعة.",
+    print: "PDF / طباعة",
+  };
+}
+
+function buildReportId() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const stamp = `${now.getMonth() + 1}${now.getDate()}${now.getHours()}${now.getMinutes()}`;
+  return `AL-${year}-${stamp}`;
+}
 export default function ResultView({
+  locale,
   labels,
   result,
+  
   imagePreview,
   imagePreviews = [],
   similarImages = [],
   isLoadingSimilar = false,
+  
   onShare,
+  onAddInfo,
+  followUpPanel,
 }: Props) {
   if (!result) return null;
+
+  const fallbackText = getFallbackText(locale);
+  const premiumLabels = getPremiumLabels(locale);
 
   const galleryImages =
     imagePreviews.length > 0 ? imagePreviews : imagePreview ? [imagePreview] : [];
 
   const mainImage = galleryImages[0] || null;
   const secondaryImages = galleryImages.slice(1);
+  const reportId = buildReportId();
 
   return (
     <article className="pb-10 text-white">
@@ -158,16 +230,30 @@ export default function ResultView({
         <div className="my-8 h-px bg-white/10" />
 
         <div className="grid grid-cols-2 gap-x-7 gap-y-7">
-          <CleanInfo label={labels.age} value={result.timePeriod || result.period} />
+          <CleanInfo
+            label={labels.age}
+            value={result.timePeriod || result.period}
+            fallback={fallbackText}
+          />
 
           <CleanInfo
             label={labels.value}
             value={result.estimatedValue || result.priceRange}
+            fallback={fallbackText}
             gold
           />
 
-          <CleanInfo label={labels.material} value={result.material} />
-          <CleanInfo label={labels.origin} value={result.origin} />
+          <CleanInfo
+            label={labels.material}
+            value={result.material}
+            fallback={fallbackText}
+          />
+
+          <CleanInfo
+            label={labels.origin}
+            value={result.origin}
+            fallback={fallbackText}
+          />
         </div>
 
         <FreeText
@@ -190,7 +276,7 @@ export default function ResultView({
               </h2>
 
               <span className="rounded-full bg-[#d6a25f]/10 px-3 py-1 text-[11px] font-medium text-[#d6a25f]/90">
-                Pinterest
+                Google Lens
               </span>
             </div>
 
@@ -220,18 +306,18 @@ export default function ResultView({
                     <div className="aspect-[3/4] overflow-hidden bg-black">
                       <img
                         src={item.imageUrl}
-                        alt={item.title || "Pinterest result"}
+                        alt={item.title || "Google Lens result"}
                         className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                       />
                     </div>
 
                     <div className="p-3">
                       <p className="line-clamp-2 text-[12px] leading-5 text-white/62">
-                        {item.title || "Pinterest result"}
+                        {item.title || "Google Lens result"}
                       </p>
 
                       <p className="mt-2 text-[11px] text-[#d6a25f]/80">
-                        {item.source || "Pinterest"}
+                        {item.source || "Google Lens"}
                       </p>
                     </div>
                   </a>
@@ -252,9 +338,36 @@ export default function ResultView({
             <p className="text-[16px] font-light leading-8 tracking-[-0.01em] text-white/66">
               {result.followUpQuestion}
             </p>
+
+           {onAddInfo && (
+  <button
+    type="button"
+    onClick={onAddInfo}
+    className="mt-5 inline-flex h-12 items-center justify-center rounded-full border border-[#d6a25f]/25 bg-[#d6a25f]/10 px-6 text-[13px] font-bold text-[#d6a25f] transition hover:bg-[#d6a25f]/15"
+  >
+    {labels.addInfo || getAddInfoText(locale)}
+  </button>
+)}
+
+{followUpPanel ? <div className="mt-6">{followUpPanel}</div> : null}
+            
           </section>
         )}
 
+       {!result.followUpQuestion && onAddInfo && (
+  <section className="mt-11 border-t border-white/10 pt-8">
+    <button
+      type="button"
+      onClick={onAddInfo}
+      className="inline-flex h-12 items-center justify-center rounded-full border border-[#d6a25f]/25 bg-[#d6a25f]/10 px-6 text-[13px] font-bold text-[#d6a25f] transition hover:bg-[#d6a25f]/15"
+    >
+      {labels.addInfo || getAddInfoText(locale)}
+    </button>
+
+    {followUpPanel ? <div className="mt-6">{followUpPanel}</div> : null}
+  </section>
+)}
+      
         <section className="mt-11 border-t border-white/10 pt-7">
           <p className="text-[12px] font-light leading-6 text-white/36">
             {result.disclaimer || labels.notice}
@@ -267,7 +380,102 @@ export default function ResultView({
             </p>
           )}
         </section>
+
+        <section className="mt-12 border-t border-white/10 pt-8">
+          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.32em] text-[#d6a25f]/70">
+                {premiumLabels.eyebrow}
+              </p>
+
+              <h2 className="text-[22px] font-semibold tracking-[-0.04em] text-white">
+                {premiumLabels.title}
+              </h2>
+
+              <p className="mt-2 max-w-[560px] text-[13px] font-light leading-6 text-white/44">
+                {premiumLabels.hint}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-[#d6a25f]/25 bg-[#d6a25f]/10 px-5 text-[12px] font-medium text-[#d6a25f] transition hover:bg-[#d6a25f]/15"
+            >
+              <Printer className="h-4 w-4" />
+              {premiumLabels.print}
+            </button>
+          </div>
+
+          <div className="report-print-area overflow-x-auto rounded-[2rem] border border-white/10 bg-white/[0.04] p-3">
+            <AntiqueReportDocument
+              locale={locale}
+              result={result}
+              imageUrl={mainImage || undefined}
+              reportId={reportId}
+              variant="print"
+            />
+          </div>
+        </section>
       </div>
+
+      <style jsx global>{`
+        @media print {
+          html,
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+
+          body * {
+            visibility: hidden !important;
+          }
+
+          .report-print-area,
+          .report-print-area * {
+            visibility: visible !important;
+          }
+
+          .report-print-area {
+            position: absolute !important;
+            inset: 0 auto auto 0 !important;
+            width: 210mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            background: white !important;
+            overflow: visible !important;
+          }
+
+          .report-print-area .antique-report-document {
+            width: 210mm !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            overflow: visible !important;
+          }
+
+          .report-print-area .report-page {
+            width: 210mm !important;
+            height: 297mm !important;
+            page-break-after: always !important;
+            break-after: page !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+          }
+
+          .report-print-area .report-page:last-child {
+            page-break-after: auto !important;
+            break-after: auto !important;
+          }
+
+          @page {
+            size: A4;
+            margin: 0;
+          }
+        }
+      `}</style>
     </article>
   );
 }
@@ -275,10 +483,12 @@ export default function ResultView({
 function CleanInfo({
   label,
   value,
+  fallback,
   gold = false,
 }: {
   label: string;
   value?: string;
+  fallback: string;
   gold?: boolean;
 }) {
   return (
@@ -293,7 +503,7 @@ function CleanInfo({
           gold ? "font-medium text-[#d6a25f]" : "font-light text-white/76",
         ].join(" ")}
       >
-        {value && value.trim() ? value : "غير واضح"}
+        {value && value.trim() ? value : fallback}
       </p>
     </div>
   );
@@ -316,7 +526,7 @@ function FreeText({ title, body }: { title: string; body?: string }) {
 }
 
 function FreeList({ title, items }: { title: string; items?: string[] }) {
-  const cleanItems = items?.filter((item) => item && item.trim()) || [];
+  const cleanItems = Array.isArray(items) ? items.filter(Boolean) : [];
 
   if (cleanItems.length === 0) return null;
 
