@@ -616,36 +616,37 @@ setIsLoadingSimilar(false);
       return next;
     });
   }
-async function fetchSimilarImages(query: string) {
-  if (!query.trim()) return;
+async function fetchSimilarImagesByImage(imageUrl: string) {
+  if (!imageUrl.trim()) return;
 
   setIsLoadingSimilar(true);
   setSimilarImages([]);
 
   try {
-    const response = await fetch("/api/pinterest-search", {
+    const response = await fetch("/api/google-lens", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ imageUrl }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data?.error || "Pinterest search failed.");
+      throw new Error(data?.error || "Google Lens search failed.");
     }
 
     setSimilarImages(Array.isArray(data.items) ? data.items : []);
   } catch (error) {
-    console.error("Pinterest similar images failed:", error);
+    console.error("Google Lens similar images failed:", error);
     setSimilarImages([]);
   } finally {
     setIsLoadingSimilar(false);
   }
 }
-  async function handleAnalyze() {
+
+async function handleAnalyze() {
   if (!selectedFiles.length && !prompt.trim()) {
     setError(t.emptyError);
     return;
@@ -675,6 +676,126 @@ async function fetchSimilarImages(query: string) {
     formData.append("notes", prompt);
     formData.append("locale", locale);
 
+    let uploadedImageUrl = "";
+    let googleLensContext = "";
+    let houseContext = "";
+
+    // 1) Upload first image to Cloudinary
+    if (selectedFiles[0]) {
+      const uploadFormData = new FormData();
+      uploadFormData.append("image", selectedFiles[0]);
+
+      const uploadResponse = await fetch("/api/upload-image", {
+        method: "POST",
+        body: uploadFormData,
+      });
+
+      const uploadData = await uploadResponse.json();
+
+      if (!uploadResponse.ok || !uploadData?.imageUrl) {
+        throw new Error(uploadData?.error || "Failed to upload image.");
+      }
+
+      uploadedImageUrl = uploadData.imageUrl;
+      formData.append("uploadedImageUrl", uploadedImageUrl);
+    }
+
+    // 2) Google Lens visual matches
+    if (uploadedImageUrl) {
+      setIsLoadingSimilar(true);
+
+      try {
+        const lensResponse = await fetch("/api/google-lens", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ imageUrl: uploadedImageUrl }),
+        });
+
+        const lensData = await lensResponse.json();
+
+        if (lensResponse.ok && Array.isArray(lensData.items)) {
+          const items = lensData.items.slice(0, 16);
+
+          setSimilarImages(items);
+
+          googleLensContext = items
+            .slice(0, 10)
+            .map((item: any, index: number) => {
+              return [
+                `${index + 1}. GOOGLE LENS VISUAL MATCH`,
+                `Title: ${item.title || "Untitled similar item"}`,
+                `Source: ${item.source || "Unknown"}`,
+                `Price: ${item.price || "No visible price"}`,
+                `Link: ${item.link || "No link"}`,
+              ].join(" | ");
+            })
+            .join("\n");
+        }
+      } catch (error) {
+        console.error("Google Lens market context failed:", error);
+        setSimilarImages([]);
+      } finally {
+        setIsLoadingSimilar(false);
+      }
+    }
+
+    // 3) House of Antiques internal comparables
+    try {
+      const houseResponse = await fetch("/api/house-comparables", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: [prompt, googleLensContext].filter(Boolean).join("\n"),
+        }),
+      });
+
+      const houseData = await houseResponse.json();
+
+      if (houseResponse.ok && Array.isArray(houseData.items)) {
+        houseContext = houseData.items
+          .slice(0, 8)
+          .map((item: any, index: number) => {
+            return [
+              `${index + 1}. INTERNAL HOUSE OF ANTIQUES COMPARABLE`,
+              `Title: ${item.title || "Untitled House of Antiques item"}`,
+              `Description: ${item.description || "No description"}`,
+              `Listed retail price: ${item.price || "No listed price"} ${item.currency || ""}`,
+              `Category: ${item.category || "Unknown"}`,
+              `Material: ${item.material || "Unknown"}`,
+              `Period: ${item.period || "Unknown"}`,
+              `Origin: ${item.origin || "Unknown"}`,
+              `Similarity score: ${item.score || 0}`,
+              `URL: ${item.url || "No link"}`,
+              `Source: ${item.source || "House of Antiques Store"}`,
+            ].join(" | ");
+          })
+          .join("\n");
+      }
+    } catch (error) {
+      console.error("House of Antiques comparables failed:", error);
+    }
+
+    // 4) Build combined market context
+    const combinedMarketContext = [
+      googleLensContext
+        ? `Google Lens visual matches:\n${googleLensContext}`
+        : "",
+      houseContext
+        ? `House of Antiques internal comparables:\n${houseContext}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    if (combinedMarketContext) {
+      formData.append("marketContext", combinedMarketContext);
+    }
+
+    // 5) Analyze with OpenAI
     const response = await fetch("/api/analyze", {
       method: "POST",
       body: formData,
@@ -689,12 +810,6 @@ async function fetchSimilarImages(query: string) {
     const analyzedResult = normalizeResult(data);
 
     setResult(analyzedResult);
-
-    const searchQuery = buildPinterestSearchQuery(analyzedResult);
-
-    if (searchQuery) {
-      void fetchSimilarImages(searchQuery);
-    }
 
     const savedThumbnails = historyImagePreviews.length
       ? historyImagePreviews
@@ -713,120 +828,125 @@ async function fetchSimilarImages(query: string) {
     setError(err instanceof Error ? err.message : "Unexpected error.");
   } finally {
     setIsAnalyzing(false);
+    setIsLoadingSimilar(false);
   }
-}   
-  async function handleShare() {
-    if (!result) return;
+
+}
+
+async function handleShare() {
+  if (!result) return;
+
+  try {
+    const labels = {
+      result: t.result,
+      age: t.age,
+      value: t.value,
+      material: t.material,
+      origin: t.origin,
+      lookup: t.lookup,
+      description: t.description,
+      condition: t.condition,
+      authenticity: t.authenticity,
+      priceReason: t.priceReason,
+      valueDrivers: t.valueDrivers,
+      valueReducers: t.valueReducers,
+      similar: t.similar,
+      similarHint: t.similarHint,
+      soon: t.soon,
+      neededPhotos: t.neededPhotos,
+      followUp: t.followUp,
+      confidence: t.confidence,
+      notice: t.notice,
+      similarImages,
+    };
+
+    const file = await createShareImage({
+      result,
+      imagePreview: imagePreviews[0] || null,
+      labels,
+      locale,
+    });
+
+    const shareData = {
+      title: result.title || "Antique Lens Report",
+      text: "Antique Lens evaluation report",
+      files: [file],
+    } as ShareData & { files: File[] };
+
+    if (
+      typeof navigator !== "undefined" &&
+      typeof navigator.share === "function" &&
+      typeof navigator.canShare === "function" &&
+      navigator.canShare(shareData)
+    ) {
+      await navigator.share(shareData);
+      return;
+    }
+
+    downloadShareImage(file);
+  } catch (err) {
+    console.error("Failed to share report image:", err);
 
     try {
-      const labels = {
-        result: t.result,
-        age: t.age,
-        value: t.value,
-        material: t.material,
-        origin: t.origin,
-        lookup: t.lookup,
-        description: t.description,
-        condition: t.condition,
-        authenticity: t.authenticity,
-        priceReason: t.priceReason,
-        valueDrivers: t.valueDrivers,
-        valueReducers: t.valueReducers,
-        similar: t.similar,
-        similarHint: t.similarHint,
-        soon: t.soon,
-        neededPhotos: t.neededPhotos,
-        followUp: t.followUp,
-        confidence: t.confidence,
-        notice: t.notice,
-        similarImages,
-      };
-
-      const file = await createShareImage({
-        result,
-        imagePreview: imagePreviews[0] || null,
-        labels,
-        locale,
-      });
-
-      const shareData = {
-        title: result.title || "Antique Lens Report",
-        text: "Antique Lens evaluation report",
-        files: [file],
-      } as ShareData & { files: File[] };
-
-      if (
-        typeof navigator !== "undefined" &&
-        typeof navigator.share === "function" &&
-        typeof navigator.canShare === "function" &&
-        navigator.canShare(shareData)
-      ) {
-        await navigator.share(shareData);
-        return;
-      }
-
-      downloadShareImage(file);
-    } catch (err) {
-      console.error("Failed to share report image:", err);
-
-      try {
-        await copyFallbackSummary(result);
-        alert("تعذر إنشاء صورة المشاركة. تم نسخ ملخص التقرير بدل الصورة.");
-      } catch {
-        alert("تعذر إنشاء صورة المشاركة.");
-      }
+      await copyFallbackSummary(result);
+      alert("تعذر إنشاء صورة المشاركة. تم نسخ ملخص التقرير بدل الصورة.");
+    } catch {
+      alert("تعذر إنشاء صورة المشاركة.");
     }
   }
+}
 
-  function handleAddInfo() {
-    setResult(null);
+function handleAddInfo() {
+  setResult(null);
 
-    window.setTimeout(() => {
-      const input = document.querySelector("input, textarea");
-      input?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 80);
-  }
+  window.setTimeout(() => {
+    const input = document.querySelector("input, textarea");
+    input?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 80);
+}
 
-  return {
-    locale,
-    theme,
-    t,
+return {
+  locale,
+  theme,
+  t,
 
-    prompt,
-    setPrompt,
+  prompt,
+  setPrompt,
 
-    selectedFiles,
-    imagePreviews,
+  selectedFiles,
+  imagePreviews,
 
-    /*
-      fallback للكومبوننتات القديمة.
-      أي ملف بعده يستخدم selectedFile/imagePreview راح يشتغل على أول صورة.
-    */
-    selectedFile: selectedFiles[0] || null,
-    imagePreview: imagePreviews[0] || null,
+  /*
+    fallback للكومبوننتات القديمة.
+    أي ملف بعده يستخدم selectedFile/imagePreview راح يشتغل على أول صورة.
+  */
+  selectedFile: selectedFiles[0] || null,
+  imagePreview: imagePreviews[0] || null,
 
-    result,
-    isAnalyzing,
-    error,
+  result,
+  isAnalyzing,
+  error,
 
-    historyOpen,
-    setHistoryOpen,
-    history,
+  historyOpen,
+  setHistoryOpen,
+  history,
 
-    changeLocale,
-    toggleTheme,
+  changeLocale,
+  toggleTheme,
 
-    resetEvaluation,
-    handleImageChange,
-    removeImage,
-    removeImageAt,
-    handleAnalyze,
-    handleShare,
-    handleAddInfo,
-similarImages,
-isLoadingSimilar,
-    openHistoryItem,
-    clearHistory,
-    deleteHistoryItem,
-  };
+  resetEvaluation,
+  handleImageChange,
+  removeImage,
+  removeImageAt,
+  handleAnalyze,
+  handleShare,
+  handleAddInfo,
+
+  similarImages,
+  isLoadingSimilar,
+
+  openHistoryItem,
+  clearHistory,
+  deleteHistoryItem,
+};
 }

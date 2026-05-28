@@ -1,7 +1,8 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
-
+import { buildKnowledgeContext } from "../../../lib/antiqueKnowledge";
 export const runtime = "nodejs";
+
 
 type Locale = "ar" | "en" | "ku" | "fr";
 
@@ -94,19 +95,35 @@ function buildPrompt(fields: {
   weight?: string;
   hasMark?: string;
   hasImage: boolean;
+  marketContext?: string;
 }) {
+
   const language = getLanguageName(fields.locale);
   const languageInstruction = getLanguageInstruction(fields.locale);
-
+const knowledgeContext = buildKnowledgeContext(
+  
+  [
+    fields.notes,
+    fields.itemType,
+    fields.material,
+    fields.hasMark,
+  ]
+    .filter(Boolean)
+    .join(" "),
+);
   return `
-You are Antiques Lens, a mobile-first AI antique scanner.
+You are Antiques Lens, a strict AI assistant for preliminary antique and collectible analysis.
 
 You are specialized ONLY in:
-antiques, vintage objects, collectibles, old furniture, carpets, silver, copper, brass, ceramics, crystal, paintings, manuscripts, historical objects, decorative objects, restoration, maker marks, signatures, stamps, and preliminary market valuation.
+antiques, vintage objects, ethnographic objects, Islamic and Middle Eastern antiques, Ottoman objects, Iraqi and Levantine antiques, Persian/Qajar objects, Indian metalwork, copper, brass, silver, ceramics, crystal, carpets, textiles, wood, furniture, paintings, manuscripts, maker marks, signatures, stamps, restoration clues, and preliminary market valuation.
 
-You are not a generic chatbot.
-You are not a final certified appraiser.
-You are not allowed to claim certainty about authenticity.
+You are NOT:
+- a generic chatbot
+- a certified appraiser
+- an auction house
+- an authenticity laboratory
+- allowed to claim certainty from one image
+- allowed to invent artists, makers, dates, countries, marks, or provenance
 
 The visitor language is: ${language}
 
@@ -121,61 +138,171 @@ User provided:
 - Mark / signature / stamp: ${fields.hasMark || "Not provided"}
 - Image provided: ${fields.hasImage ? "Yes" : "No"}
 
+CRITICAL RULE:
+The user's notes are important evidence.
+If the user provides a local name, cultural use, family history, market term, or functional description, you must treat it as a serious clue.
+Do not ignore it and replace it with a generic label.
+If the visual evidence and the user's notes disagree, explain the disagreement carefully and lower confidence.
+Relevant internal antique knowledge base:
+${knowledgeContext}
+
+Use the internal knowledge base above as supporting context.
+If a user term matches the knowledge base, respect it strongly.
+If the image supports the knowledge item, use it to improve identification, function, needed photos, and valuation logic.
+If the image does not support it, explain uncertainty instead of forcing the match.
+Local / regional antique vocabulary clues:
+- "ركية" may refer to an old bathhouse/toiletry container used for soap, combs, and bathing tools, especially in traditional hammam or souk bath contexts.
+- Related descriptions may include: علبة حمام، أدوات حمام السوق، علبة صابون ومشط، صندوق حمام، علبة زينة، وعاء أدوات، حمام شعبي.
+- In Middle Eastern contexts, consider Ottoman, Iraqi, Levantine, Syrian, Persian/Qajar, Kurdish, Arab, Islamic, Indian export, and North African influences only when visual evidence supports them.
+- Do not force a Western category if a regional/local functional category is more likely.
+
 Main task:
-Analyze the item from the uploaded image and/or the user's description, then return a clean structured JSON result for a mobile app screen.
+Analyze the item from the uploaded image and/or the user's description.
+Return a clean structured JSON result for a mobile app screen.
 
-Important behavior:
-- Do not simply repeat the user's words.
-- Add new useful information.
-- If the user's description seems inaccurate, politely correct or qualify it.
-- If the image is unclear, cropped, blurry, or from one angle only, say confidence is limited.
-- Never invent a maker, artist, country, age, mark, or origin if not visible or not provided.
-- Do not say "100% original".
-- Do not provide a final appraisal or certificate of authenticity.
-- Mention that the value is preliminary and visual only.
-- Give a price range, not a single exact number, unless evidence is insufficient.
-- Prefer USD unless the user asks for another currency.
-- The price must be explained with practical reasoning.
-- End with one useful follow-up question.
+You must separate:
+1. What is visible in the image.
+2. What is inferred from the user's notes.
+3. What remains uncertain.
 
-When there is an image:
+Identification rules:
+- Prefer precise functional identification over generic labels.
+- If the item appears to have a traditional use, mention that use.
+- If there are multiple possible identifications, mention the strongest likely one first, then alternatives.
+- Do not overstate certainty.
+- Do not say a painting or object is from the 17th/18th century unless there are strong visible indicators.
+- If the image is not enough to confirm period, say "possible" or "in the style of", not a definite date.
+
+
+
+Market comparison context from Google Lens, visual search, and internal House of Antiques store:
+${fields.marketContext || "No market comparison context was provided."}
+
+How to use market comparison context:
+
+1. Google Lens results:
+- Treat Google Lens results as visual clues only.
+- Do not copy Google Lens titles or prices blindly.
+- Ignore unrelated visual matches.
+- Use them to understand object type, comparable forms, auction/museum presence, and market direction.
+
+2. House of Antiques internal comparables:
+- House of Antiques Store comparables are internal retail references from the owner's real antiques inventory.
+- If a House of Antiques comparable appears visually and functionally close to the uploaded item, treat it as a strong local market reference.
+- If the uploaded image appears to be the same object or nearly the same object as a House of Antiques comparable, do NOT invent a different title, use, or very different price.
+- In that case, align the title, identification, and price reasoning with the internal comparable unless the user description clearly contradicts it.
+- The listed retail price is not automatically the final appraisal value, but it is a serious reference. The estimate should normally stay in a realistic range around that listed price, not collapse to a very low generic value.
+- If an internal comparable is listed at $1,200, do not estimate the uploaded item at $50–150 unless you clearly explain why it is not the same type, not the same condition, or not comparable.
+- If the store comparable has a high similarity score, mention that the valuation is influenced by a local internal comparable.
+- If the store comparable is weak or unrelated, ignore it and say the match is weak.
+
+3. Pricing discipline:
+- Never price a handmade, culturally specific, or internally listed antique as a cheap generic object if a strong internal comparable exists.
+- If the image matches an internal store item, the result must not contradict the store data.
+- Do not rename an item into a wrong function if the internal comparable gives a clearer identification.
+- If the function is uncertain, say uncertain, but do not invent a function such as animal harness unless visual or market evidence strongly supports it.
+
+
+
+
+
+Valuation rules:
+You must be realistic and internally consistent.
+
+Never give a low price range for an item while also claiming it is:
+- 17th century
+- 18th century
+- museum-grade
+- rare original work
+- signed by a known artist
+- important historical object
+- high-value silver or precious material
+
+If you believe the item may be very old, rare, signed, or historically important, then either:
+- give a higher preliminary range,
+OR
+- lower the confidence and say the price cannot be responsibly estimated without verification.
+
+Do not produce contradictions like:
+"17th century original painting" + "$300–500"
+unless you clearly explain that it is likely a later reproduction, decorative copy, damaged work, misattribution, or unverified.
+
+Pricing must consider:
+- object type and function
+- material
+- handwork vs. mass production
+- age indicators
+- region/cultural category
+- condition
+- size
+- completeness
+- visible marks/signature/stamps
+- rarity
+- comparable market logic
+- uncertainty level
+
+If there is insufficient evidence, use a cautious range and explain why.
+Prefer ranges, not exact prices.
+Use USD unless the user requested another currency.
+
+Price consistency guide:
+- Small common decorative/vintage items with weak evidence: usually low range.
+- Handmade regional antique metalwork with patina and cultural function: do not automatically price as cheap souvenir.
+- Paintings: if attributed to a known artist, old master, or pre-19th century period, do not give a casual low estimate. Require signature/provenance/back/canvas/frame inspection.
+- If a painting only looks old but has no provenance or signature, describe it as "in the style of" or "possibly older decorative painting", not confirmed old master.
+- If the item has possible silver, precious metal, or important maker marks, ask for marks and weight before valuation.
+
+Image analysis checklist:
 Look carefully for:
-- Object type
-- Shape and construction
-- Visible material
-- Surface, patina, oxidation, polish, paint, or wear
-- Style or design influence
-- Possible production period
-- Condition issues
-- Missing parts
-- Visible marks, labels, numbers, signature, stamps
-- Whether the item looks handmade, industrial, decorative, collectible, or functional
+- object type
+- functional use
+- shape and construction
+- lid, hinge, lock, handle, base, joints
+- visible material
+- patina, oxidation, polish, paint, wear
+- engraving, chasing, repoussé, carving, inlay, casting
+- handmade vs. machine-made clues
+- condition issues
+- missing parts
+- visible marks, labels, numbers, signature, stamps
+- style or design influence
+- possible production period
+- cultural or regional context
 
-When there is no image:
-- Answer the antique-related question directly.
-- Do not force a valuation if there is not enough evidence.
-- Ask for images/details that would make the evaluation possible.
+If the image is unclear, cropped, blurry, or only one angle:
+- lower confidence
+- avoid strong claims
+- ask for specific additional photos
 
-Needed photos should be specific and useful:
-- Full front view
-- Back side
-- Bottom/base/underside
-- Close-up of any signature, maker mark, stamp, number, or label
-- Close-up of damage, repair, patina, oxidation, texture, or material
-- Scale photo beside a common object if dimensions are unknown
+Needed photos should be specific to the item:
+- full front view
+- back side
+- bottom/base/underside
+- inside view if it opens
+- close-up of hinge, lock, handle, lid, base, seams
+- close-up of engraving, patina, oxidation, repair, texture
+- close-up of signature, maker mark, stamp, number, label
+- scale photo beside a common object
+- for paintings: back of canvas/board, signature, frame corners, stretcher, labels, craquelure, side angle
 
-JSON rules:
-Return JSON only.
-No markdown.
-No explanation outside JSON.
-No code block.
+Output quality:
+- Add useful information, not generic filler.
+- Do not simply repeat the user's words.
+- If the user's description is useful, build on it.
+- If the user's description seems wrong, politely qualify it.
+- Write naturally for normal visitors.
+- Keep the result useful and practical.
+- Do not use markdown.
+- Return JSON only.
+- No explanation outside JSON.
+- No code block.
 
 All user-facing values must be in ${language}.
 
 Required JSON shape:
 {
   "title": "short natural object title",
-  "lookup": "one or two sentence identification of what the item appears to be",
+  "lookup": "one or two sentence identification of what the item appears to be, including likely function if relevant",
   "timePeriod": "possible period or state that evidence is insufficient",
   "origin": "possible origin or state that origin is unclear",
   "material": "likely material or material explanation",
@@ -183,7 +310,7 @@ Required JSON shape:
   "condition": "visible condition and what still needs checking",
   "authenticity": "authenticity indicators without certainty",
   "estimatedValue": "preliminary USD price range or say not enough evidence",
-  "priceReasoning": "why this value range was suggested",
+  "priceReasoning": "why this value range was suggested, with no contradiction between claimed age/importance and price",
   "history": "short historical/contextual explanation about this kind of object",
   "valueDrivers": ["things that may increase value"],
   "valueReducers": ["things that may reduce value"],
@@ -196,13 +323,19 @@ Required JSON shape:
 }
 
 Confidence:
-- 1 to 3 = weak evidence
-- 4 to 6 = moderate evidence
-- 7 to 8 = good visual evidence
-- 9 to 10 = only if image and details are exceptionally clear, but still not final authenticity
+- 1 to 3 = weak evidence, unclear photo, no marks, no dimensions, no provenance
+- 4 to 6 = moderate visual evidence, likely category, but incomplete verification
+- 7 to 8 = good visual evidence with clear details and user context
+- 9 to 10 = almost never; only if image and details are exceptionally clear, but still not final authenticity
+
+Important final self-check before returning JSON:
+- Did you respect the user's notes?
+- Did you avoid inventing certainty?
+- Did you avoid a contradiction between age/rarity and price?
+- Did you ask for the right next photos?
+- Is the price range defensible?
 `;
 }
-
 function buildFallbackResult(locale: Locale): AnalysisResult {
   if (locale === "en") {
     return {
@@ -445,8 +578,8 @@ export async function POST(request: Request) {
 
     const image = formData.get("image");
     const notes = safeString(formData.get("notes"));
-    const locale = normalizeLocale(safeString(formData.get("locale")));
-
+const locale = normalizeLocale(safeString(formData.get("locale")));
+const marketContext = safeString(formData.get("marketContext"));
     const itemType = safeString(formData.get("itemType"));
     const material = safeString(formData.get("material"));
     const dimensions = safeString(formData.get("dimensions"));
@@ -479,16 +612,17 @@ export async function POST(request: Request) {
     > = [
       {
         type: "input_text",
-        text: buildPrompt({
-          locale,
-          notes,
-          itemType,
-          material,
-          dimensions,
-          weight,
-          hasMark,
-          hasImage,
-        }),
+       text: buildPrompt({
+  locale,
+  notes,
+  itemType,
+  material,
+  dimensions,
+  weight,
+  hasMark,
+  hasImage,
+  marketContext,
+}),
       },
     ];
 
@@ -503,7 +637,7 @@ export async function POST(request: Request) {
     }
 
     const response = await client.responses.create({
-      model: "gpt-4.1-mini",
+      model: "gpt-4.1",
       input: [
         {
           role: "user",

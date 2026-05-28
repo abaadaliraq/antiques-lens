@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Antiques Lens</string>
+    <string name="title_activity_main">Antiques Lens</string>
+    <string name="package_name">com.antiqueslens.app</string>
+    <string name="custom_url_scheme">com.antiqueslens.app</string>
+</resources>
