@@ -86,7 +86,58 @@ Do not use English, Kurdish, or French except for necessary antique terms.
 function safeString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
 }
+function hasHouseOfAntiquesContext(marketContext?: string) {
+  const text = (marketContext || "").toLowerCase();
 
+  return (
+    text.includes("house of antiques") ||
+    text.includes("houseofantiques") ||
+    text.includes("بيت التحفيات") ||
+    text.includes("internal house") ||
+    text.includes("store match") ||
+    text.includes("store comparable") ||
+    text.includes("listed price") ||
+    text.includes("exact listed price")
+  );
+}
+
+function buildHouseOfAntiquesRule(marketContext?: string) {
+  if (!hasHouseOfAntiquesContext(marketContext)) {
+    return `
+HOUSE OF ANTIQUES STORE STATUS:
+No verified House of Antiques store context was provided.
+Do not claim the item exists in House of Antiques store unless the market context explicitly says so.
+`;
+  }
+
+  return `
+CRITICAL HOUSE OF ANTIQUES STORE MATCH RULE:
+
+The market comparison context includes House of Antiques internal store data.
+This is not a random internet result. Treat it as verified internal store inventory context.
+
+If the House of Antiques context includes a title, description, material, price, product URL, SKU, or product ID:
+- Use that store title as the strongest title candidate.
+- Use that listed store price as the primary retail price reference.
+- Do NOT say "لم يتم العثور على مقارنة مباشرة" or "no direct comparison was found".
+- Do NOT say there is no store match.
+- Do NOT ignore the store price.
+- Do NOT replace the item with a generic category if the store data is specific.
+- In priceReasoning, clearly mention that House of Antiques internal store data was used.
+- If the uploaded image appears consistent with the store product, say it is likely the same listed piece or a very close internal match, but keep a cautious wording.
+- If the House of Antiques price is exact, estimatedValue should stay close to that price unless there is a clear visible reason to adjust.
+
+Arabic wording rule:
+If answering in Arabic and House of Antiques data exists, do not write:
+"لم يتم العثور على مقارنة مباشرة"
+"لم يتم العثور على القطعة في المتجر"
+"لا توجد مقارنة موثوقة"
+unless the context explicitly says the match failed.
+
+Instead write something like:
+"اعتمد التقدير على مطابقة داخلية من متجر بيت التحفيات، حيث تظهر قطعة مطابقة أو قريبة جدًا بعنوان وسعر مدرج."
+`;
+}
 function buildPrompt(fields: {
   
   locale: Locale;
@@ -102,6 +153,7 @@ function buildPrompt(fields: {
 
   const language = getLanguageName(fields.locale);
   const languageInstruction = getLanguageInstruction(fields.locale);
+  const houseOfAntiquesRule = buildHouseOfAntiquesRule(fields.marketContext);
 const knowledgeContext = buildKnowledgeContext(
   
   [
@@ -184,6 +236,8 @@ Identification rules:
 Market comparison context from Google Lens, visual search, and internal House of Antiques store:
 ${fields.marketContext || "No market comparison context was provided."}
 
+${houseOfAntiquesRule}
+
 HOW TO USE MARKET COMPARISON CONTEXT:
 
 1. Google Lens results:
@@ -202,7 +256,7 @@ HOW TO USE MARKET COMPARISON CONTEXT:
 - The estimate should normally stay in a realistic range around that listed price, not collapse to a very low generic value.
 - If an internal comparable is listed at 1,200 USD, do not estimate the uploaded item at 50–150 USD unless you clearly explain why it is not the same type, not the same condition, not the same scale, or not comparable.
 - If the store comparable has strong similarity, mention that the valuation is influenced by a House of Antiques internal comparable.
-- If the store comparable is weak or unrelated, ignore it and say the match is weak.
+- If House of Antiques context is present but the visual match is uncertain, say the match needs visual confirmation; do not say that no store comparison exists.
 
 VALUATION DISCIPLINE - VERY IMPORTANT:
 
@@ -356,9 +410,8 @@ Required JSON shape:
   "style": "visual style, design influence, school, or type",
   "condition": "visible condition and what still needs checking",
   "authenticity": "authenticity indicators without certainty",
-  "estimatedValue": "preliminary USD price range or say not enough evidence",
-  "priceReasoning": "why this value range was suggested, with no contradiction between claimed age/importance and price. Mention House of Antiques internal comparables if present and relevant.",
-  "history": "short historical/contextual explanation about this kind of object",
+  "estimatedValue": "preliminary USD price range. If House of Antiques internal store price is provided, use that exact listed price or a close range around it as the primary reference",
+"priceReasoning": "why this value range was suggested. If House of Antiques internal store data is present, explicitly mention that it was used as the main internal retail reference and do not claim that no direct comparison was found.",  "history": "short historical/contextual explanation about this kind of object",
   "valueDrivers": ["things that may increase value"],
   "valueReducers": ["things that may reduce value"],
   "visualSearchKeywords": ["short search keyword for finding similar items online"],
@@ -635,6 +688,10 @@ console.log("marketContext exists:", Boolean(marketContext));
 console.log("marketContext length:", marketContext?.length || 0);
 console.log("marketContext preview:", marketContext?.slice(0, 1500));
 console.log("===================================");
+console.log(
+  "has House of Antiques context:",
+  hasHouseOfAntiquesContext(marketContext)
+);
 
 const itemType = safeString(formData.get("itemType"));
 const material = safeString(formData.get("material"));
