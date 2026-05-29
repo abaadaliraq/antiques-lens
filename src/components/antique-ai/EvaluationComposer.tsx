@@ -2,11 +2,20 @@
 
 import { Camera, ImagePlus, Send, Sparkles, X } from "lucide-react";
 import type { ChangeEvent } from "react";
+import { useState } from "react";
+import GemstoneFields, {
+  emptyGemstoneFormData,
+  buildGemstoneContext,
+} from "./GemstoneFields";
 
 type ThemeMode = "dark" | "light";
 
+type AppLocale = "ar" | "en" | "ku" | "fr" | "hi" | "fa" | "tr" | "ru";
+
 type Props = {
   theme: ThemeMode;
+  locale?: string;
+
   labels: {
     title: string;
     hint: string;
@@ -37,8 +46,91 @@ type Props = {
   isAnalyzing: boolean;
 };
 
+function normalizeLocale(locale?: string): AppLocale {
+  if (
+    locale === "ar" ||
+    locale === "en" ||
+    locale === "ku" ||
+    locale === "fr" ||
+    locale === "hi" ||
+    locale === "fa" ||
+    locale === "tr" ||
+    locale === "ru"
+  ) {
+    return locale;
+  }
+
+  return "ar";
+}
+
+function getGemPromptPlaceholder(locale: AppLocale) {
+  if (locale === "en") {
+    return "Add any extra notes about the stone, source, expected price, story, or certificate...";
+  }
+
+  if (locale === "fr") {
+    return "Ajoutez des notes sur la pierre, l’origine, le prix attendu, l’histoire ou le certificat...";
+  }
+
+  if (locale === "ku") {
+    return "هەر زانیارییەکی زیادە دەربارەی بەرد، سەرچاوە، نرخ، چیرۆک یان بڕوانامە بنووسە...";
+  }
+
+  if (locale === "hi") {
+    return "रत्न, स्रोत, अनुमानित कीमत, कहानी या प्रमाणपत्र के बारे में कोई अतिरिक्त जानकारी लिखें...";
+  }
+
+  if (locale === "fa") {
+    return "هر توضیح اضافی درباره سنگ، منبع، قیمت مورد انتظار، داستان یا گواهی را بنویسید...";
+  }
+
+  if (locale === "tr") {
+    return "Taş, kaynak, beklenen fiyat, hikâye veya sertifika hakkında ek notlar yazın...";
+  }
+
+  if (locale === "ru") {
+    return "Добавьте сведения о камне, происхождении, ожидаемой цене, истории или сертификате...";
+  }
+
+  return "اكتبي أي ملاحظات إضافية عن الحجر، المصدر، السعر المتوقع، القصة، أو الشهادة...";
+}
+
+function getUploadedPhotosText(locale: AppLocale, count: number) {
+  if (locale === "en") return `${count} uploaded image${count > 1 ? "s" : ""}`;
+  if (locale === "fr") return `${count} image${count > 1 ? "s" : ""} téléchargée${count > 1 ? "s" : ""}`;
+  if (locale === "ku") return `${count} وێنە بارکراوە`;
+  if (locale === "hi") return `${count} तस्वीर अपलोड हुई`;
+  if (locale === "fa") return `${count} تصویر بارگذاری شد`;
+  if (locale === "tr") return `${count} görsel yüklendi`;
+  if (locale === "ru") return `${count} изображений загружено`;
+  return `${count} صورة مرفوعة للتقييم`;
+}
+
+function getClearAllText(locale: AppLocale) {
+  if (locale === "en") return "Clear all";
+  if (locale === "fr") return "Tout effacer";
+  if (locale === "ku") return "سڕینەوەی هەموو";
+  if (locale === "hi") return "सब हटाएँ";
+  if (locale === "fa") return "حذف همه";
+  if (locale === "tr") return "Tümünü sil";
+  if (locale === "ru") return "Очистить всё";
+  return "مسح الكل";
+}
+
+function getMainText(locale: AppLocale) {
+  if (locale === "en") return "Main";
+  if (locale === "fr") return "Principale";
+  if (locale === "ku") return "سەرەکی";
+  if (locale === "hi") return "मुख्य";
+  if (locale === "fa") return "اصلی";
+  if (locale === "tr") return "Ana";
+  if (locale === "ru") return "Главное";
+  return "الرئيسية";
+}
+
 export default function EvaluationComposer({
   theme,
+  locale = "ar",
   labels,
   prompt,
   setPrompt,
@@ -56,6 +148,9 @@ export default function EvaluationComposer({
   isAnalyzing,
 }: Props) {
   const isLight = theme === "light";
+  const safeLocale = normalizeLocale(locale);
+
+  const [gemstoneData, setGemstoneData] = useState(emptyGemstoneFormData);
 
   const previews =
     imagePreviews.length > 0 ? imagePreviews : imagePreview ? [imagePreview] : [];
@@ -79,9 +174,35 @@ export default function EvaluationComposer({
     element.style.height = `${Math.min(element.scrollHeight, 132)}px`;
   }
 
+  function handleSmartAnalyze() {
+    const gemstoneContext = buildGemstoneContext(gemstoneData);
+
+    if (gemstoneContext) {
+      const cleanPrompt = prompt.trim();
+
+      const mergedPrompt = [
+        cleanPrompt,
+        "IMPORTANT USER-PROVIDED GEMSTONE / JEWELRY DETAILS:",
+        gemstoneContext,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+
+      setPrompt(mergedPrompt);
+
+      window.setTimeout(() => {
+        handleAnalyze();
+      }, 60);
+
+      return;
+    }
+
+    handleAnalyze();
+  }
+
   return (
     <section className="flex min-h-dvh items-start justify-center px-4 pb-24 pt-[125px] md:pt-[150px] lg:pt-[175px]">
-      <div className="w-full max-w-[780px]">
+      <div className="w-full max-w-[820px]">
         <div className="text-center">
           <div
             className={[
@@ -126,10 +247,16 @@ export default function EvaluationComposer({
           </div>
         )}
 
-        <div className="mx-auto mt-8 w-full max-w-[700px]">
+        <div className="mx-auto mt-8 w-full max-w-[760px]">
+          <GemstoneFields
+            value={gemstoneData}
+            onChange={setGemstoneData}
+            locale={safeLocale}
+          />
+
           <div
             className={[
-              "w-full rounded-[1.75rem] border backdrop-blur-2xl transition",
+              "mt-5 w-full rounded-[1.75rem] border backdrop-blur-2xl transition",
               "px-3 py-2",
               isLight
                 ? "border-black/10 bg-white/70 shadow-[0_24px_80px_rgba(55,105,160,0.18)]"
@@ -186,7 +313,11 @@ export default function EvaluationComposer({
                 onInput={(event) => autoResizeTextarea(event.currentTarget)}
                 rows={1}
                 aria-label={labels.placeholder}
-                placeholder={labels.placeholder}
+                placeholder={
+                  gemstoneData.evaluationKind === "antique"
+                    ? labels.placeholder
+                    : getGemPromptPlaceholder(safeLocale)
+                }
                 className={[
                   "min-h-[38px] max-h-[132px] flex-1 resize-none overflow-y-auto bg-transparent",
                   "px-2 py-2 text-[15px] leading-6 outline-none",
@@ -197,7 +328,7 @@ export default function EvaluationComposer({
 
               <button
                 type="button"
-                onClick={handleAnalyze}
+                onClick={handleSmartAnalyze}
                 disabled={isAnalyzing || !canAnalyze}
                 className={[
                   "mb-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full transition",
@@ -229,7 +360,7 @@ export default function EvaluationComposer({
                     isLight ? "text-black/55" : "text-white/48",
                   ].join(" ")}
                 >
-                  {previews.length} صورة مرفوعة للتقييم
+                  {getUploadedPhotosText(safeLocale, previews.length)}
                 </p>
 
                 <button
@@ -242,7 +373,7 @@ export default function EvaluationComposer({
                       : "text-white/45 hover:bg-white/10 hover:text-white",
                   ].join(" ")}
                 >
-                  مسح الكل
+                  {getClearAllText(safeLocale)}
                 </button>
               </div>
 
@@ -263,7 +394,7 @@ export default function EvaluationComposer({
 
                     {index === 0 && (
                       <div className="absolute bottom-1.5 right-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-md">
-                        الرئيسية
+                        {getMainText(safeLocale)}
                       </div>
                     )}
 

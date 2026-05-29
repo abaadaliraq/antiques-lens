@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
 import Image from "next/image";
-import { Archive, Gem, Plus, Trash2, X } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Archive, Plus, ScrollText, Trash2, X } from "lucide-react";
 import type { AnalysisResult } from "./types";
+
+const LOGO_SRC = "/brand/kishib-logo.png";
 
 export type HistoryItem = {
   id: string;
@@ -105,54 +107,64 @@ export default function HistorySidebar({
 
   return (
     <>
-     <button
-  type="button"
-  onClick={onOpen}
-  aria-label="Open history"
-  className={[
-    "fixed left-3 top-24 z-50",
-    "flex h-10 w-10 items-center justify-center",
-    "rounded-full border border-white/10",
-    "bg-white/[0.07] text-white/70 shadow-[0_10px_35px_rgba(0,0,0,0.35)]",
-    "backdrop-blur-xl transition-all duration-300",
-    "hover:bg-white/[0.12] hover:text-white hover:scale-105",
-    "md:left-4 md:top-28",
-  ].join(" ")}
->
-  <Archive className="h-4 w-4" />
-</button>
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label="Open history"
+        className={[
+          "fixed left-3 top-24 z-50",
+          "flex h-10 w-10 items-center justify-center",
+          "rounded-full border border-[#d6aa73]/20",
+          "bg-[#1b100a]/75 text-[#e8c99c]/80 shadow-[0_16px_45px_rgba(0,0,0,0.42)]",
+          "backdrop-blur-xl transition-all duration-300",
+          "hover:scale-105 hover:bg-[#2a170e] hover:text-[#fff2d6]",
+          "md:left-4 md:top-28",
+        ].join(" ")}
+      >
+        <Archive className="h-4 w-4" />
+      </button>
 
       <div
         onClick={onClose}
-        className={`fixed inset-0 z-40 bg-black/45 backdrop-blur-sm transition lg:hidden ${
+        className={`fixed inset-0 z-40 bg-black/55 backdrop-blur-sm transition lg:hidden ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
 
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-dvh w-[286px] flex-col border-r border-white/12 bg-[#070812]/66 px-4 py-4 text-white shadow-[0_0_90px_rgba(0,0,0,0.45)] backdrop-blur-2xl transition-transform duration-300 ease-out ${
+        className={`fixed left-0 top-0 z-50 flex h-dvh w-[292px] flex-col border-r border-[#d6aa73]/16 bg-[#0f0906]/88 px-4 py-4 text-[#fff2d6] shadow-[0_0_90px_rgba(0,0,0,0.58)] backdrop-blur-2xl transition-transform duration-300 ease-out ${
           open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        <div className="mb-5 flex items-center justify-between">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(214,170,115,0.14),transparent_34%),radial-gradient(circle_at_90%_80%,rgba(115,58,33,0.18),transparent_42%)]" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-[#d6aa73]/35 to-transparent" />
+
+        <div className="relative mb-5 flex items-center justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-white/18 bg-white/10 shadow-[0_0_28px_rgba(132,91,255,0.35)]">
-              <Gem className="h-5 w-5" />
+            <div className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl border border-[#d6aa73]/24 bg-[#2a170e]/78 shadow-[0_0_36px_rgba(214,170,115,0.18)]">
+              <Image
+                src={LOGO_SRC}
+                alt="KISHIB"
+                width={44}
+                height={44}
+                className="h-10 w-10 object-contain"
+                priority
+              />
             </div>
 
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">
-                {labels.brand}
+              <p className="truncate text-sm font-semibold tracking-[0.12em] text-[#f1d8ab]">
+                {labels.brand || "KISHIB"}
               </p>
-              <p className="truncate text-[11px] text-white/50">
-                {labels.sub}
+              <p className="truncate text-[11px] text-[#f8e7c9]/48">
+                {labels.sub || "AI antique evaluator"}
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/8 text-white/60 transition hover:bg-white/14 hover:text-white lg:hidden"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[#d6aa73]/12 bg-[#f3dfbf]/[0.06] text-[#f8e7c9]/55 transition hover:bg-[#f3dfbf]/[0.1] hover:text-[#fff2d6] lg:hidden"
             aria-label="Close sidebar"
           >
             <X className="h-4 w-4" />
@@ -161,31 +173,32 @@ export default function HistorySidebar({
 
         <button
           onClick={onNewEvaluation}
-          className="mb-5 flex h-11 items-center justify-center gap-2 rounded-2xl border border-white/14 bg-white/12 text-sm font-medium text-white/90 transition hover:bg-white/18"
+          className="relative mb-5 flex h-11 items-center justify-center gap-2 overflow-hidden rounded-2xl border border-[#d6aa73]/22 bg-[#d6aa73]/13 text-sm font-medium text-[#fff2d6] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-[#e8c99c]/34 hover:bg-[#d6aa73]/18"
         >
+          <span className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-[#f1d8ab]/45 to-transparent" />
           <Plus className="h-4 w-4" />
           {labels.new}
         </button>
 
-        <div className="mb-3 flex items-center justify-between px-1">
-          <div className="flex items-center gap-2 text-xs font-medium text-white/55">
-            <Archive className="h-4 w-4" />
+        <div className="relative mb-3 flex items-center justify-between px-1">
+          <div className="flex items-center gap-2 text-xs font-medium text-[#f8e7c9]/55">
+            <ScrollText className="h-4 w-4 text-[#d6aa73]/75" />
             {labels.archive}
           </div>
 
           {history.length > 0 && (
             <button
               onClick={onClearHistory}
-              className="text-[11px] text-white/38 transition hover:text-red-200"
+              className="text-[11px] text-[#f8e7c9]/34 transition hover:text-[#ffb4a0]"
             >
               {labels.clear}
             </button>
           )}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="relative min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {history.length === 0 ? (
-            <p className="px-2 py-4 text-xs leading-6 text-white/35">
+            <p className="rounded-2xl border border-[#d6aa73]/10 bg-[#f3dfbf]/[0.035] px-3 py-4 text-xs leading-6 text-[#f8e7c9]/36">
               {labels.empty}
             </p>
           ) : (
@@ -193,13 +206,13 @@ export default function HistorySidebar({
               {history.map((item) => (
                 <div
                   key={item.id}
-                  className="group relative flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 transition hover:bg-white/10"
+                  className="group relative flex w-full items-center gap-3 rounded-2xl px-2.5 py-2 transition hover:bg-[#f3dfbf]/[0.07]"
                 >
                   <button
                     onClick={() => onOpenItem(item)}
                     className="flex min-w-0 flex-1 items-center gap-3 text-start"
                   >
-                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/8">
+                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-[#d6aa73]/16 bg-[#2a170e]/70">
                       {item.imagePreview ? (
                         <Image
                           src={item.imagePreview}
@@ -210,16 +223,22 @@ export default function HistorySidebar({
                         />
                       ) : (
                         <div className="grid h-full w-full place-items-center">
-                          <Gem className="h-4 w-4 text-white/45" />
+                          <Image
+                            src={LOGO_SRC}
+                            alt=""
+                            width={28}
+                            height={28}
+                            className="h-7 w-7 object-contain opacity-55"
+                          />
                         </div>
                       )}
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm text-white/78 group-hover:text-white">
+                      <p className="truncate text-sm text-[#fff2d6]/76 group-hover:text-[#fff2d6]">
                         {item.title}
                       </p>
-                      <p className="mt-0.5 truncate text-[10.5px] text-white/35">
+                      <p className="mt-0.5 truncate text-[10.5px] text-[#f8e7c9]/34">
                         {formatDateTime(item.createdAt)}
                       </p>
                     </div>
@@ -230,7 +249,7 @@ export default function HistorySidebar({
                       event.stopPropagation();
                       onDeleteItem(item.id);
                     }}
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-white/28 opacity-0 transition hover:bg-red-500/12 hover:text-red-200 group-hover:opacity-100"
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-[#f8e7c9]/24 opacity-0 transition hover:bg-red-500/12 hover:text-red-200 group-hover:opacity-100"
                     aria-label="Delete conversation"
                     title="Delete"
                   >
@@ -242,25 +261,25 @@ export default function HistorySidebar({
           )}
         </div>
 
-        <div className="mt-4 border-t border-white/10 pt-3">
-          <p className="text-[11px] leading-5 text-white/35">
+        <div className="relative mt-4 border-t border-[#d6aa73]/12 pt-3">
+          <p className="text-[11px] leading-5 text-[#f8e7c9]/35">
             {labels.notice}
           </p>
 
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-white/32">
-            <Link href="/cookies" className="transition hover:text-white/70">
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-[#f8e7c9]/30">
+            <Link href="/cookies" className="transition hover:text-[#f1d8ab]">
               Cookies
             </Link>
 
-            <span className="text-white/18">•</span>
+            <span className="text-[#f8e7c9]/15">•</span>
 
-            <Link href="/terms" className="transition hover:text-white/70">
+            <Link href="/terms" className="transition hover:text-[#f1d8ab]">
               Terms
             </Link>
 
-            <span className="text-white/18">•</span>
+            <span className="text-[#f8e7c9]/15">•</span>
 
-            <Link href="/privacy" className="transition hover:text-white/70">
+            <Link href="/privacy" className="transition hover:text-[#f1d8ab]">
               Privacy
             </Link>
           </div>

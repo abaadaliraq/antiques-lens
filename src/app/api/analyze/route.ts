@@ -82,11 +82,13 @@ Do not use English, Kurdish, or French except for necessary antique terms.
   }
 }
 
+
 function safeString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
 }
 
 function buildPrompt(fields: {
+  
   locale: Locale;
   notes?: string;
   itemType?: string;
@@ -127,7 +129,6 @@ You are NOT:
 - allowed to undervalue rare heritage objects as ordinary used items
 
 The visitor language is: ${language}
-
 ${languageInstruction}
 
 User provided:

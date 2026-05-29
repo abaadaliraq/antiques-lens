@@ -15,7 +15,16 @@ import type {
 } from "./types";
 const MAX_IMAGES = 6;
 const MAX_IMAGE_SIZE_MB = 8;
-
+const SUPPORTED_LOCALES: Locale[] = [
+  "ar",
+  "en",
+  "fr",
+  "hi",
+  "fa",
+  "tr",
+  "ru",
+  "ku",
+];
 type HistoryItemWithImages = HistoryItem & {
   imagePreviews?: string[];
 };
@@ -427,9 +436,9 @@ const [history, setHistory] = useState<HistoryItemWithImages[]>([]);
       "antiques-lens:theme",
     ) as ThemeMode | null;
 
-    if (savedLocale && ["ar", "en", "ku", "fr"].includes(savedLocale)) {
-      setLocale(savedLocale);
-    }
+   if (savedLocale && SUPPORTED_LOCALES.includes(savedLocale)) {
+  setLocale(savedLocale);
+}
 
     if (savedTheme && ["dark", "light"].includes(savedTheme)) {
       setTheme(savedTheme);
@@ -886,25 +895,49 @@ async function handleAnalyze() {
       throw new Error(data?.error || "Failed to analyze request.");
     }
 
-   const analyzedResult = normalizeResult(data);
+ const analyzedResult = normalizeResult(data);
 
-setResult(analyzedResult);
+let finalResult = analyzedResult;
+
+if (locale !== "ar") {
+  try {
+    const translateResponse = await fetch("/api/translate-result", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        locale,
+        result: analyzedResult,
+      }),
+    });
+
+    const translateData = await translateResponse.json();
+
+    if (translateResponse.ok) {
+      finalResult = normalizeResult(translateData.result || translateData);
+    }
+  } catch (translateError) {
+    console.error("Initial result translation failed:", translateError);
+  }
+}
+
+setResult(finalResult);
 setTranslatedResults({
-  [locale]: analyzedResult,
+  [locale]: finalResult,
 });
 
 const savedThumbnails = historyImagePreviews.length
   ? historyImagePreviews
   : await createHistoryThumbnails(selectedFiles);
-
 saveHistory({
   id: createId(),
-  title: createHistoryTitle(analyzedResult),
+  title: createHistoryTitle(finalResult),
   prompt,
   createdAt: new Date().toISOString(),
   imagePreview: savedThumbnails[0] || null,
   imagePreviews: savedThumbnails,
-  result: analyzedResult,
+  result: finalResult,
 });
 
 

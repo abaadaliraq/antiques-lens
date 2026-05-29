@@ -1,4 +1,13 @@
-export type Locale = "ar" | "en" | "ku" | "fr";
+export type Locale =
+  | "ar"
+  | "en"
+  | "fr"
+  | "hi"
+  | "fa"
+  | "tr"
+  | "ru"
+  | "ku";
+
 export type ThemeMode = "dark" | "light";
 
 export type AnalysisResult = {
@@ -27,8 +36,8 @@ export type AnalysisResult = {
   priceRange?: string;
   period?: string;
   keywords?: string[];
-  
 };
+
 export type SimilarImageResult = {
   title: string;
   imageUrl: string;
@@ -44,5 +53,4 @@ export type HistoryItem = {
   imagePreview: string | null;
   imagePreviews?: string[];
   result: AnalysisResult;
-  
 };

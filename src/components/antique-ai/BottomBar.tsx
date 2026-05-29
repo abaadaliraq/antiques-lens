@@ -1,20 +1,18 @@
 "use client";
 
-import { Plus, Share2, Sparkles } from "lucide-react";
+import { Plus, Share2 } from "lucide-react";
 
-type ThemeMode = "dark" | "light";
+type BottomBarLabels = {
+  new: string;
+  share: string;
+};
 
-type Props = {
-  theme: ThemeMode;
-  labels: {
-    new: string;
-    share: string;
-    addInfo: string;
-  };
+type BottomBarProps = {
+  theme: "dark" | "light";
+  labels: BottomBarLabels;
   hasResult: boolean;
   onNew: () => void;
   onShare: () => void;
-  onAddInfo: () => void;
 };
 
 export default function BottomBar({
@@ -23,60 +21,41 @@ export default function BottomBar({
   hasResult,
   onNew,
   onShare,
-  onAddInfo,
-}: Props) {
-  const isLight = theme === "light";
-
-  const itemClass = [
-    "grid h-11 w-11 place-items-center rounded-full transition active:scale-95",
-    isLight
-      ? "text-black/58 hover:bg-white/65 hover:text-black"
-      : "text-white/58 hover:bg-white/[0.10] hover:text-white",
-  ].join(" ");
+}: BottomBarProps) {
+  if (!hasResult) return null;
 
   return (
-    <nav className="fixed inset-x-0 bottom-5 z-40 flex justify-center px-4 lg:pl-[280px]">
+    <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2">
       <div
         className={[
-          "flex h-14 items-center gap-2 rounded-full border px-2 backdrop-blur-2xl transition",
-          isLight
-            ? "border-white/70 bg-white/42 shadow-[0_24px_70px_rgba(60,110,160,0.16)]"
-            : "border-white/10 bg-white/[0.075] shadow-[0_24px_70px_rgba(0,0,0,0.34)]",
+          "flex items-center gap-1 rounded-2xl border px-2 py-2 shadow-[0_20px_70px_rgba(0,0,0,0.34)] backdrop-blur-2xl",
+          theme === "light"
+            ? "border-black/10 bg-white/70 text-black"
+            : "border-white/10 bg-[#120c08]/72 text-white",
         ].join(" ")}
       >
         <button
           type="button"
-          onClick={onNew}
-          className={itemClass}
-          aria-label={labels.new}
-          title={labels.new}
+          onClick={onShare}
+          title={labels.share}
+          aria-label={labels.share}
+          className="grid h-10 w-10 place-items-center rounded-xl text-current/62 transition hover:bg-white/10 hover:text-current"
         >
-          <Plus className="h-[18px] w-[18px]" />
+          <Share2 className="h-4 w-4" />
         </button>
+
+        <div className="h-5 w-px bg-current/12" />
 
         <button
           type="button"
-          onClick={onShare}
-          disabled={!hasResult}
-          className={[
-            itemClass,
-            "disabled:cursor-not-allowed disabled:opacity-25",
-          ].join(" ")}
-          aria-label={labels.share}
-          title={labels.share}
+          onClick={onNew}
+          title={labels.new}
+          aria-label={labels.new}
+          className="grid h-10 w-10 place-items-center rounded-xl text-current/72 transition hover:bg-white/10 hover:text-current"
         >
-          <Share2 className="h-[17px] w-[17px]" />
+          <Plus className="h-4 w-4" />
         </button>
-
-        <div
-          className={[
-            "mx-0.5 h-7 w-px",
-            isLight ? "bg-black/10" : "bg-white/10",
-          ].join(" ")}
-        />
-
-       
       </div>
-    </nav>
+    </div>
   );
 }

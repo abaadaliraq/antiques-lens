@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { AnalysisResult } from "./types";
-
-type Locale = "ar" | "en" | "ku" | "fr";
+import type { AnalysisResult, Locale } from "./types";
 
 type UseFollowUpEvaluationArgs = {
   result: AnalysisResult | null;
@@ -15,28 +13,43 @@ type UseFollowUpEvaluationArgs = {
   >;
   setImagePreviews: React.Dispatch<React.SetStateAction<string[]>>;
   setSelectedFiles: React.Dispatch<React.SetStateAction<File[]>>;
- normalizeResult: (value: any) => AnalysisResult;
+  normalizeResult: (value: any) => AnalysisResult;
 };
 
 function getMessage(locale: Locale, key: "used" | "empty" | "failed") {
-  const messages = {
+  const messages: Record<
+    "used" | "empty" | "failed",
+    Partial<Record<Locale, string>> & { ar: string }
+  > = {
     used: {
       ar: "يمكنك إضافة معلومات إضافية مرة واحدة فقط لهذا التقييم.",
       en: "You can add extra information only once for this evaluation.",
-      ku: "دەتوانیت تەنها جارێک زانیاری زیاتر زیاد بکەیت بۆ ئەم هەڵسەنگاندنە.",
       fr: "Vous pouvez ajouter des informations supplémentaires une seule fois pour cette évaluation.",
+      hi: "आप इस मूल्यांकन में अतिरिक्त जानकारी केवल एक बार जोड़ सकते हैं.",
+      fa: "برای این ارزیابی فقط یک‌بار می‌توانید اطلاعات اضافی اضافه کنید.",
+      tr: "Bu değerlendirmeye yalnızca bir kez ek bilgi ekleyebilirsiniz.",
+      ru: "Вы можете добавить дополнительную информацию к этой оценке только один раз.",
+      ku: "دەتوانیت تەنها جارێک زانیاری زیاتر زیاد بکەیت بۆ ئەم هەڵسەنگاندنە.",
     },
     empty: {
       ar: "أضف ملاحظة أو صورة إضافية واحدة على الأقل.",
       en: "Add a note or at least one extra image.",
-      ku: "تکایە تێبینی یان لانیکەم وێنەیەکی زیادە زیاد بکە.",
       fr: "Ajoutez une note ou au moins une image supplémentaire.",
+      hi: "एक नोट या कम से कम एक अतिरिक्त तस्वीर जोड़ें.",
+      fa: "یک یادداشت یا حداقل یک تصویر اضافی اضافه کنید.",
+      tr: "Bir not veya en az bir ek görsel ekleyin.",
+      ru: "Добавьте заметку или хотя бы одно дополнительное изображение.",
+      ku: "تکایە تێبینی یان لانیکەم وێنەیەکی زیادە زیاد بکە.",
     },
     failed: {
       ar: "فشل تحديث التقييم.",
       en: "Failed to update evaluation.",
-      ku: "نوێکردنەوەی هەڵسەنگاندن سەرکەوتوو نەبوو.",
       fr: "Échec de la mise à jour de l’évaluation.",
+      hi: "मूल्यांकन अपडेट करने में विफल.",
+      fa: "به‌روزرسانی ارزیابی ناموفق بود.",
+      tr: "Değerlendirme güncellenemedi.",
+      ru: "Не удалось обновить оценку.",
+      ku: "نوێکردنەوەی هەڵسەنگاندن سەرکەوتوو نەبوو.",
     },
   };
 
@@ -185,9 +198,7 @@ Keep the same JSON shape.
         [...current, ...followUpPreviews].slice(0, 8),
       );
 
-      setSelectedFiles((current) =>
-        [...current, ...followUpFiles].slice(0, 8),
-      );
+      setSelectedFiles((current) => [...current, ...followUpFiles].slice(0, 8));
 
       setFollowUpUsed(true);
       setFollowUpOpen(false);

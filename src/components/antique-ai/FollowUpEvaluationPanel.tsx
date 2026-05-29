@@ -1,6 +1,6 @@
 "use client";
 
-type Locale = "ar" | "en" | "ku" | "fr";
+import type { Locale } from "./types";
 
 type Props = {
   locale: Locale;
@@ -43,7 +43,57 @@ function copy(locale: Locale) {
       cancel: "Annuler",
     };
   }
+  if (locale === "hi") {
+    return {
+      eyebrow: "एक बार का फ़ॉलो-अप",
+      title: "अधिक तस्वीरें या विवरण जोड़ें",
+      hint: "आप अतिरिक्त तस्वीरों या नोट्स से इस मूल्यांकन को एक बार अपडेट कर सकते हैं.",
+      placeholder: "अतिरिक्त विवरण लिखें: वजन, आयाम, निशान, उम्र, कहानी, स्थिति...",
+      upload: "अतिरिक्त तस्वीरें अपलोड करें",
+      update: "मूल्यांकन अपडेट करें",
+      updating: "अपडेट हो रहा है...",
+      cancel: "रद्द करें",
+    };
+  }
 
+  if (locale === "fa") {
+    return {
+      eyebrow: "پیگیری یک‌باره",
+      title: "تصاویر یا جزئیات بیشتری اضافه کنید",
+      hint: "می‌توانید این ارزیابی را فقط یک‌بار با تصاویر یا یادداشت‌های اضافی به‌روزرسانی کنید.",
+      placeholder: "جزئیات اضافی بنویسید: وزن، ابعاد، مهر، سن، داستان، وضعیت...",
+      upload: "بارگذاری تصاویر اضافی",
+      update: "به‌روزرسانی ارزیابی",
+      updating: "در حال به‌روزرسانی...",
+      cancel: "لغو",
+    };
+  }
+
+  if (locale === "tr") {
+    return {
+      eyebrow: "Tek seferlik takip",
+      title: "Daha fazla fotoğraf veya detay ekle",
+      hint: "Bu değerlendirmeyi ek fotoğraf veya notlarla yalnızca bir kez güncelleyebilirsiniz.",
+      placeholder: "Ek detaylar yazın: ağırlık, ölçüler, işaretler, yaş, hikâye, durum...",
+      upload: "Ek görseller yükle",
+      update: "Değerlendirmeyi güncelle",
+      updating: "Güncelleniyor...",
+      cancel: "İptal",
+    };
+  }
+
+  if (locale === "ru") {
+    return {
+      eyebrow: "Одно уточнение",
+      title: "Добавьте фото или детали",
+      hint: "Вы можете обновить эту оценку один раз, добавив фото или заметки.",
+      placeholder: "Добавьте детали: вес, размеры, клейма, возраст, история, состояние...",
+      upload: "Загрузить дополнительные фото",
+      update: "Обновить оценку",
+      updating: "Обновление...",
+      cancel: "Отмена",
+    };
+  }
   if (locale === "ku") {
     return {
       eyebrow: "دواداچوونی یەکجار",

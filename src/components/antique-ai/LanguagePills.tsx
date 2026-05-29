@@ -3,7 +3,7 @@
 import { Check, ChevronDown, Globe2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-type LangCode = "ar" | "en" | "ku" | "fr";
+type LangCode = "ar" | "en" | "fr" | "hi" | "fa" | "tr" | "ru" | "ku";
 
 type LanguagePillsProps = {
   value?: LangCode;
@@ -16,11 +16,20 @@ type LanguagePillsProps = {
   onSelect?: (lang: LangCode) => void;
 };
 
-const LANGUAGES: { code: LangCode; label: string; short: string }[] = [
-  { code: "ar", label: "العربية", short: "AR" },
-  { code: "en", label: "English", short: "EN" },
-  { code: "ku", label: "Kurdî", short: "KU" },
-  { code: "fr", label: "Français", short: "FR" },
+const LANGUAGES: {
+  code: LangCode;
+  native: string;
+  label: string;
+  short: string;
+}[] = [
+  { code: "ar", native: "العربية", label: "Arabic", short: "AR" },
+  { code: "en", native: "English", label: "English", short: "EN" },
+  { code: "fr", native: "Français", label: "French", short: "FR" },
+  { code: "hi", native: "हिन्दी", label: "Hindi", short: "HI" },
+  { code: "fa", native: "فارسی", label: "Persian", short: "FA" },
+  { code: "tr", native: "Türkçe", label: "Turkish", short: "TR" },
+  { code: "ru", native: "Русский", label: "Russian", short: "RU" },
+  { code: "ku", native: "Kurdî", label: "Kurdish", short: "KU" },
 ];
 
 export default function LanguagePills({
@@ -35,11 +44,7 @@ export default function LanguagePills({
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const activeCode: LangCode = value ?? lang ?? currentLang ?? "ar";
-
-  const changeLanguage =
-    onChange ??
-    setLang ??
-    onSelect;
+  const changeLanguage = onChange ?? setLang ?? onSelect;
 
   const activeLanguage =
     LANGUAGES.find((item) => item.code === activeCode) ?? LANGUAGES[0];
@@ -53,8 +58,17 @@ export default function LanguagePills({
       }
     }
 
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
     document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, []);
 
   function handleChange(code: LangCode) {
@@ -77,15 +91,20 @@ export default function LanguagePills({
         onClick={() => setOpen((prev) => !prev)}
         className={[
           "flex h-10 items-center gap-2 rounded-full",
-          "border border-white/10 bg-white/[0.075] px-3",
-          "text-xs font-semibold text-white/85",
+          "border border-white/10 bg-[#17110c]/70 px-3",
+          "text-xs font-semibold text-white/86",
           "shadow-[0_16px_45px_rgba(0,0,0,0.35)] backdrop-blur-2xl",
-          "transition hover:border-white/20 hover:bg-white/[0.12] hover:text-white",
+          "transition hover:border-[#d6a25f]/35 hover:bg-[#21160f]/82 hover:text-white",
         ].join(" ")}
         aria-label="Change language"
+        aria-expanded={open}
       >
-        <span>{activeLanguage.short}</span>
-        <Globe2 className="h-4 w-4 text-white/65" />
+        <Globe2 className="h-4 w-4 text-[#d6a25f]/80" />
+
+        <span className="min-w-[20px] text-center tracking-[0.08em]">
+          {activeLanguage.short}
+        </span>
+
         <ChevronDown
           className={[
             "h-3.5 w-3.5 text-white/45 transition",
@@ -96,40 +115,79 @@ export default function LanguagePills({
 
       {open && (
         <div
-          className={[
-            "absolute end-0 mt-3 w-36 overflow-hidden rounded-2xl",
-            "border border-white/10 bg-[#111111]/95 p-1.5",
-            "shadow-[0_24px_70px_rgba(0,0,0,0.55)] backdrop-blur-2xl",
-          ].join(" ")}
+        className={[
+  "fixed right-4 top-[68px] z-[120] w-[286px] max-w-[calc(100vw-2rem)] rounded-[1.35rem]",
+  "border border-[#d6a25f]/18 bg-[#100b07]/96 p-3",
+  "shadow-[0_26px_80px_rgba(0,0,0,0.65)] backdrop-blur-2xl",
+].join(" ")}
         >
-          {LANGUAGES.map((item) => {
-            const active = item.code === activeCode;
+          <div className="mb-2 flex items-center justify-between px-1">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#d6a25f]/70">
+                Language
+              </p>
+              <p className="mt-0.5 text-[11px] text-white/38">
+                Choose interface language
+              </p>
+            </div>
 
-            return (
-              <button
-                key={item.code}
-                type="button"
-                onClick={() => handleChange(item.code)}
-                className={[
-                  "flex w-full items-center justify-between rounded-xl px-3 py-2.5",
-                  "text-sm transition",
-                  active
-                    ? "bg-white text-black"
-                    : "text-white/65 hover:bg-white/[0.08] hover:text-white",
-                ].join(" ")}
-              >
-                <span>{item.label}</span>
+            <div className="grid h-8 w-8 place-items-center rounded-xl border border-[#d6a25f]/18 bg-[#d6a25f]/8">
+              <Globe2 className="h-4 w-4 text-[#d6a25f]/80" />
+            </div>
+          </div>
 
-                {active ? (
-                  <Check className="h-4 w-4" />
-                ) : (
-                  <span className="text-[10px] text-white/35">
-                    {item.short}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          <div className="grid grid-cols-2 gap-2">
+            {LANGUAGES.map((item) => {
+              const active = item.code === activeCode;
+
+              return (
+                <button
+                  key={item.code}
+                  type="button"
+                  onClick={() => handleChange(item.code)}
+                  className={[
+                    "group relative min-h-[62px] rounded-2xl border px-3 py-2 text-start transition",
+                    active
+                      ? "border-[#d6a25f]/55 bg-[#d6a25f]/14 text-[#f4d29b]"
+                      : "border-white/8 bg-white/[0.035] text-white/68 hover:border-[#d6a25f]/28 hover:bg-white/[0.055] hover:text-white",
+                  ].join(" ")}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] font-semibold leading-5">
+                        {item.native}
+                      </p>
+                      <p
+                        className={[
+                          "mt-0.5 truncate text-[10px] leading-4",
+                          active ? "text-[#f4d29b]/58" : "text-white/34",
+                        ].join(" ")}
+                      >
+                        {item.label}
+                      </p>
+                    </div>
+
+                    <span
+                      className={[
+                        "shrink-0 rounded-lg px-1.5 py-0.5 text-[9px] font-bold",
+                        active
+                          ? "bg-[#d6a25f] text-black"
+                          : "border border-white/10 text-white/35 group-hover:text-white/55",
+                      ].join(" ")}
+                    >
+                      {item.short}
+                    </span>
+                  </div>
+
+                  {active && (
+                    <span className="absolute bottom-2 end-2 grid h-5 w-5 place-items-center rounded-full bg-[#d6a25f] text-black">
+                      <Check className="h-3.5 w-3.5" />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
