@@ -3,10 +3,12 @@
 import {
   BadgeCheck,
   ChevronDown,
+  Check,
   Cookie,
   CreditCard,
   Crown,
   FileText,
+  Globe2,
   LogOut,
   ShieldCheck,
   UserRound,
@@ -18,6 +20,7 @@ import type { Locale } from "./types";
 
 type UserMenuProps = {
   locale: Locale;
+  setLocale?: (locale: Locale) => void;
 };
 
 type Profile = {
@@ -176,6 +179,17 @@ const COPY: Record<Locale, MenuCopy> = {
   },
 };
 
+const MENU_LANGUAGES: { code: Locale; label: string; short: string }[] = [
+  { code: "en", label: "English", short: "EN" },
+  { code: "ar", label: "العربية", short: "AR" },
+  { code: "tr", label: "Türkçe", short: "TR" },
+  { code: "fa", label: "فارسی", short: "FA" },
+  { code: "fr", label: "Français", short: "FR" },
+  { code: "hi", label: "हिन्दी", short: "HI" },
+  { code: "ru", label: "Русский", short: "RU" },
+  { code: "ku", label: "Kurdî", short: "KU" },
+];
+
 function isRtl(locale: Locale) {
   return locale === "ar" || locale === "fa" || locale === "ku";
 }
@@ -190,7 +204,23 @@ function formatBirthDate(value?: string | null) {
   return value.slice(0, 10);
 }
 
-export default function UserMenu({ locale }: UserMenuProps) {
+function getPlanCards(locale: Locale) {
+  if (locale === "ar") {
+    return [
+      { title: "الباقة الشهرية", price: "$5", note: "شهرياً" },
+      { title: "الباقة السنوية", price: "$42", note: "سنوياً" },
+      { title: "تفعيل التقارير", price: "$50", note: "سنوياً" },
+    ];
+  }
+
+  return [
+    { title: "Monthly plan", price: "$5", note: "per month" },
+    { title: "Annual plan", price: "$42", note: "per year" },
+    { title: "Reports add-on", price: "$50", note: "per year" },
+  ];
+}
+
+export default function UserMenu({ locale, setLocale }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -204,6 +234,7 @@ export default function UserMenu({ locale }: UserMenuProps) {
   }, [copy.account, email, profile?.full_name]);
 
   const displayEmail = profile?.email || email;
+  const planCards = getPlanCards(locale);
 
   useEffect(() => {
     let mounted = true;
@@ -271,17 +302,13 @@ setProfile({
   }
 
   return (
-    <div
-      ref={menuRef}
-      dir={rtl ? "rtl" : "ltr"}
-      className="relative z-50"
-    >
+    <div ref={menuRef} dir={rtl ? "rtl" : "ltr"} className="relative z-50">
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="flex h-10 items-center gap-2 rounded-full border border-[#b66b3d]/24 bg-[#120b08]/82 px-2.5 text-white shadow-[0_18px_50px_rgba(0,0,0,0.38)] backdrop-blur-2xl transition hover:bg-[#20120c]/90 md:h-11 md:px-3"
+        className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-[#120c08]/82 px-2.5 text-white shadow-[0_14px_38px_rgba(0,0,0,0.34)] backdrop-blur-2xl transition hover:border-[#d89a4f]/30 hover:bg-[#1b110c]/90 md:h-11 md:px-3"
       >
-        <span className="grid h-7 w-7 place-items-center rounded-full bg-[#d89a4f] text-xs font-black text-[#130905] md:h-8 md:w-8">
+        <span className="grid h-7 w-7 place-items-center rounded-full bg-[#d89a4f] text-xs font-bold text-[#130905] md:h-8 md:w-8">
           {getInitial(displayName, displayEmail)}
         </span>
 
@@ -295,119 +322,120 @@ setProfile({
             isOpen ? "rotate-180" : "",
           ].join(" ")}
         />
-     </button>
+      </button>
 
-{isOpen ? (
-  <>
-    <button
-      type="button"
-      aria-label="Close user menu"
-      onClick={() => setIsOpen(false)}
-      className="fixed inset-0 z-[9998] bg-black/35 backdrop-blur-[1px] md:hidden"
-    />
+      {isOpen ? (
+        <>
+          <button
+            type="button"
+            aria-label="Close user menu"
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 z-[9998] bg-black/30 backdrop-blur-[1px] md:hidden"
+          />
 
-    <div
-      className={[
-        "fixed right-0 top-0 z-[9999] h-dvh w-[58vw] min-w-[230px] max-w-[340px] overflow-y-auto rounded-l-[1.5rem] border-l border-[#b66b3d]/24 bg-[#100905]/98 p-2 shadow-[0_28px_90px_rgba(0,0,0,0.72)] backdrop-blur-2xl",
-        "md:absolute md:top-auto md:mt-3 md:h-auto md:w-[285px] md:min-w-0 md:max-w-none md:overflow-hidden md:rounded-[1.35rem] md:border md:border-[#b66b3d]/22 md:bg-[#100905]/96 md:shadow-[0_28px_90px_rgba(0,0,0,0.55)]",
-        rtl ? "md:left-0 md:right-auto" : "md:right-0",
-      ].join(" ")}
-    >
-      <div className="rounded-[1.05rem] border border-[#b66b3d]/16 bg-[#21140e]/78 p-3">
-        <div className="flex items-center gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#d89a4f] text-sm font-black text-[#130905]">
-            {getInitial(displayName, displayEmail)}
-          </span>
+          <div
+            className={[
+              "fixed right-3 top-16 z-[9999] max-h-[calc(100dvh-5rem)] w-[268px] overflow-y-auto rounded-[1.25rem] border border-white/10 bg-[#100905]/96 p-2 shadow-[0_26px_82px_rgba(0,0,0,0.68)] backdrop-blur-2xl",
+              "md:absolute md:top-auto md:mt-3 md:max-h-[calc(100dvh-6rem)] md:w-[300px] md:rounded-[1.35rem]",
+              rtl ? "md:left-0 md:right-auto" : "md:right-0",
+            ].join(" ")}
+          >
+            <div className="rounded-[1rem] border border-[#d89a4f]/12 bg-[#1b100b]/68 p-3">
+              <div className="flex items-center gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#d89a4f] text-sm font-bold text-[#130905]">
+                  {getInitial(displayName, displayEmail)}
+                </span>
 
-          <div className="min-w-0">
-            <p className="truncate text-[13px] font-bold text-white">
-              {displayName}
-            </p>
-            <p className="truncate text-[11px] text-white/42">
-              {displayEmail || copy.account}
-            </p>
+                <div className="min-w-0">
+                  <p className="truncate text-[13px] font-semibold text-white/90">
+                    {displayName}
+                  </p>
+                  <p className="truncate text-[11px] text-white/38">
+                    {displayEmail || copy.account}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-2 rounded-[1rem] border border-white/[0.07] bg-white/[0.025] p-1.5">
+              <MenuButton
+                icon={<UserRound className="h-4 w-4" />}
+                label={copy.profile}
+                value={copy.account}
+              />
+              <InfoRow label={copy.country} value={profile?.country || copy.unknown} />
+              <InfoRow label={copy.province} value={profile?.province || copy.unknown} />
+              <InfoRow
+                label={copy.birthDate}
+                value={formatBirthDate(profile?.birth_date) || copy.unknown}
+              />
+            </div>
+
+            {setLocale ? (
+              <LanguageMenu
+                activeLocale={locale}
+                onChange={(nextLocale) => setLocale(nextLocale)}
+              />
+            ) : null}
+
+            <div className="mt-2 rounded-[1rem] border border-white/[0.07] bg-white/[0.025] p-1.5">
+              <MenuButton
+                icon={<Crown className="h-4 w-4" />}
+                label={copy.subscriptions}
+                value={copy.freePlan}
+              />
+
+              <div className="my-1 h-px bg-white/[0.06]" />
+
+              <div className="px-2 py-1.5">
+                <div className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold text-white/56">
+                  <CreditCard className="h-3.5 w-3.5 text-[#d89a4f]" />
+                  {copy.packages}
+                </div>
+                <div className="grid gap-1">
+                  {planCards.map((plan) => (
+                    <PlanButton
+                      key={plan.title}
+                      title={plan.title}
+                      price={plan.price}
+                      note={plan.note}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-2 rounded-[1rem] border border-white/[0.07] bg-white/[0.025] p-1.5">
+              <MenuLink
+                href="/cookies"
+                icon={<Cookie className="h-4 w-4" />}
+                label={copy.cookies}
+              />
+              <MenuLink
+                href="/terms"
+                icon={<FileText className="h-4 w-4" />}
+                label={copy.terms}
+              />
+              <MenuLink
+                href="/privacy"
+                icon={<ShieldCheck className="h-4 w-4" />}
+                label={copy.privacy}
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              className="mt-2 flex h-10 w-full items-center gap-3 rounded-xl px-3 text-start text-[12px] font-medium text-red-100/88 transition hover:bg-red-500/10"
+            >
+              <LogOut className="h-4 w-4 text-red-300/82" />
+              <span className="flex-1">{copy.logout}</span>
+            </button>
           </div>
-        </div>
-
-        <div className="mt-3 grid gap-1.5 text-[11px] text-white/58">
-          <div className="flex items-center justify-between gap-3">
-            <span>{copy.country}</span>
-            <span className="max-w-[135px] truncate font-semibold text-white/78">
-              {profile?.country || copy.unknown}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between gap-3">
-            <span>{copy.province}</span>
-            <span className="max-w-[135px] truncate font-semibold text-white/78">
-              {profile?.province || copy.unknown}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between gap-3">
-            <span>{copy.birthDate}</span>
-            <span className="max-w-[135px] truncate font-semibold text-white/78">
-              {formatBirthDate(profile?.birth_date) || copy.unknown}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-2 space-y-1">
-        <MenuButton
-          icon={<UserRound className="h-4 w-4" />}
-          label={copy.profile}
-          value={copy.account}
-        />
-
-        <MenuButton
-          icon={<Crown className="h-4 w-4" />}
-          label={copy.subscriptions}
-          value={copy.freePlan}
-        />
-
-        <MenuButton
-          icon={<CreditCard className="h-4 w-4" />}
-          label={copy.packages}
-          value={copy.comingSoon}
-        />
-
-        <div className="my-2 h-px bg-white/8" />
-
-        <MenuLink
-          href="/cookies"
-          icon={<Cookie className="h-4 w-4" />}
-          label={copy.cookies}
-        />
-
-        <MenuLink
-          href="/terms"
-          icon={<FileText className="h-4 w-4" />}
-          label={copy.terms}
-        />
-
-        <MenuLink
-          href="/privacy"
-          icon={<ShieldCheck className="h-4 w-4" />}
-          label={copy.privacy}
-        />
-
-        <div className="my-2 h-px bg-white/8" />
-
-        <button
-          type="button"
-          onClick={() => void handleLogout()}
-          className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-start text-[12px] font-semibold text-red-100 transition hover:bg-red-500/10"
-        >
-          <LogOut className="h-4 w-4 text-red-300" />
-          <span className="flex-1">{copy.logout}</span>
-        </button>
-      </div>
+        </>
+      ) : null}
     </div>
-  </>
-) : null}
-</div>
-);
+  );
 }
 
 function MenuButton({
@@ -422,13 +450,115 @@ function MenuButton({
   return (
     <button
       type="button"
-      className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-start transition hover:bg-white/[0.055]"
+      className="flex h-9 w-full items-center gap-3 rounded-xl px-2.5 text-start transition hover:bg-white/[0.055]"
     >
-      <span className="text-[#d89a4f]/82">{icon}</span>
-      <span className="flex-1 text-[12px] font-semibold text-white/78">
+      <span className="text-[#d89a4f]/78">{icon}</span>
+      <span className="flex-1 text-[12px] font-medium text-white/76">
         {label}
       </span>
-      <span className="text-[10.5px] font-medium text-white/36">{value}</span>
+      <span className="max-w-[110px] truncate text-[10.5px] font-medium text-white/34">
+        {value}
+      </span>
+    </button>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex h-8 items-center justify-between gap-3 rounded-xl px-2.5">
+      <span className="text-[11px] font-medium text-white/40">{label}</span>
+      <span className="max-w-[142px] truncate text-[11px] font-medium text-white/68">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function LanguageMenu({
+  activeLocale,
+  onChange,
+}: {
+  activeLocale: Locale;
+  onChange: (locale: Locale) => void;
+}) {
+  return (
+    <div className="mt-2 rounded-[1rem] border border-white/[0.07] bg-white/[0.025] p-2">
+      <div className="mb-2 flex items-center justify-between px-1">
+        <div className="flex items-center gap-2">
+          <span className="grid h-7 w-7 place-items-center rounded-xl bg-[#d89a4f]/12 text-[#d89a4f]">
+            <Globe2 className="h-3.5 w-3.5" />
+          </span>
+          <div>
+            <p className="text-[11px] font-semibold text-white/74">Language</p>
+            <p className="text-[9.5px] text-white/32">Interface language</p>
+          </div>
+        </div>
+        <span className="rounded-full border border-[#d89a4f]/18 bg-[#d89a4f]/10 px-2 py-1 text-[10px] font-semibold text-[#efc783]">
+          {activeLocale.toUpperCase()}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-1">
+        {MENU_LANGUAGES.map((item) => {
+          const active = item.code === activeLocale;
+
+          return (
+            <button
+              key={item.code}
+              type="button"
+              onClick={() => onChange(item.code)}
+              className={[
+                "flex h-8 items-center gap-2 rounded-xl px-2 text-start text-[11px] transition",
+                active
+                  ? "bg-[#d89a4f] text-[#120804]"
+                  : "text-white/58 hover:bg-white/[0.055] hover:text-white/82",
+              ].join(" ")}
+            >
+              <span
+                className={[
+                  "grid h-5 w-6 shrink-0 place-items-center rounded-lg text-[9px] font-semibold",
+                  active
+                    ? "bg-black/12 text-[#120804]"
+                    : "border border-white/8 text-white/34",
+                ].join(" ")}
+              >
+                {item.short}
+              </span>
+              <span className="min-w-0 flex-1 truncate font-medium">
+                {item.label}
+              </span>
+              {active ? <Check className="h-3.5 w-3.5 shrink-0" /> : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PlanButton({
+  title,
+  price,
+  note,
+}: {
+  title: string;
+  price: string;
+  note: string;
+}) {
+  return (
+    <button
+      type="button"
+      className="flex min-h-10 w-full items-center justify-between gap-3 rounded-xl bg-[#d89a4f]/7 px-2.5 py-1.5 text-start transition hover:bg-[#d89a4f]/12"
+    >
+      <span className="min-w-0">
+        <span className="block truncate text-[11.5px] font-medium text-white/78">
+          {title}
+        </span>
+        <span className="block text-[9.5px] text-white/32">{note}</span>
+      </span>
+      <span className="rounded-full bg-[#d89a4f] px-2.5 py-1 text-[10.5px] font-bold text-[#130905]">
+        {price}
+      </span>
     </button>
   );
 }
@@ -445,10 +575,10 @@ function MenuLink({
   return (
     <Link
       href={href}
-      className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-start transition hover:bg-white/[0.055]"
+      className="flex h-9 w-full items-center gap-3 rounded-xl px-2.5 text-start transition hover:bg-white/[0.055]"
     >
-      <span className="text-[#d89a4f]/82">{icon}</span>
-      <span className="flex-1 text-[12px] font-semibold text-white/78">
+      <span className="text-[#d89a4f]/78">{icon}</span>
+      <span className="flex-1 text-[12px] font-medium text-white/76">
         {label}
       </span>
       <BadgeCheck className="h-3.5 w-3.5 text-white/20" />

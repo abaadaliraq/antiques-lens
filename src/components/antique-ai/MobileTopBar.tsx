@@ -1,7 +1,7 @@
 "use client";
 
 import { Menu } from "lucide-react";
-import LanguagePills from "./LanguagePills";
+import UserMenu from "./UserMenu";
 import type { Locale } from "./types";
 
 type Props = {
@@ -16,18 +16,18 @@ export default function MobileTopBar({
   onOpenArchive,
 }: Props) {
   return (
-    <header className="fixed inset-x-0 top-0 z-50 px-4 pt-3 backdrop-blur-xl lg:hidden">
-      <div className="mx-auto flex h-12 max-w-[430px] items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-2 shadow-[0_18px_45px_rgba(0,0,0,0.22)]">
+    <header className="fixed inset-x-0 top-0 z-50 px-4 pt-3 lg:hidden">
+      <div dir="ltr" className="mx-auto flex h-11 max-w-[430px] items-center justify-between rounded-full border border-white/8 bg-[#11100f]/58 px-2 shadow-[0_18px_45px_rgba(0,0,0,0.18)] backdrop-blur-2xl">
         <button
           type="button"
           onClick={onOpenArchive}
           aria-label="Open history"
-          className="grid h-9 w-9 place-items-center rounded-xl bg-white/[0.065] text-white/75 backdrop-blur-2xl transition hover:bg-white/[0.1] hover:text-white"
+          className="grid h-8 w-8 place-items-center rounded-full text-white/62 transition hover:bg-white/[0.08] hover:text-white"
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-4 w-4" />
         </button>
 
-        <LanguagePills lang={locale} setLang={setLocale} />
+        <UserMenu locale={locale} setLocale={setLocale} />
       </div>
     </header>
   );

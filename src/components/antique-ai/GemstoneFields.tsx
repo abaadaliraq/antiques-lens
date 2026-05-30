@@ -520,15 +520,7 @@ export default function GemstoneFields({
         </p>
       </div>
 
-    <div className="space-y-1.5">
-  <div className="flex items-center justify-end gap-1.5 px-1 text-[#e6c089]/75">
-    <p className="text-[10px] font-medium tracking-[0.08em]">
-      {t.typeTitle}
-    </p>
-    <Gem className="h-3 w-3" />
-  </div>
-
-  <div className="-mx-1 overflow-x-auto px-1 pb-1">
+    <div className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
     <div className="flex w-max gap-1.5">
       {(Object.keys(t.kinds) as EvaluationKind[]).map((kind) => {
         const active = value.evaluationKind === kind;
@@ -540,11 +532,11 @@ export default function GemstoneFields({
             type="button"
             onClick={() => update("evaluationKind", kind)}
             className={[
-              "shrink-0 border px-2.5 py-1 text-[10.5px] font-medium leading-none transition",
-              "rounded-md",
+              "shrink-0 border px-3 py-1.5 text-[11px] font-medium leading-none transition",
+              "rounded-full",
               active
-                ? "border-[#d6a25f]/55 bg-[#d6a25f]/12 text-[#f1cf9a]"
-                : "border-white/10 bg-black/10 text-white/45 hover:border-[#d6a25f]/25 hover:text-white/70",
+                ? "border-[#d6a25f]/42 bg-[#d6a25f]/12 text-[#f1cf9a]"
+                : "border-white/8 bg-white/[0.035] text-white/42 hover:border-[#d6a25f]/20 hover:text-white/68",
             ].join(" ")}
           >
             {item[0]}
@@ -553,7 +545,6 @@ export default function GemstoneFields({
       })}
     </div>
   </div>
-</div>
 
       {isGemMode && (
         <div className="mt-4 border-y border-[#d6a25f]/12 py-4">

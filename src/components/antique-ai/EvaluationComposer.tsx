@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, ImagePlus, Send, Sparkles, X } from "lucide-react";
+import { Camera, ImagePlus, Search, Send, X } from "lucide-react";
 import type { ChangeEvent } from "react";
 import { useState } from "react";
 import GemstoneFields, {
@@ -183,21 +183,13 @@ const inputDir =
   }
 
   return (
-  <section className="flex min-h-dvh items-center justify-center px-4 pb-20 pt-20 md:px-6 md:pb-24 md:pt-10">
-    <div className="w-full max-w-[820px] -translate-y-6 md:-translate-y-12">
+  <section className="flex min-h-dvh items-center justify-center px-5 pb-20 pt-20 md:px-6 md:pb-24 md:pt-12">
+    <div className="w-full max-w-[820px] -translate-y-2 md:-translate-y-8">
       <div className="text-center">
-        <div className="mx-auto mb-3 flex justify-center md:mb-4">
-  <img
-    src="/kishib-logo.png"
-    alt="KISHIB"
-    className="h-[58px] w-[58px] object-contain drop-shadow-[0_18px_35px_rgba(0,0,0,0.38)] md:h-[74px] md:w-[74px]"
-  />
-</div>
-
         <h1
           className={[
-            "mx-auto w-full max-w-[760px] whitespace-normal text-balance break-words text-center text-[24px] font-medium leading-[1.12] tracking-normal",
-            "sm:text-[32px] md:text-[46px] md:font-semibold lg:text-[50px]",
+            "mx-auto w-full max-w-[760px] whitespace-normal text-balance break-words text-center text-[28px] font-semibold leading-[1.08] tracking-normal",
+            "sm:text-[34px] md:text-[48px] lg:text-[52px]",
             isLight ? "text-[#111318]" : "text-white",
           ].join(" ")}
         >
@@ -206,8 +198,8 @@ const inputDir =
 
         <p
           className={[
-            "mx-auto mt-3 hidden max-w-[560px] text-[13px] leading-6 md:block md:text-[14px] md:leading-7",
-            isLight ? "text-black/46" : "text-white/46",
+            "mx-auto mt-3 max-w-[560px] text-[12px] leading-6 md:text-[14px] md:leading-7",
+            isLight ? "text-black/46" : "text-white/48",
           ].join(" ")}
         >
           {labels.hint}
@@ -227,20 +219,50 @@ const inputDir =
         </div>
       )}
 
-      <div className="mx-auto mt-4 w-full max-w-[760px] md:mt-5">
+      <div className="mx-auto mt-7 w-full max-w-[760px] md:mt-7">
         <div
           className={[
-            "w-full rounded-[1.65rem] border transition",
-            "border-white/80 bg-white px-2.5 py-1.5 shadow-[0_18px_55px_rgba(0,0,0,0.18)]",
+            "w-full rounded-[1.4rem] border transition backdrop-blur-2xl md:rounded-[1.6rem]",
+            isLight
+              ? "border-black/10 bg-white/82 shadow-[0_18px_55px_rgba(0,0,0,0.12)]"
+              : "border-white/10 bg-[#1d1713]/86 shadow-[0_24px_85px_rgba(0,0,0,0.38)]",
           ].join(" ")}
         >
-          <div className="flex w-full items-center gap-1.5">
-            <div className="flex shrink-0 items-center gap-1">
+          <div className="min-h-[154px] px-4 py-4 md:min-h-[156px]">
+            <textarea
+              dir={inputDir}
+              value={prompt}
+              onChange={(event) => {
+                setPrompt(event.target.value);
+                autoResizeTextarea(event.currentTarget);
+              }}
+              onInput={(event) => autoResizeTextarea(event.currentTarget)}
+              rows={3}
+              aria-label={labels.placeholder}
+              placeholder={labels.placeholder}
+              className={[
+                "min-h-[90px] max-h-[100px] w-full resize-none overflow-y-auto bg-transparent",
+                "px-1 py-1 text-[14px] font-normal leading-6 outline-none",
+                isLight
+                  ? "text-[#34291f] placeholder:text-black/32"
+                  : "text-white placeholder:text-white/30",
+                inputDir === "rtl" ? "text-right" : "text-left",
+              ].join(" ")}
+            />
+
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
               <label
                 title={labels.upload}
-                className="grid h-8 w-8 cursor-pointer place-items-center rounded-full text-[#4a3a2b] transition hover:bg-black/5"
+                className={[
+                  "flex h-8 cursor-pointer items-center gap-2 rounded-full border px-3 text-[11px] font-semibold transition",
+                  isLight
+                    ? "border-black/10 bg-black/[0.035] text-[#4a3a2b] hover:bg-black/[0.065]"
+                    : "border-white/10 bg-white/[0.055] text-white/70 hover:bg-white/[0.1] hover:text-white",
+                ].join(" ")}
               >
                 <ImagePlus className="h-[15px] w-[15px]" />
+                <span className="hidden sm:inline">{labels.upload}</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -252,9 +274,15 @@ const inputDir =
 
               <label
                 title={labels.camera}
-                className="grid h-8 w-8 cursor-pointer place-items-center rounded-full text-[#4a3a2b] transition hover:bg-black/5"
+                className={[
+                  "flex h-8 cursor-pointer items-center gap-2 rounded-full border px-3 text-[11px] font-semibold transition",
+                  isLight
+                    ? "border-black/10 bg-black/[0.035] text-[#4a3a2b] hover:bg-black/[0.065]"
+                    : "border-white/10 bg-white/[0.055] text-white/70 hover:bg-white/[0.1] hover:text-white",
+                ].join(" ")}
               >
                 <Camera className="h-[15px] w-[15px]" />
+                <span className="hidden sm:inline">{labels.camera}</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -263,41 +291,40 @@ const inputDir =
                   className="hidden"
                 />
               </label>
-            </div>
-
-            <textarea
-              dir={inputDir}
-              value={prompt}
-              onChange={(event) => {
-                setPrompt(event.target.value);
-                autoResizeTextarea(event.currentTarget);
-              }}
-              onInput={(event) => autoResizeTextarea(event.currentTarget)}
-              rows={1}
-              aria-label={labels.placeholder}
-              placeholder=""
-              className={[
-                "min-h-[30px] max-h-[72px] flex-1 resize-none overflow-y-auto bg-transparent",
-                "px-2 py-1 text-[13px] font-normal leading-5 outline-none",
-                "text-[#34291f] placeholder:text-transparent",
-                inputDir === "rtl" ? "text-right" : "text-left",
-              ].join(" ")}
-            />
+              </div>
 
             <button
               type="button"
               onClick={handleSmartAnalyze}
               disabled={isAnalyzing || !canAnalyze}
               className={[
-                "grid h-9 w-9 shrink-0 place-items-center rounded-full transition",
-                "bg-[#ebe5dd] text-[#4a3a2b] shadow-[0_10px_22px_rgba(0,0,0,0.10)] hover:scale-[1.03]",
+                "grid h-9 w-9 shrink-0 place-items-center rounded-xl transition",
+                "bg-gradient-to-br from-[#d96832] to-[#e6a35f] text-white shadow-[0_10px_24px_rgba(217,104,50,0.24)] hover:scale-[1.03]",
                 "disabled:cursor-not-allowed disabled:opacity-35",
               ].join(" ")}
               aria-label={isAnalyzing ? labels.analyzing : labels.send}
             >
               <Send className="h-4 w-4" />
             </button>
+            </div>
           </div>
+        </div>
+
+        <div className="mx-auto mt-3 hidden max-w-[720px] flex-wrap items-center justify-center gap-2 md:flex">
+          {[
+            labels.upload,
+            labels.camera,
+            safeLocale === "en" ? "Search references" : "Reference scan",
+            safeLocale === "en" ? "Estimate value" : "Value range",
+          ].map((item) => (
+            <span
+              key={item}
+              className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.045] px-3 text-[11px] font-medium text-white/56 backdrop-blur-xl"
+            >
+              <Search className="h-3.5 w-3.5 text-[#e6a35f]/80" />
+              {item}
+            </span>
+          ))}
         </div>
 
         <div className="mx-auto mt-2 w-full max-w-[620px] md:mt-3 md:max-w-none">

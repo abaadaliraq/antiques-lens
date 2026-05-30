@@ -7,7 +7,6 @@ import CookieBar from "@/components/antique-ai/CookieBar";
 import EvaluationComposer from "@/components/antique-ai/EvaluationComposer";
 import FollowUpEvaluationPanel from "@/components/antique-ai/FollowUpEvaluationPanel";
 import HistorySidebar from "@/components/antique-ai/HistorySidebar";
-import LanguagePills from "@/components/antique-ai/LanguagePills";
 import MobileTopBar from "@/components/antique-ai/MobileTopBar";
 import ResultView from "@/components/antique-ai/ResultView";
 import ThinkingMotion from "@/components/antique-ai/ThinkingMotion";
@@ -246,9 +245,6 @@ export default function AntiqueLensShell() {
         />
 
         <div className="lg:hidden">
-          <div className="fixed right-4 top-20 z-[9999] flex items-center gap-2 lg:hidden">
-  <UserMenu locale={lens.locale} />
-</div>
           <MobileTopBar
             locale={lens.locale}
             setLocale={lens.changeLocale}
@@ -257,8 +253,7 @@ export default function AntiqueLensShell() {
         </div>
 
       <div className="fixed right-4 top-4 z-[9999] hidden items-center gap-2 md:right-8 md:top-6 lg:flex">
-  <UserMenu locale={lens.locale} />
-  <LanguagePills lang={lens.locale} setLang={lens.changeLocale} />
+  <UserMenu locale={lens.locale} setLocale={lens.changeLocale} />
 </div>
 
         {lens.isTranslatingResult && (
@@ -363,7 +358,6 @@ export default function AntiqueLensShell() {
           onNew={lens.resetEvaluation}
           onShare={lens.handleShare}
         />
-  <UserMenu locale={lens.locale} />
         <CookieBar />
       
       </div>

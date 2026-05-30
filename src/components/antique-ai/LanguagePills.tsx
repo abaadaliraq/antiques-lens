@@ -8,6 +8,7 @@ type LangCode = "ar" | "en" | "fr" | "hi" | "fa" | "tr" | "ru" | "ku";
 type LanguagePillsProps = {
   value?: LangCode;
   onChange?: (lang: LangCode) => void;
+  variant?: "default" | "menu";
 
   lang?: LangCode;
   setLang?: (lang: LangCode) => void;
@@ -37,6 +38,7 @@ export default function LanguagePills({
   onChange,
   lang,
   setLang,
+  variant = "default",
   currentLang,
   onSelect,
 }: LanguagePillsProps) {
@@ -84,22 +86,23 @@ export default function LanguagePills({
     setOpen(false);
   }
 
+  const isMenu = variant === "menu";
+
   return (
     <div ref={menuRef} className="relative z-[90]">
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className={[
-          "flex h-10 items-center gap-2 rounded-full",
-          "border border-white/10 bg-[#17110c]/70 px-3",
-          "text-xs font-semibold text-white/86",
-          "shadow-[0_16px_45px_rgba(0,0,0,0.35)] backdrop-blur-2xl",
-          "transition hover:border-[#d6a25f]/35 hover:bg-[#21160f]/82 hover:text-white",
+          "flex items-center gap-2 rounded-full transition",
+          isMenu
+            ? "h-8 border border-[#b66b3d]/18 bg-[#21140e]/78 px-2.5 text-[11px] font-bold text-white/78 hover:border-[#d89a4f]/34 hover:bg-[#2a1a12]"
+            : "h-10 border border-white/10 bg-[#17110c]/70 px-3 text-xs font-semibold text-white/86 shadow-[0_16px_45px_rgba(0,0,0,0.35)] backdrop-blur-2xl hover:border-[#d6a25f]/35 hover:bg-[#21160f]/82 hover:text-white",
         ].join(" ")}
         aria-label="Change language"
         aria-expanded={open}
       >
-        <Globe2 className="h-4 w-4 text-[#d6a25f]/80" />
+        <Globe2 className={isMenu ? "h-3.5 w-3.5 text-[#d89a4f]" : "h-4 w-4 text-[#d6a25f]/80"} />
 
         <span className="min-w-[20px] text-center tracking-[0.08em]">
           {activeLanguage.short}
@@ -116,27 +119,27 @@ export default function LanguagePills({
       {open && (
         <div
         className={[
-  "fixed right-4 top-[68px] z-[120] w-[286px] max-w-[calc(100vw-2rem)] rounded-[1.35rem]",
-  "border border-[#d6a25f]/18 bg-[#100b07]/96 p-3",
-  "shadow-[0_26px_80px_rgba(0,0,0,0.65)] backdrop-blur-2xl",
+  isMenu
+    ? "absolute right-0 top-10 z-[10000] w-[238px] rounded-[1rem] border border-[#b66b3d]/18 bg-[#100905]/98 p-2 shadow-[0_24px_70px_rgba(0,0,0,0.68)] backdrop-blur-2xl"
+    : "fixed right-4 top-[68px] z-[120] w-[286px] max-w-[calc(100vw-2rem)] rounded-[1.35rem] border border-[#d6a25f]/18 bg-[#100b07]/96 p-3 shadow-[0_26px_80px_rgba(0,0,0,0.65)] backdrop-blur-2xl",
 ].join(" ")}
         >
-          <div className="mb-2 flex items-center justify-between px-1">
+          <div className={isMenu ? "mb-2 flex items-center justify-between px-1" : "mb-2 flex items-center justify-between px-1"}>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#d6a25f]/70">
+              <p className={isMenu ? "text-[9px] font-semibold uppercase tracking-[0.2em] text-[#d89a4f]/70" : "text-[10px] font-semibold uppercase tracking-[0.22em] text-[#d6a25f]/70"}>
                 Language
               </p>
-              <p className="mt-0.5 text-[11px] text-white/38">
+              <p className={isMenu ? "mt-0.5 text-[10px] text-white/34" : "mt-0.5 text-[11px] text-white/38"}>
                 Choose interface language
               </p>
             </div>
 
-            <div className="grid h-8 w-8 place-items-center rounded-xl border border-[#d6a25f]/18 bg-[#d6a25f]/8">
-              <Globe2 className="h-4 w-4 text-[#d6a25f]/80" />
+            <div className={isMenu ? "grid h-7 w-7 place-items-center rounded-lg border border-[#d89a4f]/16 bg-[#d89a4f]/8" : "grid h-8 w-8 place-items-center rounded-xl border border-[#d6a25f]/18 bg-[#d6a25f]/8"}>
+              <Globe2 className={isMenu ? "h-3.5 w-3.5 text-[#d89a4f]/80" : "h-4 w-4 text-[#d6a25f]/80"} />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className={isMenu ? "grid grid-cols-2 gap-1.5" : "grid grid-cols-2 gap-2"}>
             {LANGUAGES.map((item) => {
               const active = item.code === activeCode;
 
@@ -146,7 +149,10 @@ export default function LanguagePills({
                   type="button"
                   onClick={() => handleChange(item.code)}
                   className={[
-                    "group relative min-h-[62px] rounded-2xl border px-3 py-2 text-start transition",
+                    "group relative border text-start transition",
+                    isMenu
+                      ? "min-h-[46px] rounded-xl px-2.5 py-1.5"
+                      : "min-h-[62px] rounded-2xl px-3 py-2",
                     active
                       ? "border-[#d6a25f]/55 bg-[#d6a25f]/14 text-[#f4d29b]"
                       : "border-white/8 bg-white/[0.035] text-white/68 hover:border-[#d6a25f]/28 hover:bg-white/[0.055] hover:text-white",
@@ -154,12 +160,12 @@ export default function LanguagePills({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate text-[13px] font-semibold leading-5">
+                      <p className={isMenu ? "truncate text-[11.5px] font-semibold leading-4" : "truncate text-[13px] font-semibold leading-5"}>
                         {item.native}
                       </p>
                       <p
                         className={[
-                          "mt-0.5 truncate text-[10px] leading-4",
+                          isMenu ? "mt-0.5 truncate text-[9px] leading-3" : "mt-0.5 truncate text-[10px] leading-4",
                           active ? "text-[#f4d29b]/58" : "text-white/34",
                         ].join(" ")}
                       >
@@ -169,7 +175,9 @@ export default function LanguagePills({
 
                     <span
                       className={[
-                        "shrink-0 rounded-lg px-1.5 py-0.5 text-[9px] font-bold",
+                        isMenu
+                          ? "shrink-0 rounded-md px-1.5 py-0.5 text-[8px] font-bold"
+                          : "shrink-0 rounded-lg px-1.5 py-0.5 text-[9px] font-bold",
                         active
                           ? "bg-[#d6a25f] text-black"
                           : "border border-white/10 text-white/35 group-hover:text-white/55",
@@ -180,8 +188,8 @@ export default function LanguagePills({
                   </div>
 
                   {active && (
-                    <span className="absolute bottom-2 end-2 grid h-5 w-5 place-items-center rounded-full bg-[#d6a25f] text-black">
-                      <Check className="h-3.5 w-3.5" />
+                    <span className={isMenu ? "absolute bottom-1.5 end-1.5 grid h-4 w-4 place-items-center rounded-full bg-[#d6a25f] text-black" : "absolute bottom-2 end-2 grid h-5 w-5 place-items-center rounded-full bg-[#d6a25f] text-black"}>
+                      <Check className={isMenu ? "h-3 w-3" : "h-3.5 w-3.5"} />
                     </span>
                   )}
                 </button>
