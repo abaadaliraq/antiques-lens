@@ -442,7 +442,7 @@ function mergeSimilarImages(
 }
 
 export function useAntiqueLens() {
-  const [locale, setLocale] = useState<Locale>("ar");
+  const [locale, setLocale] = useState<Locale>("en");
   const theme: ThemeMode = "dark";
 const [similarImages, setSimilarImages] = useState<SimilarImageResult[]>([]);
 const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);

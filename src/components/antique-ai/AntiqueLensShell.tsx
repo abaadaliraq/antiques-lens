@@ -15,6 +15,9 @@ import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { useEffect, useState } from "react";
 import type { Locale } from "./types";
 import { useAntiqueLens } from "./useAntiqueLens";
+import UserMenu from "@/components/antique-ai/UserMenu";
+
+
 
 const SUPPORTED_AUTH_LOCALES: Locale[] = [
   "ar",
@@ -162,8 +165,7 @@ export default function AntiqueLensShell() {
       window.clearTimeout(timer);
       unsubscribe?.();
     };
-    // Run once on mount to attach the Supabase auth listener.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, []);
 
   const activeLocale = String(lens.locale);
@@ -244,6 +246,9 @@ export default function AntiqueLensShell() {
         />
 
         <div className="lg:hidden">
+          <div className="fixed right-4 top-20 z-[9999] flex items-center gap-2 lg:hidden">
+  <UserMenu locale={lens.locale} />
+</div>
           <MobileTopBar
             locale={lens.locale}
             setLocale={lens.changeLocale}
@@ -251,9 +256,10 @@ export default function AntiqueLensShell() {
           />
         </div>
 
-        <div className="fixed right-4 top-4 z-50 hidden items-center gap-2 md:right-8 md:top-6 lg:flex">
-          <LanguagePills lang={lens.locale} setLang={lens.changeLocale} />
-        </div>
+      <div className="fixed right-4 top-4 z-[9999] hidden items-center gap-2 md:right-8 md:top-6 lg:flex">
+  <UserMenu locale={lens.locale} />
+  <LanguagePills lang={lens.locale} setLang={lens.changeLocale} />
+</div>
 
         {lens.isTranslatingResult && (
           <div className="fixed inset-x-0 top-20 z-50 mx-auto flex w-fit items-center gap-3 rounded-full border border-[#d6a25f]/20 bg-black/70 px-5 py-3 text-[12px] font-medium text-[#f4d29b] shadow-2xl shadow-black/30 backdrop-blur-2xl">
@@ -357,8 +363,9 @@ export default function AntiqueLensShell() {
           onNew={lens.resetEvaluation}
           onShare={lens.handleShare}
         />
-
+  <UserMenu locale={lens.locale} />
         <CookieBar />
+      
       </div>
     </main>
   );

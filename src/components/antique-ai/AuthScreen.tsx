@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  AnimatePresence,
+  motion,
+} from "framer-motion";
+import {
   ArrowRight,
   CalendarDays,
   Eye,
@@ -13,7 +17,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import LanguagePills from "./LanguagePills";
 import type { Locale } from "./types";
@@ -27,7 +31,8 @@ type AuthScreenProps = {
 };
 
 type AuthCopy = {
-  welcome: string;
+  eyebrow: string;
+  intro: string[];
   subtitle: string;
   login: string;
   signup: string;
@@ -39,6 +44,9 @@ type AuthCopy = {
   birthDate: string;
   forgot: string;
   continue: string;
+  google: string;
+  back: string;
+  or: string;
   legal: string;
   terms: string;
   privacy: string;
@@ -48,31 +56,16 @@ type AuthCopy = {
 };
 
 const COPY: Record<Locale, AuthCopy> = {
-  ar: {
-    welcome: "أهلاً بك في KISHIB",
-    subtitle: "ادخل إلى منصة تقييم التحف والقطع التراثية.",
-    login: "تسجيل الدخول",
-    signup: "إنشاء حساب",
-    name: "الاسم الكامل",
-    email: "البريد الإلكتروني",
-    password: "كلمة المرور",
-    country: "الدولة",
-    province: "المحافظة",
-    birthDate: "تاريخ الميلاد",
-    forgot: "نسيت كلمة المرور؟",
-    continue: "متابعة",
-    legal: "بالمتابعة أنت توافق على",
-    terms: "الشروط",
-    privacy: "الخصوصية",
-    cookies: "الكوكيز",
-    checkEmail: "تم إنشاء الحساب. تحقق من بريدك الإلكتروني لتأكيد الدخول.",
-    configError: "إعدادات Supabase غير مكتملة. أضف anon key في ملف البيئة.",
-  },
   en: {
-    welcome: "Welcome to KISHIB",
-    subtitle: "Sign in to evaluate antiques and heritage objects.",
+    eyebrow: "Authenticate • Evaluate • Preserve",
+    intro: [
+      "Photograph any piece and let KISHIB evaluate it.",
+      "Know the value of your antiques and collectibles.",
+      "Keep your evaluations, notes, and corrections in one account.",
+    ],
+    subtitle: "AI-assisted antique evaluation for collectors, dealers, and heritage lovers.",
     login: "Log in",
-    signup: "Sign up",
+    signup: "Create account",
     name: "Full name",
     email: "Email",
     password: "Password",
@@ -81,6 +74,9 @@ const COPY: Record<Locale, AuthCopy> = {
     birthDate: "Birth date",
     forgot: "Forgot password?",
     continue: "Continue",
+    google: "Continue with Google",
+    back: "Back",
+    or: "or",
     legal: "By continuing, you agree to",
     terms: "Terms",
     privacy: "Privacy",
@@ -88,9 +84,42 @@ const COPY: Record<Locale, AuthCopy> = {
     checkEmail: "Account created. Please check your email to confirm sign in.",
     configError: "Supabase setup is incomplete. Add the anon key to the environment file.",
   },
+  ar: {
+    eyebrow: "وثّق • قيّم • احفظ",
+    intro: [
+      "صوّر أي قطعة وسيتم تقييمها.",
+      "اعرف قيمة مقتنياتك بثقة أكبر.",
+      "احفظ تقييماتك وملاحظاتك وتصحيحاتك في حساب واحد.",
+    ],
+    subtitle: "منصة ذكية لتقييم التحف والقطع التراثية لهواة الجمع والتجار.",
+    login: "تسجيل الدخول",
+    signup: "إنشاء حساب",
+    name: "الاسم الكامل",
+    email: "البريد الإلكتروني",
+    password: "كلمة المرور",
+    country: "الدولة",
+    province: "المحافظة / المدينة",
+    birthDate: "تاريخ الميلاد",
+    forgot: "نسيت كلمة المرور؟",
+    continue: "متابعة",
+    google: "المتابعة بحساب Google",
+    back: "رجوع",
+    or: "أو",
+    legal: "بالمتابعة أنت توافق على",
+    terms: "الشروط",
+    privacy: "الخصوصية",
+    cookies: "الكوكيز",
+    checkEmail: "تم إنشاء الحساب. تحقق من بريدك الإلكتروني لتأكيد الدخول.",
+    configError: "إعدادات Supabase غير مكتملة. أضف anon key في ملف البيئة.",
+  },
   fr: {
-    welcome: "Bienvenue sur KISHIB",
-    subtitle: "Connectez-vous pour évaluer les antiquités.",
+    eyebrow: "Authentifier • Évaluer • Préserver",
+    intro: [
+      "Photographiez une pièce et KISHIB l'évalue.",
+      "Découvrez la valeur de vos objets anciens.",
+      "Gardez vos évaluations et corrections dans un compte.",
+    ],
+    subtitle: "Évaluation assistée par IA pour antiquités et objets patrimoniaux.",
     login: "Connexion",
     signup: "Créer un compte",
     name: "Nom complet",
@@ -101,18 +130,26 @@ const COPY: Record<Locale, AuthCopy> = {
     birthDate: "Date de naissance",
     forgot: "Mot de passe oublié ?",
     continue: "Continuer",
+    google: "Continuer avec Google",
+    back: "Retour",
+    or: "ou",
     legal: "En continuant, vous acceptez",
     terms: "Conditions",
     privacy: "Confidentialité",
     cookies: "Cookies",
     checkEmail: "Compte créé. Veuillez vérifier votre e-mail pour confirmer la connexion.",
-    configError: "La configuration Supabase est incomplète. Ajoutez la clé anon au fichier d’environnement.",
+    configError: "La configuration Supabase est incomplète. Ajoutez la clé anon au fichier d'environnement.",
   },
   hi: {
-    welcome: "KISHIB में आपका स्वागत है",
-    subtitle: "प्राचीन वस्तुओं के मूल्यांकन के लिए साइन इन करें।",
+    eyebrow: "प्रमाणित • मूल्यांकन • सुरक्षित",
+    intro: [
+      "किसी भी वस्तु की तस्वीर लें और KISHIB उसका मूल्यांकन करेगा.",
+      "अपनी प्राचीन वस्तुओं का मूल्य बेहतर तरीके से जानें.",
+      "अपने मूल्यांकन और सुधार एक खाते में रखें.",
+    ],
+    subtitle: "संग्रहकर्ताओं और विरासत प्रेमियों के लिए AI-सहायता मूल्यांकन.",
     login: "लॉग इन",
-    signup: "साइन अप",
+    signup: "खाता बनाएं",
     name: "पूरा नाम",
     email: "ईमेल",
     password: "पासवर्ड",
@@ -121,16 +158,24 @@ const COPY: Record<Locale, AuthCopy> = {
     birthDate: "जन्म तारीख",
     forgot: "पासवर्ड भूल गए?",
     continue: "जारी रखें",
+    google: "Google के साथ जारी रखें",
+    back: "वापस",
+    or: "या",
     legal: "जारी रखकर आप सहमत हैं",
     terms: "शर्तें",
     privacy: "गोपनीयता",
     cookies: "कुकीज़",
-    checkEmail: "खाता बन गया। साइन इन की पुष्टि के लिए अपना ईमेल देखें।",
-    configError: "Supabase सेटअप अधूरा है। environment file में anon key जोड़ें।",
+    checkEmail: "खाता बन गया. साइन इन की पुष्टि के लिए अपना ईमेल देखें.",
+    configError: "Supabase setup अधूरा है. environment file में anon key जोड़ें.",
   },
   fa: {
-    welcome: "به KISHIB خوش آمدید",
-    subtitle: "برای ارزیابی عتیقه‌ها وارد شوید.",
+    eyebrow: "اعتبارسنجی • ارزیابی • نگهداری",
+    intro: [
+      "از هر قطعه عکس بگیرید و KISHIB آن را ارزیابی می‌کند.",
+      "ارزش عتیقه‌ها و مجموعه‌های خود را بهتر بشناسید.",
+      "ارزیابی‌ها و اصلاحات را در یک حساب نگه دارید.",
+    ],
+    subtitle: "ارزیابی هوشمند عتیقه‌ها برای مجموعه‌داران و علاقه‌مندان میراث.",
     login: "ورود",
     signup: "ثبت‌نام",
     name: "نام کامل",
@@ -141,6 +186,9 @@ const COPY: Record<Locale, AuthCopy> = {
     birthDate: "تاریخ تولد",
     forgot: "رمز را فراموش کرده‌اید؟",
     continue: "ادامه",
+    google: "ادامه با Google",
+    back: "بازگشت",
+    or: "یا",
     legal: "با ادامه، می‌پذیرید",
     terms: "شرایط",
     privacy: "حریم خصوصی",
@@ -149,10 +197,15 @@ const COPY: Record<Locale, AuthCopy> = {
     configError: "تنظیمات Supabase کامل نیست. anon key را به فایل محیط اضافه کنید.",
   },
   tr: {
-    welcome: "KISHIB’e hoş geldiniz",
-    subtitle: "Antika ve miras parçalarını değerlendirmek için giriş yapın.",
+    eyebrow: "Doğrula • Değerlendir • Koru",
+    intro: [
+      "Herhangi bir parçayı fotoğraflayın, KISHIB değerlendirsin.",
+      "Antika ve koleksiyonlarınızın değerini öğrenin.",
+      "Değerlendirmeleri ve düzeltmeleri tek hesapta saklayın.",
+    ],
+    subtitle: "Koleksiyonerler ve miras meraklıları için yapay zekâ destekli değerlendirme.",
     login: "Giriş yap",
-    signup: "Kayıt ol",
+    signup: "Hesap oluştur",
     name: "Ad soyad",
     email: "E-posta",
     password: "Şifre",
@@ -161,6 +214,9 @@ const COPY: Record<Locale, AuthCopy> = {
     birthDate: "Doğum tarihi",
     forgot: "Şifremi unuttum",
     continue: "Devam et",
+    google: "Google ile devam et",
+    back: "Geri",
+    or: "veya",
     legal: "Devam ederek kabul edersiniz",
     terms: "Şartlar",
     privacy: "Gizlilik",
@@ -169,10 +225,15 @@ const COPY: Record<Locale, AuthCopy> = {
     configError: "Supabase kurulumu eksik. Ortam dosyasına anon key ekleyin.",
   },
   ru: {
-    welcome: "Добро пожаловать в KISHIB",
-    subtitle: "Войдите, чтобы оценивать антиквариат и предметы наследия.",
+    eyebrow: "Проверить • Оценить • Сохранить",
+    intro: [
+      "Сфотографируйте предмет, и KISHIB оценит его.",
+      "Узнайте ценность антиквариата и коллекций.",
+      "Храните оценки и исправления в одном аккаунте.",
+    ],
+    subtitle: "AI-оценка антиквариата для коллекционеров и любителей наследия.",
     login: "Войти",
-    signup: "Регистрация",
+    signup: "Создать аккаунт",
     name: "Полное имя",
     email: "Эл. почта",
     password: "Пароль",
@@ -181,6 +242,9 @@ const COPY: Record<Locale, AuthCopy> = {
     birthDate: "Дата рождения",
     forgot: "Забыли пароль?",
     continue: "Продолжить",
+    google: "Продолжить с Google",
+    back: "Назад",
+    or: "или",
     legal: "Продолжая, вы соглашаетесь с",
     terms: "Условиями",
     privacy: "Конфиденциальностью",
@@ -189,23 +253,31 @@ const COPY: Record<Locale, AuthCopy> = {
     configError: "Настройка Supabase не завершена. Добавьте anon key в файл окружения.",
   },
   ku: {
-    welcome: "بەخێربێیت بۆ KISHIB",
-    subtitle: "بچۆ ژوورەوە بۆ هەڵسەنگاندنی پارچە کۆنەکان.",
+    eyebrow: "پشتڕاستکردن • هەڵسەنگاندن • پاراستن",
+    intro: [
+      "وێنەی هەر پارچەیەک بگرە و KISHIB هەڵی بسەنگێنێت.",
+      "نرخی کۆنەکانی خۆت باشتر بناسە.",
+      "هەڵسەنگاندن و ڕاستکردنەوەکانت لە هەژمارێکدا هەڵبگرە.",
+    ],
+    subtitle: "هەڵسەنگاندنی زیرەک بۆ پارچە کۆن و میراتییەکان.",
     login: "چوونەژوورەوە",
     signup: "هەژمار دروستکردن",
     name: "ناوی تەواو",
-    email: "ئیمەیل",
+    email: "ئیمەیڵ",
     password: "وشەی نهێنی",
     country: "وڵات",
     province: "پارێزگا / شار",
     birthDate: "ڕێکەوتی لەدایکبوون",
     forgot: "وشەی نهێنیت لەبیر کرد؟",
     continue: "بەردەوامبوون",
+    google: "بە Google بەردەوام ببە",
+    back: "گەڕانەوە",
+    or: "یان",
     legal: "بە بەردەوامبوون ڕازیت بە",
     terms: "مەرجەکان",
     privacy: "تایبەتمەندی",
     cookies: "کوکیز",
-    checkEmail: "هەژمار دروستکرا. تکایە ئیمەیلەکەت بپشکنە بۆ پشتڕاستکردنەوە.",
+    checkEmail: "هەژمار دروستکرا. تکایە ئیمەیڵەکەت بپشکنە بۆ پشتڕاستکردنەوە.",
     configError: "ڕێکخستنی Supabase تەواو نییە. anon key زیاد بکە بۆ فایلەکانی ژینگە.",
   },
 };
@@ -214,42 +286,13 @@ function isRtl(locale: Locale) {
   return locale === "ar" || locale === "fa" || locale === "ku";
 }
 
-function getGoogleLabel(locale: Locale) {
-  const labels: Partial<Record<Locale, string>> = {
-    ar: "المتابعة بحساب Google",
-    en: "Continue with Google",
-    fr: "Continuer avec Google",
-    hi: "Google के साथ जारी रखें",
-    fa: "ادامه با Google",
-    tr: "Google ile devam et",
-    ru: "Продолжить с Google",
-    ku: "بە Google بەردەوام ببە",
-  };
-
-  return labels[locale] || labels.en;
-}
-
-function getDividerLabel(locale: Locale) {
-  const labels: Partial<Record<Locale, string>> = {
-    ar: "أو",
-    en: "or",
-    fr: "ou",
-    hi: "या",
-    fa: "یا",
-    tr: "veya",
-    ru: "или",
-    ku: "یان",
-  };
-
-  return labels[locale] || labels.en;
-}
-
 export default function AuthScreen({
   locale,
   setLocale,
   onAuthenticated,
 }: AuthScreenProps) {
   const [mode, setMode] = useState<AuthMode>("login");
+  const [activeLine, setActiveLine] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
   const [country, setCountry] = useState("");
@@ -260,8 +303,17 @@ export default function AuthScreen({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authMessage, setAuthMessage] = useState("");
   const [authError, setAuthError] = useState("");
-  const copy = COPY[locale];
+  const copy = COPY[locale] || COPY.en;
   const direction = isRtl(locale) ? "rtl" : "ltr";
+  const activeIntro = copy.intro[activeLine] || copy.intro[0];
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setActiveLine((current) => (current + 1) % copy.intro.length);
+    }, 3200);
+
+    return () => window.clearInterval(interval);
+  }, [copy.intro.length]);
 
   async function handleAuthSubmit() {
     setAuthError("");
@@ -356,7 +408,7 @@ export default function AuthScreen({
   return (
     <main
       dir={direction}
-      className="relative h-dvh overflow-hidden bg-[#090503] text-white"
+      className="relative h-dvh overflow-hidden bg-[#070403] text-white"
     >
       <Image
         src="/bg-1.jpg"
@@ -364,46 +416,43 @@ export default function AuthScreen({
         fill
         priority
         sizes="100vw"
-        className="object-cover object-center opacity-58"
+        className="object-cover object-center opacity-42"
       />
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.35),rgba(13,6,3,0.72)_48%,rgba(5,2,1,0.96))]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_18%,rgba(206,87,35,0.42),transparent_28%),radial-gradient(circle_at_18%_78%,rgba(190,92,48,0.36),transparent_32%),linear-gradient(135deg,rgba(8,5,3,0.78),rgba(21,10,5,0.9)_52%,rgba(5,3,2,0.96))]" />
+      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/62 to-transparent" />
 
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(214,162,95,0.16),transparent_34%),linear-gradient(to_bottom,rgba(5,2,1,0.06),rgba(5,2,1,0.78))]" />
-
-      <div className="relative z-10 flex h-dvh flex-col px-4 py-3 md:px-10 md:py-8">
-        <div className="flex shrink-0 items-center justify-start md:justify-end">
-          <LanguagePills lang={locale} setLang={setLocale} />
-        </div>
-
-        <section className="mx-auto grid min-h-0 w-full max-w-[1060px] flex-1 items-center gap-5 md:grid-cols-[minmax(0,1fr)_410px] md:gap-12">
-          <div className="mx-auto w-full max-w-[360px] text-center md:mx-0 md:max-w-[520px] md:text-start">
+      <div className="relative z-10 flex h-dvh flex-col px-4 py-4 md:px-10 md:py-8">
+        <header className="flex shrink-0 items-center justify-between">
+          <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-white/78">
             <Image
               src="/kishib-logo.png"
               alt="KISHIB"
-              width={96}
-              height={96}
-              className="mx-auto mb-2 h-14 w-14 object-contain drop-shadow-[0_18px_42px_rgba(214,104,55,0.32)] md:mx-0 md:mb-5 md:h-28 md:w-28"
+              width={30}
+              height={30}
+              className="h-7 w-7 object-contain"
             />
-            <h1 className="text-[28px] font-semibold leading-[1.05] tracking-normal text-white md:text-[52px]">
-              {copy.welcome}
-            </h1>
-            <p className="mx-auto mt-2 max-w-[310px] text-[12px] leading-5 text-white/58 md:mx-0 md:mt-4 md:max-w-[430px] md:text-[15px] md:leading-7">
-              {copy.subtitle}
-            </p>
+            <span>KISHIB</span>
           </div>
+          <LanguagePills lang={locale} setLang={setLocale} />
+        </header>
 
-          <div className="mx-auto w-full max-w-[390px] rounded-[1.45rem] border border-[#b66b3d]/24 bg-[#100905]/86 p-3 shadow-[0_22px_90px_rgba(0,0,0,0.46)] backdrop-blur-2xl md:max-w-none md:rounded-[1.75rem] md:p-5">
-            <div className="mb-3 grid grid-cols-2 rounded-[1.15rem] border border-[#b66b3d]/18 bg-black/30 p-1 md:mb-4">
+        <section className="mx-auto grid min-h-0 w-full max-w-[1120px] flex-1 items-center gap-8 py-4 md:grid-cols-[390px_minmax(0,1fr)] md:gap-16">
+          <motion.aside
+            initial={{ opacity: 0, x: direction === "rtl" ? 24 : -24 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="mx-auto w-full max-w-[390px] md:mx-0"
+          >
+            <div className="mb-5 grid grid-cols-2 rounded-full border border-white/12 bg-black/18 p-1 backdrop-blur-md">
               {(["login", "signup"] as AuthMode[]).map((item) => (
                 <button
                   key={item}
                   type="button"
                   onClick={() => setMode(item)}
                   className={[
-                    "h-9 rounded-[0.9rem] text-[12px] font-semibold transition md:h-11 md:text-[13px]",
+                    "h-10 rounded-full px-4 text-[12px] font-bold transition",
                     mode === item
-                      ? "bg-[#d89a4f] text-[#140905] shadow-[0_12px_30px_rgba(216,154,79,0.22)]"
-                      : "text-white/55 hover:bg-white/[0.055] hover:text-white",
+                      ? "bg-[#d96b32] text-white shadow-[0_14px_34px_rgba(217,107,50,0.28)]"
+                      : "text-white/62 hover:bg-white/8 hover:text-white",
                   ].join(" ")}
                 >
                   {item === "login" ? copy.login : copy.signup}
@@ -411,81 +460,33 @@ export default function AuthScreen({
               ))}
             </div>
 
+            <h2 className="text-[27px] font-semibold tracking-normal text-white">
+              {mode === "login" ? copy.login : copy.signup}
+            </h2>
+            <p className="mt-2 text-[12px] leading-5 text-white/52">
+              {copy.subtitle}
+            </p>
+
             <form
-              className="space-y-2.5 md:space-y-3"
+              className="mt-5 space-y-2.5"
               onSubmit={(event) => {
                 event.preventDefault();
                 void handleAuthSubmit();
               }}
             >
               {mode === "signup" && (
-                <>
-                  <label className="flex h-11 items-center gap-3 rounded-[1rem] border border-[#b66b3d]/18 bg-[#221813]/78 px-3 md:h-[52px] md:rounded-2xl">
-                    <User className="h-4 w-4 shrink-0 text-[#d89a4f]/80" />
-                    <input
-                      value={fullName}
-                      onChange={(event) => setFullName(event.target.value)}
-                      required
-                      autoComplete="name"
-                      placeholder={copy.name}
-                      className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-white/34"
-                    />
-                  </label>
-
-                  <label className="flex h-11 items-center gap-3 rounded-[1rem] border border-[#b66b3d]/18 bg-[#221813]/78 px-3 md:h-[52px] md:rounded-2xl">
-                    <Globe2 className="h-4 w-4 shrink-0 text-[#d89a4f]/80" />
-                    <input
-                      value={country}
-                      onChange={(event) => setCountry(event.target.value)}
-                      required
-                      autoComplete="country-name"
-                      placeholder={copy.country}
-                      className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-white/34"
-                    />
-                  </label>
-
-                  <label className="flex h-11 items-center gap-3 rounded-[1rem] border border-[#b66b3d]/18 bg-[#221813]/78 px-3 md:h-[52px] md:rounded-2xl">
-                    <MapPin className="h-4 w-4 shrink-0 text-[#d89a4f]/80" />
-                    <input
-                      value={province}
-                      onChange={(event) => setProvince(event.target.value)}
-                      required
-                      autoComplete="address-level1"
-                      placeholder={copy.province}
-                      className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-white/34"
-                    />
-                  </label>
-
-                  <label className="flex h-11 items-center gap-3 rounded-[1rem] border border-[#b66b3d]/18 bg-[#221813]/78 px-3 md:h-[52px] md:rounded-2xl">
-                    <CalendarDays className="h-4 w-4 shrink-0 text-[#d89a4f]/80" />
-                    <input
-                      type="date"
-                      value={birthDate}
-                      onChange={(event) => setBirthDate(event.target.value)}
-                      required
-                      autoComplete="bday"
-                      aria-label={copy.birthDate}
-                      className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-white/34"
-                    />
-                  </label>
-                </>
+                <div className="grid gap-2.5 md:grid-cols-2">
+                  <AuthInput icon={<User />} value={fullName} onChange={setFullName} placeholder={copy.name} autoComplete="name" required />
+                  <AuthInput icon={<Globe2 />} value={country} onChange={setCountry} placeholder={copy.country} autoComplete="country-name" required />
+                  <AuthInput icon={<MapPin />} value={province} onChange={setProvince} placeholder={copy.province} autoComplete="address-level1" required />
+                  <AuthInput icon={<CalendarDays />} type="date" value={birthDate} onChange={setBirthDate} placeholder={copy.birthDate} autoComplete="bday" required />
+                </div>
               )}
 
-              <label className="flex h-11 items-center gap-3 rounded-[1rem] border border-[#b66b3d]/18 bg-[#221813]/78 px-3 md:h-[52px] md:rounded-2xl">
-                <Mail className="h-4 w-4 shrink-0 text-[#d89a4f]/80" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  required
-                  autoComplete="email"
-                  placeholder={copy.email}
-                  className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-white/34"
-                />
-              </label>
+              <AuthInput icon={<Mail />} type="email" value={email} onChange={setEmail} placeholder={copy.email} autoComplete="email" required />
 
-              <label className="flex h-11 items-center gap-3 rounded-[1rem] border border-[#b66b3d]/18 bg-[#221813]/78 px-3 md:h-[52px] md:rounded-2xl">
-                <Lock className="h-4 w-4 shrink-0 text-[#d89a4f]/80" />
+              <label className="flex h-11 items-center gap-3 rounded-full border border-white/14 bg-white/9 px-4 backdrop-blur-md">
+                <Lock className="h-4 w-4 shrink-0 text-[#e7a15e]" />
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
@@ -494,12 +495,12 @@ export default function AuthScreen({
                   minLength={6}
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
                   placeholder={copy.password}
-                  className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-white/34"
+                  className="min-w-0 flex-1 bg-transparent text-[12.5px] text-white outline-none placeholder:text-white/38"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((current) => !current)}
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-xl text-white/45 transition hover:bg-white/8 hover:text-white"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white"
                   aria-label={copy.password}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -509,7 +510,7 @@ export default function AuthScreen({
               {mode === "login" && (
                 <button
                   type="button"
-                  className="block w-full text-end text-[11px] font-medium text-[#d89a4f]/80"
+                  className="block w-full text-end text-[11px] font-semibold text-[#e7a15e]"
                 >
                   {copy.forgot}
                 </button>
@@ -518,62 +519,127 @@ export default function AuthScreen({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-[1rem] bg-[#d89a4f] text-[13px] font-bold text-[#130905] shadow-[0_18px_45px_rgba(216,154,79,0.18)] transition hover:bg-[#efbd75] disabled:cursor-not-allowed disabled:opacity-70 md:h-12 md:rounded-2xl"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#cf4f22] to-[#e5a052] text-[13px] font-bold text-white shadow-[0_18px_42px_rgba(207,79,34,0.28)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? "..." : copy.continue}
                 <ArrowRight className="h-4 w-4 rtl:rotate-180" />
               </button>
 
-              <div className="flex items-center gap-3 py-0.5 md:py-1">
-                <span className="h-px flex-1 bg-white/10" />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/28">
-                  {getDividerLabel(locale)}
+              <div className="flex items-center gap-3 py-1">
+                <span className="h-px flex-1 bg-white/12" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/34">
+                  {copy.or}
                 </span>
-                <span className="h-px flex-1 bg-white/10" />
+                <span className="h-px flex-1 bg-white/12" />
               </div>
 
               <button
                 type="button"
                 disabled={isSubmitting}
                 onClick={() => void handleGoogleSignIn()}
-                className="flex h-11 w-full items-center justify-center gap-3 rounded-[1rem] border border-[#b66b3d]/20 bg-[#241813]/82 text-[12.5px] font-semibold text-white transition hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-60 md:h-12 md:rounded-2xl md:text-[13px]"
+                className="flex h-11 w-full items-center justify-center gap-3 rounded-full border border-white/12 bg-white/10 text-[12.5px] font-bold text-white backdrop-blur-md transition hover:bg-white/16 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <span className="grid h-6 w-6 place-items-center rounded-full bg-white text-[15px] font-bold text-[#1f1f1f]">
                   G
                 </span>
-                {getGoogleLabel(locale)}
+                {copy.google}
               </button>
 
               {authMessage ? (
-                <p className="rounded-2xl border border-[#d6a25f]/18 bg-[#d6a25f]/8 px-3 py-2 text-[11.5px] leading-5 text-[#f0c987]">
+                <p className="rounded-2xl border border-[#d96b32]/25 bg-[#d96b32]/12 px-3 py-2 text-[11.5px] leading-5 text-[#ffd3b6]">
                   {authMessage}
                 </p>
               ) : null}
 
               {authError ? (
-                <p className="rounded-2xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-[11.5px] leading-5 text-red-100">
+                <p className="rounded-2xl border border-red-400/25 bg-red-500/10 px-3 py-2 text-[11.5px] leading-5 text-red-100">
                   {authError}
                 </p>
               ) : null}
             </form>
 
-            <p className="mt-3 text-center text-[9.5px] leading-4 text-white/38 md:mt-4 md:text-[10.5px] md:leading-5">
+            <p className="mt-4 text-center text-[10.5px] leading-5 text-white/42">
               {copy.legal}{" "}
-              <Link href="/terms" className="text-[#d6a25f]/82 hover:text-[#f0c987]">
+              <Link href="/terms" className="font-semibold text-[#e7a15e] hover:text-[#ffd3a8]">
                 {copy.terms}
               </Link>
               {" · "}
-              <Link href="/privacy" className="text-[#d6a25f]/82 hover:text-[#f0c987]">
+              <Link href="/privacy" className="font-semibold text-[#e7a15e] hover:text-[#ffd3a8]">
                 {copy.privacy}
               </Link>
               {" · "}
-              <Link href="/cookies" className="text-[#d6a25f]/82 hover:text-[#f0c987]">
+              <Link href="/cookies" className="font-semibold text-[#e7a15e] hover:text-[#ffd3a8]">
                 {copy.cookies}
               </Link>
             </p>
-          </div>
+          </motion.aside>
+
+          <motion.aside
+            initial={{ opacity: 0, x: direction === "rtl" ? -24 : 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="order-first text-center md:order-last md:text-start"
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#e7a15e] md:text-[12px]">
+              {copy.eyebrow}
+            </p>
+            <div className="mt-4 flex min-h-[118px] items-center justify-center md:min-h-[255px] md:justify-start">
+              <AnimatePresence mode="wait">
+                <motion.h1
+                  key={activeIntro}
+                  initial={{ opacity: 0, y: 18, filter: "blur(8px)" }}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, y: -18, filter: "blur(8px)" }}
+                  transition={{ duration: 0.45 }}
+                  className="max-w-[760px] text-[38px] font-semibold leading-[0.98] tracking-normal text-white md:text-[76px]"
+                >
+                  {activeIntro}
+                </motion.h1>
+              </AnimatePresence>
+            </div>
+            <p className="mx-auto mt-3 max-w-[520px] text-[12px] leading-6 text-white/58 md:mx-0 md:text-[15px] md:leading-7">
+              {copy.subtitle}
+            </p>
+          </motion.aside>
         </section>
       </div>
     </main>
+  );
+}
+
+type AuthInputProps = {
+  icon: React.ReactNode;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  type?: string;
+  autoComplete?: string;
+  required?: boolean;
+};
+
+function AuthInput({
+  icon,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  autoComplete,
+  required = false,
+}: AuthInputProps) {
+  return (
+    <label className="flex h-11 items-center gap-3 rounded-full border border-white/14 bg-white/9 px-4 backdrop-blur-md">
+      <span className="[&_svg]:h-4 [&_svg]:w-4 [&_svg]:text-[#e7a15e]">
+        {icon}
+      </span>
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        required={required}
+        autoComplete={autoComplete}
+        placeholder={placeholder}
+        aria-label={placeholder}
+        className="min-w-0 flex-1 bg-transparent text-[12.5px] text-white outline-none placeholder:text-white/38"
+      />
+    </label>
   );
 }
