@@ -1,6 +1,16 @@
 "use client";
 
-import { ArrowRight, Eye, EyeOff, Lock, Mail, User } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarDays,
+  Eye,
+  EyeOff,
+  Globe2,
+  Lock,
+  Mail,
+  MapPin,
+  User,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
@@ -24,6 +34,9 @@ type AuthCopy = {
   name: string;
   email: string;
   password: string;
+  country: string;
+  province: string;
+  birthDate: string;
   forgot: string;
   continue: string;
   legal: string;
@@ -43,6 +56,9 @@ const COPY: Record<Locale, AuthCopy> = {
     name: "الاسم الكامل",
     email: "البريد الإلكتروني",
     password: "كلمة المرور",
+    country: "الدولة",
+    province: "المحافظة",
+    birthDate: "تاريخ الميلاد",
     forgot: "نسيت كلمة المرور؟",
     continue: "متابعة",
     legal: "بالمتابعة أنت توافق على",
@@ -60,6 +76,9 @@ const COPY: Record<Locale, AuthCopy> = {
     name: "Full name",
     email: "Email",
     password: "Password",
+    country: "Country",
+    province: "Province / City",
+    birthDate: "Birth date",
     forgot: "Forgot password?",
     continue: "Continue",
     legal: "By continuing, you agree to",
@@ -77,6 +96,9 @@ const COPY: Record<Locale, AuthCopy> = {
     name: "Nom complet",
     email: "E-mail",
     password: "Mot de passe",
+    country: "Pays",
+    province: "Province / Ville",
+    birthDate: "Date de naissance",
     forgot: "Mot de passe oublié ?",
     continue: "Continuer",
     legal: "En continuant, vous acceptez",
@@ -94,6 +116,9 @@ const COPY: Record<Locale, AuthCopy> = {
     name: "पूरा नाम",
     email: "ईमेल",
     password: "पासवर्ड",
+    country: "देश",
+    province: "प्रदेश / शहर",
+    birthDate: "जन्म तारीख",
     forgot: "पासवर्ड भूल गए?",
     continue: "जारी रखें",
     legal: "जारी रखकर आप सहमत हैं",
@@ -111,6 +136,9 @@ const COPY: Record<Locale, AuthCopy> = {
     name: "نام کامل",
     email: "ایمیل",
     password: "رمز عبور",
+    country: "کشور",
+    province: "استان / شهر",
+    birthDate: "تاریخ تولد",
     forgot: "رمز را فراموش کرده‌اید؟",
     continue: "ادامه",
     legal: "با ادامه، می‌پذیرید",
@@ -128,6 +156,9 @@ const COPY: Record<Locale, AuthCopy> = {
     name: "Ad soyad",
     email: "E-posta",
     password: "Şifre",
+    country: "Ülke",
+    province: "İl / Şehir",
+    birthDate: "Doğum tarihi",
     forgot: "Şifremi unuttum",
     continue: "Devam et",
     legal: "Devam ederek kabul edersiniz",
@@ -145,6 +176,9 @@ const COPY: Record<Locale, AuthCopy> = {
     name: "Полное имя",
     email: "Эл. почта",
     password: "Пароль",
+    country: "Страна",
+    province: "Регион / Город",
+    birthDate: "Дата рождения",
     forgot: "Забыли пароль?",
     continue: "Продолжить",
     legal: "Продолжая, вы соглашаетесь с",
@@ -162,6 +196,9 @@ const COPY: Record<Locale, AuthCopy> = {
     name: "ناوی تەواو",
     email: "ئیمەیل",
     password: "وشەی نهێنی",
+    country: "وڵات",
+    province: "پارێزگا / شار",
+    birthDate: "ڕێکەوتی لەدایکبوون",
     forgot: "وشەی نهێنیت لەبیر کرد؟",
     continue: "بەردەوامبوون",
     legal: "بە بەردەوامبوون ڕازیت بە",
@@ -215,6 +252,9 @@ export default function AuthScreen({
   const [mode, setMode] = useState<AuthMode>("login");
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [country, setCountry] = useState("");
+  const [province, setProvince] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -238,6 +278,9 @@ export default function AuthScreen({
           options: {
             data: {
               full_name: fullName.trim(),
+              country: country.trim(),
+              province: province.trim(),
+              birth_date: birthDate,
               preferred_locale: locale,
             },
           },
@@ -376,16 +419,56 @@ export default function AuthScreen({
               }}
             >
               {mode === "signup" && (
-                <label className="flex h-11 items-center gap-3 rounded-[1rem] border border-[#b66b3d]/18 bg-[#221813]/78 px-3 md:h-[52px] md:rounded-2xl">
-                  <User className="h-4 w-4 shrink-0 text-[#d89a4f]/80" />
-                  <input
-                    value={fullName}
-                    onChange={(event) => setFullName(event.target.value)}
-                    autoComplete="name"
-                    placeholder={copy.name}
-                    className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-white/34"
-                  />
-                </label>
+                <>
+                  <label className="flex h-11 items-center gap-3 rounded-[1rem] border border-[#b66b3d]/18 bg-[#221813]/78 px-3 md:h-[52px] md:rounded-2xl">
+                    <User className="h-4 w-4 shrink-0 text-[#d89a4f]/80" />
+                    <input
+                      value={fullName}
+                      onChange={(event) => setFullName(event.target.value)}
+                      required
+                      autoComplete="name"
+                      placeholder={copy.name}
+                      className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-white/34"
+                    />
+                  </label>
+
+                  <label className="flex h-11 items-center gap-3 rounded-[1rem] border border-[#b66b3d]/18 bg-[#221813]/78 px-3 md:h-[52px] md:rounded-2xl">
+                    <Globe2 className="h-4 w-4 shrink-0 text-[#d89a4f]/80" />
+                    <input
+                      value={country}
+                      onChange={(event) => setCountry(event.target.value)}
+                      required
+                      autoComplete="country-name"
+                      placeholder={copy.country}
+                      className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-white/34"
+                    />
+                  </label>
+
+                  <label className="flex h-11 items-center gap-3 rounded-[1rem] border border-[#b66b3d]/18 bg-[#221813]/78 px-3 md:h-[52px] md:rounded-2xl">
+                    <MapPin className="h-4 w-4 shrink-0 text-[#d89a4f]/80" />
+                    <input
+                      value={province}
+                      onChange={(event) => setProvince(event.target.value)}
+                      required
+                      autoComplete="address-level1"
+                      placeholder={copy.province}
+                      className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-white/34"
+                    />
+                  </label>
+
+                  <label className="flex h-11 items-center gap-3 rounded-[1rem] border border-[#b66b3d]/18 bg-[#221813]/78 px-3 md:h-[52px] md:rounded-2xl">
+                    <CalendarDays className="h-4 w-4 shrink-0 text-[#d89a4f]/80" />
+                    <input
+                      type="date"
+                      value={birthDate}
+                      onChange={(event) => setBirthDate(event.target.value)}
+                      required
+                      autoComplete="bday"
+                      aria-label={copy.birthDate}
+                      className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-white/34"
+                    />
+                  </label>
+                </>
               )}
 
               <label className="flex h-11 items-center gap-3 rounded-[1rem] border border-[#b66b3d]/18 bg-[#221813]/78 px-3 md:h-[52px] md:rounded-2xl">
