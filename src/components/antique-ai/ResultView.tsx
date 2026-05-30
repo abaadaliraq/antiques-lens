@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { AnalysisResult, Locale } from "./types";
+import type { AnalysisResult, Locale, SimilarImageResult } from "./types";
 import AntiqueReportDocument from "./AntiqueReportDocument";
 type ResultLabels = {
   result: string;
@@ -33,13 +33,6 @@ type ResultLabels = {
   confidence: string;
   notice: string;
   addInfo?: string;
-};
-
-type SimilarImageResult = {
-  title: string;
-  imageUrl: string;
-  link: string;
-  source?: string;
 };
 
 type Props = {
@@ -121,6 +114,17 @@ function getReportLabels(locale: Locale) {
   };
 }
 
+function getSimilarSourceLabel(locale: Locale) {
+  if (locale === "en") return "Comparable sources";
+  if (locale === "fr") return "Sources comparables";
+  if (locale === "hi") return "तुलनीय स्रोत";
+  if (locale === "fa") return "منابع مشابه";
+  if (locale === "tr") return "Benzer kaynaklar";
+  if (locale === "ru") return "Похожие источники";
+  if (locale === "ku") return "سەرچاوە هاوشێوەکان";
+  return "مصادر مشابهة";
+}
+
 function buildReportId() {
   const now = new Date();
   const year = now.getFullYear();
@@ -147,6 +151,7 @@ export default function ResultView({
   const reportId = useMemo(() => buildReportId(), []);
   const fallbackText = getFallbackText(locale);
   const reportLabels = getReportLabels(locale);
+  const similarSourceLabel = getSimilarSourceLabel(locale);
 
   const galleryImages =
     imagePreviews.length > 0 ? imagePreviews : imagePreview ? [imagePreview] : [];
@@ -391,7 +396,7 @@ export default function ResultView({
             <div className="mb-5 flex items-end justify-between gap-4">
               <div>
                 <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#d6a25f]/70">
-                  Google Lens
+                  {similarSourceLabel}
                 </p>
                 <h2 className="text-[24px] font-medium leading-8 tracking-[-0.035em] text-white/92">
                   {labels.similar}
@@ -433,6 +438,11 @@ export default function ResultView({
                       <p className="text-[12px] font-normal leading-5 text-white/70">
                         {item.title || "Similar result"}
                       </p>
+                      {item.price ? (
+                        <p className="mt-2 text-[10.5px] font-medium text-white/55">
+                          {item.price}
+                        </p>
+                      ) : null}
                       <p className="mt-2 text-[10.5px] font-medium text-[#d6a25f]/75">
                         {item.source || "Google Lens"}
                       </p>

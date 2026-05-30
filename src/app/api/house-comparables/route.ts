@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { houseSupabase } from "../../../lib/houseSupabase";
-import { buildKnowledgeContext } from "../../../lib/antiqueKnowledge";
 
 export const runtime = "nodejs";
+
+type MatchConfidence = "exact" | "strong" | "partial" | "weak" | "none";
 
 type HouseComparable = {
   id: string;
@@ -21,7 +22,15 @@ type HouseComparable = {
   url: string;
   source: string;
   score: number;
+  confidence: MatchConfidence;
   matchReason: string;
+};
+
+type HouseOfAntiquesContext = {
+  found: boolean;
+  confidence: MatchConfidence;
+  matches: HouseComparable[];
+  contextText: string;
 };
 
 type ProductImageRow = {
@@ -29,6 +38,8 @@ type ProductImageRow = {
   image_url: string;
   sort_order: number | null;
 };
+
+type ProductRow = Record<string, unknown>;
 
 function safeText(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -97,6 +108,55 @@ function addMany(set: Set<string>, values: string[]) {
     const normalized = normalizeArabic(value);
     if (normalized) set.add(normalized);
   });
+}
+
+const ITEM_FAMILY_TERMS: Record<string, string[]> = {
+  samovar: ["samovar", "semaver", "سماور"],
+  statue: [
+    "statue",
+    "figurine",
+    "sculpture",
+    "idol",
+    "heykel",
+    "figür",
+    "figürin",
+    "تمثال",
+  ],
+  painting: ["painting", "artwork", "canvas", "watercolor", "لوحة", "resim", "tablo"],
+  table: ["table", "stand", "طاولة", "masa"],
+  lamp: ["lamp", "مصباح", "lamba"],
+  candlestick: ["candlestick", "candle", "شمعدان", "şamdan"],
+  ewer: ["ewer", "pitcher", "jug", "إبريق", "ibrik", "sürahi"],
+  vase: ["vase", "jar", "vessel", "مزهرية", "فازة", "vazo"],
+  box: ["box", "chest", "case", "علبة", "صندوق", "kutu"],
+  cabinet: ["cabinet", "showcase", "display", "خزانة", "dolap", "vitrin"],
+  tray: ["tray", "صينية", "tepsi"],
+  bowl: ["bowl", "dish", "وعاء", "طبق", "kase"],
+};
+
+function detectItemFamilies(text: string) {
+  const normalized = normalizeArabic(text);
+  const families = new Set<string>();
+
+  for (const [family, terms] of Object.entries(ITEM_FAMILY_TERMS)) {
+    if (terms.some((term) => normalized.includes(normalizeArabic(term)))) {
+      families.add(family);
+    }
+  }
+
+  return families;
+}
+
+function hasFamilyOverlap(queryFamilies: Set<string>, product: ProductRow) {
+  if (queryFamilies.size === 0) return false;
+
+  const productFamilies = detectItemFamilies(
+    [productTitleText(product), productHaystack(product)].join(" "),
+  );
+
+  if (productFamilies.size === 0) return false;
+
+  return Array.from(queryFamilies).some((family) => productFamilies.has(family));
 }
 
 function expandTerms(rawTerms: string[]) {
@@ -296,7 +356,7 @@ function expandTerms(rawTerms: string[]) {
   return Array.from(expanded).slice(0, 120);
 }
 
-function productHaystack(product: any) {
+function productHaystack(product: ProductRow) {
   return [
     product.id,
     product.slug,
@@ -324,12 +384,39 @@ function productHaystack(product: any) {
     product.keywords_ku,
     product.seo_title,
     product.seo_description,
+    product.price_amount,
+    product.currency_code,
   ]
     .map(normalizeText)
     .join(" ");
 }
 
-function productTitleText(product: any) {
+function productAttributeText(product: ProductRow) {
+  return [
+    product.description_ar,
+    product.description_en,
+    product.description_ku,
+    product.material_ar,
+    product.material_en,
+    product.material_ku,
+    product.period_ar,
+    product.period_en,
+    product.period_ku,
+    product.origin_country,
+    product.artist_name,
+    product.keywords_ar,
+    product.keywords_en,
+    product.keywords_ku,
+    product.seo_title,
+    product.seo_description,
+    product.price_amount,
+    product.currency_code,
+  ]
+    .map(normalizeText)
+    .join(" ");
+}
+
+function productTitleText(product: ProductRow) {
   return [
     product.name_ar,
     product.name_en,
@@ -342,15 +429,23 @@ function productTitleText(product: any) {
     .join(" ");
 }
 
-function getMatchReason(product: any, terms: string[]) {
+function getMatchReason(product: ProductRow, terms: string[]) {
   const titleText = productTitleText(product);
   const haystack = productHaystack(product);
+  const attributeText = productAttributeText(product);
 
   const titleHits = terms.filter((term) => titleText.includes(term)).slice(0, 5);
+  const attributeHits = terms
+    .filter((term) => attributeText.includes(term))
+    .slice(0, 5);
   const textHits = terms.filter((term) => haystack.includes(term)).slice(0, 5);
 
   if (titleHits.length > 0) {
     return `Matched House of Antiques title/SKU/category terms: ${titleHits.join(", ")}`;
+  }
+
+  if (attributeHits.length > 0) {
+    return `Matched House of Antiques material/origin/period/keyword/price terms: ${attributeHits.join(", ")}`;
   }
 
   if (textHits.length > 0) {
@@ -360,9 +455,10 @@ function getMatchReason(product: any, terms: string[]) {
   return "Weak internal store text match";
 }
 
-function scoreProduct(product: any, terms: string[]) {
+function scoreProduct(product: ProductRow, terms: string[]) {
   const haystack = productHaystack(product);
   const titleText = productTitleText(product);
+  const attributeText = productAttributeText(product);
 
   let score = 0;
 
@@ -371,6 +467,7 @@ function scoreProduct(product: any, terms: string[]) {
 
     if (titleText === term) score += 80;
     if (titleText.includes(term)) score += 18;
+    if (attributeText.includes(term)) score += 10;
     if (haystack.includes(term)) score += 6;
 
     const sku = normalizeText(product.sku);
@@ -445,7 +542,19 @@ function scoreProduct(product: any, terms: string[]) {
   return score;
 }
 
-function buildProductUrl(product: any) {
+function getConfidence(score: number): MatchConfidence {
+  if (score >= 140) return "exact";
+  if (score >= 80) return "strong";
+  if (score >= 35) return "partial";
+  if (score > 0) return "weak";
+  return "none";
+}
+
+function getBestConfidence(items: HouseComparable[]): MatchConfidence {
+  return items[0]?.confidence || "none";
+}
+
+function buildProductUrl(product: ProductRow) {
   const productKey = safeText(product.slug) || safeText(product.id);
 
   return productKey
@@ -453,7 +562,7 @@ function buildProductUrl(product: any) {
     : "https://www.houseofantiques.store/";
 }
 
-function buildImages(product: any, imageMap: Map<string, string[]>) {
+function buildImages(product: ProductRow, imageMap: Map<string, string[]>) {
   const productId = String(product.id);
   const galleryImages = imageMap.get(productId) || [];
 
@@ -464,7 +573,7 @@ function buildImages(product: any, imageMap: Map<string, string[]>) {
 }
 
 function toComparable(
-  product: any,
+  product: ProductRow,
   score: number,
   imageMap: Map<string, string[]>,
   terms: string[],
@@ -513,6 +622,7 @@ function toComparable(
     url: buildProductUrl(product),
     source: "House of Antiques Store",
     score,
+    confidence: getConfidence(score),
     matchReason: getMatchReason(product, terms),
   };
 }
@@ -521,7 +631,7 @@ function buildStoreContext(items: HouseComparable[]) {
   if (items.length === 0) return "";
 
   return items
-    .slice(0, 6)
+    .slice(0, 2)
     .map((item, index) => {
       return `
 HOUSE OF ANTIQUES INTERNAL MATCH ${index + 1}
@@ -537,11 +647,48 @@ Product URL: ${item.url}
 Image URL: ${item.imageUrl || "N/A"}
 Source: ${item.source}
 Match score: ${item.score}
+Match confidence: ${item.confidence}
 Match reason: ${item.matchReason}
 Description: ${item.description || "N/A"}
 `;
     })
     .join("\n");
+}
+
+function getHouseOfAntiquesContext(items: HouseComparable[]): HouseOfAntiquesContext {
+  const matches = items.filter((item) =>
+    ["exact", "strong"].includes(item.confidence),
+  );
+
+  return {
+    found: matches.length > 0,
+    confidence: getBestConfidence(matches),
+    matches,
+    contextText: buildStoreContext(matches),
+  };
+}
+
+function findHouseOfAntiquesMatches(
+  products: ProductRow[],
+  terms: string[],
+  imageMap: Map<string, string[]>,
+  queryFamilies: Set<string>,
+) {
+  const scored = products
+    .filter((product) => hasFamilyOverlap(queryFamilies, product))
+    .map((product) => ({
+      product,
+      score: scoreProduct(product, terms),
+    }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 12);
+
+  const items = scored.map(({ product, score }) =>
+    toComparable(product, score, imageMap, terms),
+  );
+
+  return getHouseOfAntiquesContext(items);
 }
 
 export async function POST(request: Request) {
@@ -574,11 +721,8 @@ export async function POST(request: Request) {
   .filter(Boolean)
   .join(" ");
 
-const knowledgeContext = buildKnowledgeContext(searchText);
-
-const expandedSearchText = [searchText, knowledgeContext]
-  .filter(Boolean)
-  .join("\n\n");
+const knowledgeContext = "";
+const expandedSearchText = searchText;
 
     if (!searchText) {
       return NextResponse.json(
@@ -588,6 +732,7 @@ const expandedSearchText = [searchText, knowledgeContext]
     }
 
     const terms = expandTerms(buildSearchTerms(expandedSearchText));
+    const queryFamilies = detectItemFamilies(expandedSearchText);
 
     const selectFields = `
       id,
@@ -671,29 +816,28 @@ const expandedSearchText = [searchText, knowledgeContext]
       }
     }
 
-    const scored = products
-      .map((product) => ({
-        product,
-        score: scoreProduct(product, terms),
-      }))
-      .filter((entry) => entry.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 12);
-
-    const items = scored.map(({ product, score }) =>
-      toComparable(product, score, imageMap, terms),
+    const houseContext = findHouseOfAntiquesMatches(
+      products,
+      terms,
+      imageMap,
+      queryFamilies,
     );
+    const items = houseContext.matches;
 
     return NextResponse.json({
+      found: houseContext.found,
+      confidence: houseContext.confidence,
       items,
-    query: searchText,
-terms,
-knowledgeContext,
-storeContext: buildStoreContext(items),
+      matches: items,
+      contextText: houseContext.contextText,
+      query: searchText,
+      terms,
+      knowledgeContext,
+      storeContext: houseContext.contextText,
       note:
-        items.length > 0
-          ? "House of Antiques internal store matches were found. Use exact listed price and product URL as internal store evidence."
-          : "No House of Antiques internal store match was found from text search.",
+        houseContext.found
+          ? "One or two strong House of Antiques comparable store items were found. Use them only as optional comparable references, not as the main appraisal basis."
+          : "No strong House of Antiques comparable store item was found from text search.",
     });
   } catch (error) {
     console.error("House comparables route error:", error);

@@ -12,6 +12,8 @@ import type {
   Locale,
   ThemeMode,
   SimilarImageResult,
+  HouseOfAntiquesContext,
+  HouseOfAntiquesMatch,
 } from "./types";
 const MAX_IMAGES = 6;
 const MAX_IMAGE_SIZE_MB = 8;
@@ -389,9 +391,59 @@ function buildPinterestSearchQuery(result: AnalysisResult) {
   return query;
 }
 
+function isUsableHouseMatch(item: HouseOfAntiquesMatch) {
+  return ["exact", "strong"].includes(item.confidence || "none");
+}
+
+function buildHouseSimilarImages(
+  houseContext?: HouseOfAntiquesContext | null,
+): SimilarImageResult[] {
+  const matches = houseContext?.matches || [];
+
+  return matches
+    .filter(isUsableHouseMatch)
+    .filter((item) => Boolean(item.imageUrl || item.images?.[0]))
+    .slice(0, 2)
+    .map((item) => {
+      const imageUrl = item.imageUrl || item.images?.[0] || "";
+      const price =
+        item.price && item.price !== "No listed price"
+          ? `${item.price} ${item.currency || ""}`.trim()
+          : "";
+
+      return {
+        title: item.title || "House of Antiques item",
+        imageUrl,
+        link: item.url || imageUrl,
+        source: item.source || "House of Antiques Store",
+        price,
+        description: item.description,
+        confidence: item.confidence,
+        matchReason: item.matchReason,
+        isHouseOfAntiques: true,
+      };
+    });
+}
+
+function mergeSimilarImages(
+  houseImages: SimilarImageResult[],
+  externalImages: SimilarImageResult[],
+) {
+  const seen = new Set<string>();
+
+  return [...houseImages, ...externalImages]
+    .filter((item) => {
+      const key = item.imageUrl || item.link || item.title;
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 16);
+}
+
 export function useAntiqueLens() {
   const [locale, setLocale] = useState<Locale>("ar");
-  const [theme, setTheme] = useState<ThemeMode>("dark");
+  const theme: ThemeMode = "dark";
 const [similarImages, setSimilarImages] = useState<SimilarImageResult[]>([]);
 const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
   const [prompt, setPrompt] = useState("");
@@ -428,38 +480,34 @@ const [history, setHistory] = useState<HistoryItemWithImages[]>([]);
   const t = useMemo(() => content[locale], [locale]);
 
   useEffect(() => {
-    const savedLocale = window.localStorage.getItem(
-      "antiques-lens:locale",
-    ) as Locale | null;
+    const timer = window.setTimeout(() => {
+      const savedLocale = window.localStorage.getItem(
+        "antiques-lens:locale",
+      ) as Locale | null;
 
-    const savedTheme = window.localStorage.getItem(
-      "antiques-lens:theme",
-    ) as ThemeMode | null;
-
-   if (savedLocale && SUPPORTED_LOCALES.includes(savedLocale)) {
-  setLocale(savedLocale);
-}
-
-    if (savedTheme && ["dark", "light"].includes(savedTheme)) {
-      setTheme(savedTheme);
-    }
-
-    try {
-      const savedHistory = window.localStorage.getItem(HISTORY_KEY);
-
-      if (!savedHistory) return;
-
-      const parsed = JSON.parse(savedHistory) as HistoryItem[];
-
-      if (Array.isArray(parsed)) {
-        const cleaned = cleanHistoryItems(parsed).slice(0, 20);
-
-        setHistory(cleaned);
-        window.localStorage.setItem(HISTORY_KEY, JSON.stringify(cleaned));
+      if (savedLocale && SUPPORTED_LOCALES.includes(savedLocale)) {
+        setLocale(savedLocale);
       }
-    } catch {
-      window.localStorage.removeItem(HISTORY_KEY);
-    }
+
+      try {
+        const savedHistory = window.localStorage.getItem(HISTORY_KEY);
+
+        if (!savedHistory) return;
+
+        const parsed = JSON.parse(savedHistory) as HistoryItem[];
+
+        if (Array.isArray(parsed)) {
+          const cleaned = cleanHistoryItems(parsed).slice(0, 20);
+
+          setHistory(cleaned);
+          window.localStorage.setItem(HISTORY_KEY, JSON.stringify(cleaned));
+        }
+      } catch {
+        window.localStorage.removeItem(HISTORY_KEY);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -528,14 +576,6 @@ async function changeLocale(nextLocale: Locale) {
 
   await translateCurrentResult(result, nextLocale);
 }
-
-  function toggleTheme() {
-    setTheme((current) => {
-      const next = current === "dark" ? "light" : "dark";
-      window.localStorage.setItem("antiques-lens:theme", next);
-      return next;
-    });
-  }
 
   function resetEvaluation() {
     revokePreviewUrls(imagePreviews);
@@ -767,6 +807,8 @@ async function handleAnalyze() {
     let uploadedImageUrl = "";
     let googleLensContext = "";
     let houseContext = "";
+    let googleLensItems: SimilarImageResult[] = [];
+    let houseStoreContext: HouseOfAntiquesContext | null = null;
 
     // 1) Upload first image to Cloudinary
     if (selectedFiles[0]) {
@@ -806,11 +848,12 @@ async function handleAnalyze() {
         if (lensResponse.ok && Array.isArray(lensData.items)) {
           const items = lensData.items.slice(0, 16);
 
+          googleLensItems = items;
           setSimilarImages(items);
 
           googleLensContext = items
             .slice(0, 10)
-            .map((item: any, index: number) => {
+            .map((item: SimilarImageResult, index: number) => {
               return [
                 `${index + 1}. GOOGLE LENS VISUAL MATCH`,
                 `Title: ${item.title || "Untitled similar item"}`,
@@ -837,16 +880,30 @@ async function handleAnalyze() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          query: [prompt, googleLensContext].filter(Boolean).join("\n"),
+          query: prompt,
         }),
       });
 
       const houseData = await houseResponse.json();
 
       if (houseResponse.ok && Array.isArray(houseData.items)) {
+        const matches = houseData.items as HouseOfAntiquesMatch[];
+        houseStoreContext = {
+          found: Boolean(houseData.found ?? matches.length > 0),
+          confidence: houseData.confidence || "none",
+          matches,
+          contextText: houseData.contextText || houseData.storeContext || "",
+        };
+
+        const houseSimilarImages = buildHouseSimilarImages(houseStoreContext);
+
+        if (houseSimilarImages.length > 0) {
+          setSimilarImages(mergeSimilarImages(houseSimilarImages, googleLensItems));
+        }
+
         houseContext = houseData.items
           .slice(0, 8)
-          .map((item: any, index: number) => {
+          .map((item: HouseOfAntiquesMatch, index: number) => {
             return [
               `${index + 1}. INTERNAL HOUSE OF ANTIQUES COMPARABLE`,
               `Title: ${item.title || "Untitled House of Antiques item"}`,
@@ -857,6 +914,9 @@ async function handleAnalyze() {
               `Period: ${item.period || "Unknown"}`,
               `Origin: ${item.origin || "Unknown"}`,
               `Similarity score: ${item.score || 0}`,
+              `Similarity confidence: ${item.confidence || "none"}`,
+              `Similarity reason: ${item.matchReason || "Text similarity"}`,
+              `Image: ${item.imageUrl || "No image"}`,
               `URL: ${item.url || "No link"}`,
               `Source: ${item.source || "House of Antiques Store"}`,
             ].join(" | ");
@@ -895,9 +955,63 @@ async function handleAnalyze() {
       throw new Error(data?.error || "Failed to analyze request.");
     }
 
- const analyzedResult = normalizeResult(data);
+ const analyzedResult = normalizeResult({
+   ...data,
+   houseOfAntiques: houseStoreContext || undefined,
+ });
 
-let finalResult = analyzedResult;
+  try {
+    const refinedHouseResponse = await fetch("/api/house-comparables", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: [
+          prompt,
+          analyzedResult.title,
+          analyzedResult.lookup,
+          analyzedResult.history,
+          ...(analyzedResult.visualSearchKeywords || []),
+          ...(analyzedResult.keywords || []),
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        title: analyzedResult.title,
+        itemType: analyzedResult.itemType || analyzedResult.lookup,
+        material: analyzedResult.material,
+        origin: analyzedResult.origin,
+        description: analyzedResult.history || analyzedResult.description,
+      }),
+    });
+
+    const refinedHouseData = await refinedHouseResponse.json();
+
+    if (refinedHouseResponse.ok && Array.isArray(refinedHouseData.items)) {
+      const matches = refinedHouseData.items as HouseOfAntiquesMatch[];
+
+      houseStoreContext = {
+        found: Boolean(refinedHouseData.found ?? matches.length > 0),
+        confidence: refinedHouseData.confidence || "none",
+        matches,
+        contextText:
+          refinedHouseData.contextText || refinedHouseData.storeContext || "",
+      };
+
+      const houseSimilarImages = buildHouseSimilarImages(houseStoreContext);
+
+      if (houseSimilarImages.length > 0) {
+        setSimilarImages(mergeSimilarImages(houseSimilarImages, googleLensItems));
+      }
+    }
+  } catch (error) {
+    console.error("Refined House of Antiques comparables failed:", error);
+  }
+
+let finalResult = normalizeResult({
+  ...analyzedResult,
+  houseOfAntiques: houseStoreContext || undefined,
+});
 
 if (locale !== "ar") {
   try {
@@ -915,7 +1029,10 @@ if (locale !== "ar") {
     const translateData = await translateResponse.json();
 
     if (translateResponse.ok) {
-      finalResult = normalizeResult(translateData.result || translateData);
+      finalResult = normalizeResult({
+        ...(translateData.result || translateData),
+        houseOfAntiques: houseStoreContext || undefined,
+      });
     }
   } catch (translateError) {
     console.error("Initial result translation failed:", translateError);
@@ -1033,7 +1150,6 @@ error,
   setHistoryOpen,
   history,
   changeLocale,
-  toggleTheme,
   resetEvaluation,
   handleImageChange,
   removeImage,

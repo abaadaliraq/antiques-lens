@@ -1,6 +1,7 @@
 "use client";
 
 import AntiqueBackground from "@/components/antique-ai/AntiqueBackground";
+import AuthScreen from "@/components/antique-ai/AuthScreen";
 import BottomBar from "@/components/antique-ai/BottomBar";
 import CookieBar from "@/components/antique-ai/CookieBar";
 import EvaluationComposer from "@/components/antique-ai/EvaluationComposer";
@@ -9,12 +10,57 @@ import HistorySidebar from "@/components/antique-ai/HistorySidebar";
 import LanguagePills from "@/components/antique-ai/LanguagePills";
 import MobileTopBar from "@/components/antique-ai/MobileTopBar";
 import ResultView from "@/components/antique-ai/ResultView";
-import ThemeToggle from "@/components/antique-ai/ThemeToggle";
 import ThinkingMotion from "@/components/antique-ai/ThinkingMotion";
+import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
+import { useEffect, useState } from "react";
+import type { Locale } from "./types";
 import { useAntiqueLens } from "./useAntiqueLens";
 
+const SUPPORTED_AUTH_LOCALES: Locale[] = [
+  "ar",
+  "en",
+  "fr",
+  "hi",
+  "fa",
+  "tr",
+  "ru",
+  "ku",
+];
+
+const PENDING_OAUTH_LOCALE_KEY = "kishib:pending-oauth-locale";
+
+function getSessionLocale(session: unknown): Locale | null {
+  const record =
+    session && typeof session === "object"
+      ? (session as Record<string, unknown>)
+      : null;
+  const user =
+    record?.user && typeof record.user === "object"
+      ? (record.user as Record<string, unknown>)
+      : null;
+  const metadata =
+    user?.user_metadata && typeof user.user_metadata === "object"
+      ? (user.user_metadata as Record<string, unknown>)
+      : null;
+  const preferredLocale = metadata?.preferred_locale;
+
+  return typeof preferredLocale === "string" &&
+    SUPPORTED_AUTH_LOCALES.includes(preferredLocale as Locale)
+    ? (preferredLocale as Locale)
+    : null;
+}
+
+function getPendingOAuthLocale(): Locale | null {
+  const savedLocale = window.localStorage.getItem(PENDING_OAUTH_LOCALE_KEY);
+
+  return typeof savedLocale === "string" &&
+    SUPPORTED_AUTH_LOCALES.includes(savedLocale as Locale)
+    ? (savedLocale as Locale)
+    : null;
+}
+
 function getSafeSimilarImages(lens: ReturnType<typeof useAntiqueLens>) {
-  const result = lens.result as any;
+  const result = lens.result as Record<string, unknown> | null;
 
   if (Array.isArray(lens.similarImages) && lens.similarImages.length > 0) {
     return lens.similarImages;
@@ -45,6 +91,80 @@ function getSafeSimilarImages(lens: ReturnType<typeof useAntiqueLens>) {
 
 export default function AntiqueLensShell() {
   const lens = useAntiqueLens();
+  const [authReady, setAuthReady] = useState(false);
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    let unsubscribe: (() => void) | undefined;
+
+    const timer = window.setTimeout(() => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+
+        void supabase.auth.getSession().then(({ data }) => {
+          if (!isMounted) return;
+          const pendingLocale = getPendingOAuthLocale();
+          const sessionLocale = getSessionLocale(data.session);
+          const preferredLocale = pendingLocale || sessionLocale;
+
+          if (preferredLocale) {
+            void lens.changeLocale(preferredLocale);
+          }
+
+          if (pendingLocale && data.session) {
+            window.localStorage.removeItem(PENDING_OAUTH_LOCALE_KEY);
+            void supabase.auth.updateUser({
+              data: {
+                ...data.session.user.user_metadata,
+                preferred_locale: pendingLocale,
+              },
+            });
+          }
+
+          setHasSession(Boolean(data.session));
+          setAuthReady(true);
+        });
+
+        const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+          const pendingLocale = getPendingOAuthLocale();
+          const sessionLocale = getSessionLocale(session);
+          const preferredLocale = pendingLocale || sessionLocale;
+
+          if (preferredLocale) {
+            void lens.changeLocale(preferredLocale);
+          }
+
+          if (pendingLocale && session) {
+            window.localStorage.removeItem(PENDING_OAUTH_LOCALE_KEY);
+            void supabase.auth.updateUser({
+              data: {
+                ...session.user.user_metadata,
+                preferred_locale: pendingLocale,
+              },
+            });
+          }
+
+          setHasSession(Boolean(session));
+          setAuthReady(true);
+        });
+
+        unsubscribe = () => data.subscription.unsubscribe();
+      } catch {
+        if (!isMounted) return;
+        setHasSession(false);
+        setAuthReady(true);
+      }
+    }, 0);
+
+    return () => {
+      isMounted = false;
+      window.clearTimeout(timer);
+      unsubscribe?.();
+    };
+    // Run once on mount to attach the Supabase auth listener.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const activeLocale = String(lens.locale);
 
@@ -73,14 +193,29 @@ export default function AntiqueLensShell() {
       />
     ) : null;
 
+  function handleAuthenticated() {
+    setHasSession(true);
+    setAuthReady(true);
+  }
+
+  if (!authReady || !hasSession) {
+    return (
+      <>
+        <AuthScreen
+          locale={lens.locale}
+          setLocale={lens.changeLocale}
+          onAuthenticated={handleAuthenticated}
+        />
+        <CookieBar />
+      </>
+    );
+  }
+
   return (
     <main
       dir={lens.t.dir}
       data-theme={lens.theme}
-      className={[
-        "relative min-h-dvh overflow-x-hidden bg-black transition-colors duration-500",
-        lens.theme === "light" ? "text-[#111318]" : "text-white",
-      ].join(" ")}
+      className="relative min-h-dvh overflow-x-hidden bg-black text-white transition-colors duration-500"
     >
       <AntiqueBackground imageSrc="/bg-1.jpg" />
 
@@ -118,7 +253,6 @@ export default function AntiqueLensShell() {
 
         <div className="fixed right-4 top-4 z-50 hidden items-center gap-2 md:right-8 md:top-6 lg:flex">
           <LanguagePills lang={lens.locale} setLang={lens.changeLocale} />
-          <ThemeToggle theme={lens.theme} onToggle={lens.toggleTheme} />
         </div>
 
         {lens.isTranslatingResult && (

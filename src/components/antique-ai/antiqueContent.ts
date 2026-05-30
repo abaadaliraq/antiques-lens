@@ -375,5 +375,6 @@ export function normalizeResult(data: Partial<AnalysisResult>): AnalysisResult {
     priceRange: data.priceRange,
     period: data.period,
     keywords: data.keywords,
+    houseOfAntiques: data.houseOfAntiques,
   };
 }

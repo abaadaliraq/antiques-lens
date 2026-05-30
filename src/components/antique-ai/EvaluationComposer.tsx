@@ -196,8 +196,8 @@ const inputDir =
 
         <h1
           className={[
-            "mx-auto max-w-[720px] whitespace-nowrap text-center text-[24px] font-medium leading-none tracking-[-0.04em]",
-            "sm:text-[32px] md:text-[54px] md:font-semibold lg:text-[58px]",
+            "mx-auto w-full max-w-[760px] whitespace-normal text-balance break-words text-center text-[24px] font-medium leading-[1.12] tracking-normal",
+            "sm:text-[32px] md:text-[46px] md:font-semibold lg:text-[50px]",
             isLight ? "text-[#111318]" : "text-white",
           ].join(" ")}
         >

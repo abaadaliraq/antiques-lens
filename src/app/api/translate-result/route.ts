@@ -1,19 +1,34 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 
-type Locale = "ar" | "en" | "ku";
+type Locale = "ar" | "en" | "fr" | "hi" | "fa" | "tr" | "ru" | "ku";
 
 function normalizeLocale(value: unknown): Locale {
   const locale = String(value || "").toLowerCase();
 
-  if (locale === "en") return "en";
-  if (locale === "ku") return "ku";
+  if (
+    locale === "ar" ||
+    locale === "en" ||
+    locale === "fr" ||
+    locale === "hi" ||
+    locale === "fa" ||
+    locale === "tr" ||
+    locale === "ru" ||
+    locale === "ku"
+  ) {
+    return locale;
+  }
 
   return "ar";
 }
 
 function getLanguageName(locale: Locale) {
   if (locale === "en") return "English";
+  if (locale === "fr") return "French";
+  if (locale === "hi") return "Hindi";
+  if (locale === "fa") return "Persian";
+  if (locale === "tr") return "Turkish";
+  if (locale === "ru") return "Russian";
   if (locale === "ku") return "Kurdish Sorani";
   return "Arabic";
 }

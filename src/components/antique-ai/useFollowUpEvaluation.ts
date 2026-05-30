@@ -13,7 +13,7 @@ type UseFollowUpEvaluationArgs = {
   >;
   setImagePreviews: React.Dispatch<React.SetStateAction<string[]>>;
   setSelectedFiles: React.Dispatch<React.SetStateAction<File[]>>;
-  normalizeResult: (value: any) => AnalysisResult;
+  normalizeResult: (value: Partial<AnalysisResult>) => AnalysisResult;
 };
 
 function getMessage(locale: Locale, key: "used" | "empty" | "failed") {

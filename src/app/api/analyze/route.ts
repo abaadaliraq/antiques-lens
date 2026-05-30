@@ -4,7 +4,7 @@ import { buildKnowledgeContext } from "../../../lib/antiqueKnowledge";
 export const runtime = "nodejs";
 
 
-type Locale = "ar" | "en" | "ku" | "fr";
+type Locale = "ar" | "en" | "fr" | "hi" | "fa" | "tr" | "ru" | "ku";
 
 type AnalysisResult = {
   title: string;
@@ -29,7 +29,16 @@ type AnalysisResult = {
 };
 
 function normalizeLocale(locale: string): Locale {
-  if (locale === "en" || locale === "ku" || locale === "fr" || locale === "ar") {
+  if (
+    locale === "ar" ||
+    locale === "en" ||
+    locale === "fr" ||
+    locale === "hi" ||
+    locale === "fa" ||
+    locale === "tr" ||
+    locale === "ru" ||
+    locale === "ku"
+  ) {
     return locale;
   }
 
@@ -40,10 +49,18 @@ function getLanguageName(locale: Locale) {
   switch (locale) {
     case "en":
       return "English";
-    case "ku":
-      return "Sorani Kurdish";
     case "fr":
       return "French";
+    case "hi":
+      return "Hindi";
+    case "fa":
+      return "Persian";
+    case "tr":
+      return "Turkish";
+    case "ru":
+      return "Russian";
+    case "ku":
+      return "Sorani Kurdish";
     case "ar":
     default:
       return "Arabic";
@@ -56,20 +73,45 @@ function getLanguageInstruction(locale: Locale) {
       return `
 The visitor selected English.
 All user-facing JSON values must be written in English.
-Do not use Arabic, Kurdish, or French.
+Do not use Arabic or any other language except necessary antique terms.
+`;
+    case "fr":
+      return `
+The visitor selected French.
+All user-facing JSON values must be written in French.
+Do not use Arabic or any other language except necessary antique terms.
+`;
+    case "hi":
+      return `
+The visitor selected Hindi.
+All user-facing JSON values must be written in Hindi.
+Do not use Arabic or any other language except necessary antique terms.
+`;
+    case "fa":
+      return `
+The visitor selected Persian.
+All user-facing JSON values must be written in Persian.
+Use natural Persian for normal visitors.
+Do not use Arabic or any other language except necessary antique terms.
+`;
+    case "tr":
+      return `
+The visitor selected Turkish.
+All user-facing JSON values must be written in Turkish.
+Do not use Arabic or any other language except necessary antique terms.
+`;
+    case "ru":
+      return `
+The visitor selected Russian.
+All user-facing JSON values must be written in Russian.
+Do not use Arabic or any other language except necessary antique terms.
 `;
     case "ku":
       return `
 The visitor selected Sorani Kurdish.
 All user-facing JSON values must be written in Sorani Kurdish.
 Use clear, natural Sorani Kurdish for normal visitors.
-Do not answer in Arabic, English, or French except for necessary antique terms.
-`;
-    case "fr":
-      return `
-The visitor selected French.
-All user-facing JSON values must be written in French.
-Do not use Arabic, Kurdish, or English except for necessary antique terms.
+Do not use Arabic or any other language except necessary antique terms.
 `;
     case "ar":
     default:
@@ -111,21 +153,25 @@ Do not claim the item exists in House of Antiques store unless the market contex
   }
 
   return `
-CRITICAL HOUSE OF ANTIQUES STORE MATCH RULE:
+HOUSE OF ANTIQUES STORE COMPARISON RULE:
 
 The market comparison context includes House of Antiques internal store data.
-This is not a random internet result. Treat it as verified internal store inventory context.
+This is not a random internet result, but it is still only a comparable reference.
+Do not make House of Antiques the full basis of identification or valuation unless the uploaded item is clearly the same object.
 
 If the House of Antiques context includes a title, description, material, price, product URL, SKU, or product ID:
-- Use that store title as the strongest title candidate.
-- Use that listed store price as the primary retail price reference.
+- Use the store title, description, and listed price only as comparable evidence when the object is visibly/functionally/materially similar.
+- Read the provided Match confidence value as exact, strong, partial, weak, or none.
+- If confidence is exact and the image strongly supports it, you may use the store listing as a close internal comparable.
+- If confidence is strong or partial, use the store listing only to compare price, description, material, or category. Do not state that the uploaded item exists in the store.
+- If confidence is weak, do not use it for valuation unless it only supports a broad category.
 - Do NOT say "لم يتم العثور على مقارنة مباشرة" or "no direct comparison was found".
 - Do NOT say there is no store match.
-- Do NOT ignore the store price.
+- Do NOT ignore a relevant store price, but do not copy it blindly.
 - Do NOT replace the item with a generic category if the store data is specific.
-- In priceReasoning, clearly mention that House of Antiques internal store data was used.
-- If the uploaded image appears consistent with the store product, say it is likely the same listed piece or a very close internal match, but keep a cautious wording.
-- If the House of Antiques price is exact, estimatedValue should stay close to that price unless there is a clear visible reason to adjust.
+- In priceReasoning, mention House of Antiques only as a comparable reference when it actually affected the range.
+- If the store comparable is only similar, write that it is a similar store reference, not a definitive match.
+- The final estimate must still be based on the uploaded image, visible condition, material, age clues, user notes, and overall market logic.
 
 Arabic wording rule:
 If answering in Arabic and House of Antiques data exists, do not write:
@@ -133,6 +179,9 @@ If answering in Arabic and House of Antiques data exists, do not write:
 "لم يتم العثور على القطعة في المتجر"
 "لا توجد مقارنة موثوقة"
 unless the context explicitly says the match failed.
+
+If there is no exact match but there are partial or strong similar pieces, write the equivalent of:
+"No exact match was found, but House of Antiques has close or similar pieces."
 
 Instead write something like:
 "اعتمد التقدير على مطابقة داخلية من متجر بيت التحفيات، حيث تظهر قطعة مطابقة أو قريبة جدًا بعنوان وسعر مدرج."
@@ -248,14 +297,14 @@ HOW TO USE MARKET COMPARISON CONTEXT:
 
 2. House of Antiques internal comparables:
 - House of Antiques Store comparables are internal retail references from the owner's real antiques inventory.
-- These internal comparables are stronger than generic AI assumptions.
-- If a House of Antiques comparable appears visually, materially, culturally, or functionally close to the uploaded item, treat it as a strong local market reference.
+- These internal comparables are useful internal references, not automatic proof or the main basis of the appraisal.
+- If a House of Antiques comparable appears visually, materially, culturally, or functionally close to the uploaded item, use it as one local market reference.
 - If the uploaded image appears to be the same object or nearly the same object as a House of Antiques comparable, do NOT invent a different title, use, or very different price.
-- In that case, align the title, identification, and price reasoning with the internal comparable unless the user description clearly contradicts it.
+- In that case, compare the title, identification, and price reasoning with the internal comparable unless the user description clearly contradicts it.
 - The listed retail price is not automatically the final appraisal value, but it is a serious reference.
-- The estimate should normally stay in a realistic range around that listed price, not collapse to a very low generic value.
+- The estimate may be informed by that listed price, but it should not automatically follow it.
 - If an internal comparable is listed at 1,200 USD, do not estimate the uploaded item at 50–150 USD unless you clearly explain why it is not the same type, not the same condition, not the same scale, or not comparable.
-- If the store comparable has strong similarity, mention that the valuation is influenced by a House of Antiques internal comparable.
+- If the store comparable has strong similarity, mention it as a comparable reference only.
 - If House of Antiques context is present but the visual match is uncertain, say the match needs visual confirmation; do not say that no store comparison exists.
 
 VALUATION DISCIPLINE - VERY IMPORTANT:
@@ -291,7 +340,7 @@ You must explain price based on collector value, not only material value.
 Do not say "only one image" as a reason to crush the price.
 Instead, provide a cautious range but keep it realistic for antique and heritage markets.
 
-If House of Antiques internal comparables exist, they override generic conservative pricing.
+If House of Antiques internal comparables exist, they can support or adjust market reasoning, but they do not override the visual analysis.
 
 VALUATION CONSISTENCY RULES:
 
@@ -410,8 +459,8 @@ Required JSON shape:
   "style": "visual style, design influence, school, or type",
   "condition": "visible condition and what still needs checking",
   "authenticity": "authenticity indicators without certainty",
-  "estimatedValue": "preliminary USD price range. If House of Antiques internal store price is provided, use that exact listed price or a close range around it as the primary reference",
-"priceReasoning": "why this value range was suggested. If House of Antiques internal store data is present, explicitly mention that it was used as the main internal retail reference and do not claim that no direct comparison was found.",  "history": "short historical/contextual explanation about this kind of object",
+  "estimatedValue": "preliminary USD price range. If a relevant House of Antiques similar item is provided, consider its listed price as one comparable reference only",
+"priceReasoning": "why this value range was suggested. If a relevant House of Antiques similar item affected the range, mention it as a comparable reference, not as the main basis or a definitive match.",  "history": "short historical/contextual explanation about this kind of object",
   "valueDrivers": ["things that may increase value"],
   "valueReducers": ["things that may reduce value"],
   "visualSearchKeywords": ["short search keyword for finding similar items online"],

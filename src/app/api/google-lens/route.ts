@@ -10,6 +10,19 @@ type GoogleLensItem = {
   price?: string;
 };
 
+type GoogleLensVisualMatch = {
+  title?: unknown;
+  thumbnail?: unknown;
+  image?: unknown;
+  link?: unknown;
+  source?: unknown;
+  price?: unknown;
+};
+
+function text(value: unknown, fallback = "") {
+  return typeof value === "string" ? value : fallback;
+}
+
 export async function POST(request: Request) {
   try {
     const apiKey = process.env.SERPAPI_KEY;
@@ -46,7 +59,7 @@ export async function POST(request: Request) {
       }
     );
 
-    const data = await response.json();
+    const data = (await response.json()) as Record<string, unknown>;
 
     if (!response.ok) {
       return NextResponse.json(
@@ -55,27 +68,33 @@ export async function POST(request: Request) {
       );
     }
 
-    const visualMatches = Array.isArray(data?.visual_matches)
+    const visualMatches: GoogleLensVisualMatch[] = Array.isArray(
+      data.visual_matches,
+    )
       ? data.visual_matches
       : [];
 
     const items: GoogleLensItem[] = visualMatches
       .slice(0, 16)
-      .map((item: any) => {
+      .map((item) => {
+        const priceObject =
+          item.price && typeof item.price === "object"
+            ? (item.price as Record<string, unknown>)
+            : null;
         const price =
           typeof item?.price === "string"
             ? item.price
-            : item?.price?.extracted_value
-              ? String(item.price.extracted_value)
-              : item?.price?.value
-                ? String(item.price.value)
+            : priceObject?.extracted_value
+              ? String(priceObject.extracted_value)
+              : priceObject?.value
+                ? String(priceObject.value)
                 : undefined;
 
         return {
-          title: String(item?.title || "Similar antique item"),
-          imageUrl: String(item?.thumbnail || item?.image || ""),
-          link: String(item?.link || ""),
-          source: String(item?.source || "Google Lens"),
+          title: text(item.title, "Similar antique item"),
+          imageUrl: text(item.thumbnail) || text(item.image),
+          link: text(item.link),
+          source: text(item.source, "Google Lens"),
           price,
         };
       })

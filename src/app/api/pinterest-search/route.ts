@@ -7,6 +7,23 @@ type PinterestItem = {
   source?: string;
 };
 
+type PinterestRawItem = Record<string, unknown>;
+
+function text(value: unknown, fallback = "") {
+  return typeof value === "string" ? value : fallback;
+}
+
+function getNestedText(item: PinterestRawItem, path: string[]) {
+  let current: unknown = item;
+
+  for (const key of path) {
+    if (!current || typeof current !== "object") return "";
+    current = (current as Record<string, unknown>)[key];
+  }
+
+  return text(current);
+}
+
 export async function POST(request: Request) {
   try {
     const { query } = await request.json();
@@ -41,7 +58,9 @@ export async function POST(request: Request) {
       },
     });
 
-    const data = await response.json();
+    const data = (await response.json()) as
+      | Record<string, unknown>
+      | unknown[];
 
     if (!response.ok) {
       return NextResponse.json(
@@ -53,36 +72,40 @@ export async function POST(request: Request) {
       );
     }
 
-    const rawItems = Array.isArray(data?.results)
-      ? data.results
-      : Array.isArray(data?.pins)
-        ? data.pins
+    const dataRecord =
+      data && !Array.isArray(data) && typeof data === "object"
+        ? (data as Record<string, unknown>)
+        : {};
+
+    const rawItems: PinterestRawItem[] = Array.isArray(dataRecord.results)
+      ? (dataRecord.results as PinterestRawItem[])
+      : Array.isArray(dataRecord.pins)
+        ? (dataRecord.pins as PinterestRawItem[])
         : Array.isArray(data)
-          ? data
+          ? (data as PinterestRawItem[])
           : [];
 
     const items: PinterestItem[] = rawItems
-      .map((item: any) => {
+      .map((item) => {
         const imageUrl =
-          item.image ||
-          item.imageUrl ||
-          item.image_url ||
-          item.thumbnail ||
-          item.thumbnailUrl ||
-          item.media?.images?.orig?.url ||
-          item.images?.orig?.url ||
-          "";
+          text(item.image) ||
+          text(item.imageUrl) ||
+          text(item.image_url) ||
+          text(item.thumbnail) ||
+          text(item.thumbnailUrl) ||
+          getNestedText(item, ["media", "images", "orig", "url"]) ||
+          getNestedText(item, ["images", "orig", "url"]);
 
         const link =
-          item.url ||
-          item.link ||
-          item.pinUrl ||
-          item.pin_url ||
-          item.domain ||
-          "";
+          text(item.url) ||
+          text(item.link) ||
+          text(item.pinUrl) ||
+          text(item.pin_url) ||
+          text(item.domain);
 
         return {
-          title: item.title || item.description || "Pinterest result",
+          title:
+            text(item.title) || text(item.description) || "Pinterest result",
           imageUrl,
           link,
           source: "Pinterest",
@@ -92,7 +115,7 @@ export async function POST(request: Request) {
       .slice(0, 12);
 
     return NextResponse.json({ items });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         error: "Unexpected Pinterest search error.",

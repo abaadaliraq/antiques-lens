@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 const COOKIE_KEY = "antiques-lens:cookie-choice";
@@ -8,10 +9,14 @@ export default function CookieBar() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const savedChoice = window.localStorage.getItem(COOKIE_KEY);
-    if (!savedChoice) {
-      setVisible(true);
-    }
+    const timer = window.setTimeout(() => {
+      const savedChoice = window.localStorage.getItem(COOKIE_KEY);
+      if (!savedChoice) {
+        setVisible(true);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   function handleChoice(choice: "accepted" | "rejected") {
@@ -24,9 +29,23 @@ export default function CookieBar() {
   return (
     <div className="fixed inset-x-0 bottom-0 z-[70] px-3 pb-3 sm:px-5 sm:pb-5">
       <div className="mx-auto flex max-w-4xl flex-col gap-3 rounded-2xl border border-white/15 bg-[#070812]/72 px-4 py-3 text-white shadow-[0_18px_70px_rgba(0,0,0,0.38)] backdrop-blur-2xl sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs leading-6 text-white/62 sm:text-[13px]">
-          We use cookies to improve your experience and remember basic preferences.
-        </p>
+        <div className="min-w-0">
+          <p className="text-xs leading-6 text-white/62 sm:text-[13px]">
+            We use cookies to improve your experience and remember basic preferences.
+          </p>
+
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-medium text-[#d6a25f]/78">
+            <Link href="/terms" className="transition hover:text-[#f0c987]">
+              Terms
+            </Link>
+            <Link href="/privacy" className="transition hover:text-[#f0c987]">
+              Privacy
+            </Link>
+            <Link href="/cookies" className="transition hover:text-[#f0c987]">
+              Cookies
+            </Link>
+          </div>
+        </div>
 
         <div className="flex shrink-0 items-center gap-2">
           <button

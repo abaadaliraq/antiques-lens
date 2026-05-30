@@ -36,6 +36,7 @@ export type AnalysisResult = {
   priceRange?: string;
   period?: string;
   keywords?: string[];
+  houseOfAntiques?: HouseOfAntiquesContext;
 };
 
 export type SimilarImageResult = {
@@ -43,6 +44,46 @@ export type SimilarImageResult = {
   imageUrl: string;
   link: string;
   source?: string;
+  price?: string;
+  description?: string;
+  confidence?: HouseOfAntiquesConfidence;
+  matchReason?: string;
+  isHouseOfAntiques?: boolean;
+};
+
+export type HouseOfAntiquesConfidence =
+  | "exact"
+  | "strong"
+  | "partial"
+  | "weak"
+  | "none";
+
+export type HouseOfAntiquesMatch = {
+  id: string;
+  slug?: string;
+  sku?: string;
+  title: string;
+  description?: string;
+  category?: string;
+  material?: string;
+  period?: string;
+  origin?: string;
+  price?: string;
+  currency?: string;
+  imageUrl?: string;
+  images?: string[];
+  url?: string;
+  source?: string;
+  score?: number;
+  confidence?: HouseOfAntiquesConfidence;
+  matchReason?: string;
+};
+
+export type HouseOfAntiquesContext = {
+  found: boolean;
+  confidence: HouseOfAntiquesConfidence;
+  matches: HouseOfAntiquesMatch[];
+  contextText?: string;
 };
 
 export type HistoryItem = {

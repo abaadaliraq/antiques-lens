@@ -249,8 +249,10 @@ export default function ThinkingMotion({ locale = "ar" }: ThinkingMotionProps) {
   useEffect(() => {
     let current = 0;
 
-    setActiveStep(0);
-    setSealedSteps([]);
+    const resetTimer = window.setTimeout(() => {
+      setActiveStep(0);
+      setSealedSteps([]);
+    }, 0);
 
     const interval = window.setInterval(() => {
       current += 1;
@@ -276,7 +278,10 @@ export default function ThinkingMotion({ locale = "ar" }: ThinkingMotionProps) {
       setActiveStep(current);
     }, STEP_DURATION_MS);
 
-    return () => window.clearInterval(interval);
+    return () => {
+      window.clearTimeout(resetTimer);
+      window.clearInterval(interval);
+    };
   }, [steps]);
 
   const currentStep = steps[activeStep] ?? steps[0];
