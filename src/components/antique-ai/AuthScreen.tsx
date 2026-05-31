@@ -15,10 +15,11 @@ import {
   MapPin,
   Phone,
   User,
+  Users,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import LanguagePills from "./LanguagePills";
 import type { Locale } from "./types";
@@ -47,6 +48,9 @@ type AuthCopy = {
   email: string;
   password: string;
   phone: string;
+  gender: string;
+  male: string;
+  female: string;
   country: string;
   province: string;
   birthDate: string;
@@ -96,6 +100,9 @@ const COPY: Record<Locale, AuthCopy> = {
     email: "Email",
     password: "Password",
     phone: "Phone number",
+    gender: "Gender",
+    male: "Male",
+    female: "Female",
     country: "Country",
     province: "Province / City",
     birthDate: "Birth date",
@@ -125,6 +132,9 @@ const COPY: Record<Locale, AuthCopy> = {
     email: "البريد الإلكتروني",
     password: "كلمة المرور",
     phone: "رقم الهاتف",
+    gender: "الجنس",
+    male: "ذكر",
+    female: "أنثى",
     country: "الدولة",
     province: "المحافظة / المدينة",
     birthDate: "تاريخ الميلاد",
@@ -154,6 +164,9 @@ const COPY: Record<Locale, AuthCopy> = {
     email: "E-mail",
     password: "Mot de passe",
     phone: "Téléphone",
+    gender: "Genre",
+    male: "Homme",
+    female: "Femme",
     country: "Pays",
     province: "Province / Ville",
     birthDate: "Date de naissance",
@@ -183,6 +196,9 @@ const COPY: Record<Locale, AuthCopy> = {
     email: "ईमेल",
     password: "पासवर्ड",
     phone: "फ़ोन नंबर",
+    gender: "लिंग",
+    male: "पुरुष",
+    female: "महिला",
     country: "देश",
     province: "प्रदेश / शहर",
     birthDate: "जन्म तारीख",
@@ -212,6 +228,9 @@ const COPY: Record<Locale, AuthCopy> = {
     email: "ایمیل",
     password: "رمز عبور",
     phone: "شماره تلفن",
+    gender: "جنسیت",
+    male: "مرد",
+    female: "زن",
     country: "کشور",
     province: "استان / شهر",
     birthDate: "تاریخ تولد",
@@ -241,6 +260,9 @@ const COPY: Record<Locale, AuthCopy> = {
     email: "E-posta",
     password: "Şifre",
     phone: "Telefon numarası",
+    gender: "Cinsiyet",
+    male: "Erkek",
+    female: "Kadın",
     country: "Ülke",
     province: "İl / Şehir",
     birthDate: "Doğum tarihi",
@@ -270,6 +292,9 @@ const COPY: Record<Locale, AuthCopy> = {
     email: "Эл. почта",
     password: "Пароль",
     phone: "Телефон",
+    gender: "Пол",
+    male: "Мужчина",
+    female: "Женщина",
     country: "Страна",
     province: "Регион / Город",
     birthDate: "Дата рождения",
@@ -299,6 +324,9 @@ const COPY: Record<Locale, AuthCopy> = {
     email: "ئیمەیڵ",
     password: "وشەی نهێنی",
     phone: "ژمارەی تەلەفۆن",
+    gender: "ڕەگەز",
+    male: "نێر",
+    female: "مێ",
     country: "وڵات",
     province: "پارێزگا / شار",
     birthDate: "ڕێکەوتی لەدایکبوون",
@@ -332,6 +360,7 @@ export default function AuthScreen({
   const [country, setCountry] = useState("");
   const [province, setProvince] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [gender, setGender] = useState("");
   const [phoneCode, setPhoneCode] = useState<string>(PHONE_CODES[0].code);
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -342,6 +371,8 @@ export default function AuthScreen({
   const copy = COPY[locale] || COPY.en;
   const direction = isRtl(locale) ? "rtl" : "ltr";
   const activeIntro = copy.intro[activeLine] || copy.intro[0];
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -350,6 +381,25 @@ export default function AuthScreen({
 
     return () => window.clearInterval(interval);
   }, [copy.intro.length]);
+
+  function changeMode(nextMode: AuthMode) {
+    setMode(nextMode);
+    setAuthError("");
+    setAuthMessage("");
+
+    if (nextMode === "signup") {
+      window.setTimeout(() => {
+        formRef.current?.scrollIntoView({
+          block: "center",
+          behavior: "smooth",
+        });
+      }, 80);
+    } else {
+      window.setTimeout(() => {
+        scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      }, 80);
+    }
+  }
 
   async function handleAuthSubmit() {
     setAuthError("");
@@ -369,6 +419,7 @@ export default function AuthScreen({
               country: country.trim(),
               province: province.trim(),
               birth_date: birthDate,
+              gender,
               phone_code: phoneCode,
               phone_number: phone.trim(),
               phone: `${phoneCode}${phone.trim()}`,
@@ -462,7 +513,10 @@ export default function AuthScreen({
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_18%,rgba(206,87,35,0.42),transparent_28%),radial-gradient(circle_at_18%_78%,rgba(190,92,48,0.36),transparent_32%),linear-gradient(135deg,rgba(8,5,3,0.78),rgba(21,10,5,0.9)_52%,rgba(5,3,2,0.96))]" />
       <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/62 to-transparent" />
 
-      <div className="relative z-10 flex h-dvh flex-col px-4 py-4 md:px-10 md:py-8">
+      <div
+        ref={scrollRef}
+        className="relative z-10 flex h-dvh flex-col overflow-y-auto overscroll-contain px-4 py-4 [scrollbar-width:thin] md:overflow-hidden md:px-10 md:py-8"
+      >
         <header className="flex shrink-0 items-center justify-between">
           <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-white/78">
             <Image
@@ -481,14 +535,14 @@ export default function AuthScreen({
           <motion.aside
             initial={{ opacity: 0, x: direction === "rtl" ? 24 : -24 }}
             animate={{ opacity: 1, x: 0 }}
-            className="mx-auto w-full max-w-[390px] md:mx-0"
+            className="mx-auto w-full max-w-[390px] pb-8 md:mx-0 md:pb-0"
           >
             <div className="mb-5 grid grid-cols-2 rounded-full border border-white/12 bg-black/18 p-1 backdrop-blur-md">
               {(["login", "signup"] as AuthMode[]).map((item) => (
                 <button
                   key={item}
                   type="button"
-                  onClick={() => setMode(item)}
+                  onClick={() => changeMode(item)}
                   className={[
                     "h-10 rounded-full px-4 text-[12px] font-bold transition",
                     mode === item
@@ -509,6 +563,7 @@ export default function AuthScreen({
             </p>
 
             <form
+              ref={formRef}
               className="mt-5 space-y-2.5"
               onSubmit={(event) => {
                 event.preventDefault();
@@ -519,6 +574,13 @@ export default function AuthScreen({
                 <div className="grid gap-2.5 md:grid-cols-2">
                   <AuthInput icon={<User />} value={fullName} onChange={setFullName} placeholder={copy.name} autoComplete="name" required />
                   <AuthInput icon={<Globe2 />} value={country} onChange={setCountry} placeholder={copy.country} autoComplete="country-name" required />
+                  <GenderInput
+                    value={gender}
+                    onChange={setGender}
+                    label={copy.gender}
+                    male={copy.male}
+                    female={copy.female}
+                  />
                   <AuthInput icon={<MapPin />} value={province} onChange={setProvince} placeholder={copy.province} autoComplete="address-level1" required />
                   <PhoneInput
                     phoneCode={phoneCode}
@@ -671,6 +733,45 @@ type PhoneInputProps = {
   onPhoneChange: (value: string) => void;
   placeholder: string;
 };
+
+type GenderInputProps = {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+  male: string;
+  female: string;
+};
+
+function GenderInput({
+  value,
+  onChange,
+  label,
+  male,
+  female,
+}: GenderInputProps) {
+  return (
+    <label className="flex h-11 items-center gap-3 rounded-full border border-white/14 bg-white/9 px-4 backdrop-blur-md">
+      <Users className="h-4 w-4 shrink-0 text-[#e7a15e]" />
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        required
+        aria-label={label}
+        className="min-w-0 flex-1 bg-transparent text-[12.5px] text-white outline-none"
+      >
+        <option value="" className="bg-[#1a100c] text-white">
+          {label}
+        </option>
+        <option value="male" className="bg-[#1a100c] text-white">
+          {male}
+        </option>
+        <option value="female" className="bg-[#1a100c] text-white">
+          {female}
+        </option>
+      </select>
+    </label>
+  );
+}
 
 function PhoneInput({
   phoneCode,
