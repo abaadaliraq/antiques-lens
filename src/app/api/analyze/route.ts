@@ -2,7 +2,10 @@ import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { buildKnowledgeContext } from "../../../lib/antiqueKnowledge";
 export const runtime = "nodejs";
-
+import {
+  searchMarketReferences,
+  formatMarketReferencesForPrompt,
+} from "@/lib/marketReferences";
 
 type Locale = "ar" | "en" | "fr" | "hi" | "fa" | "tr" | "ru" | "ku";
 
@@ -279,8 +282,75 @@ Furniture / seat / table / stand:
 `;
 }
 
+function buildExternalSourceGuidance() {
+  return `
+EXTERNAL REFERENCE SOURCE POLICY:
+
+You may receive marketContext from visual search, Google Custom Search, auction pages, museum pages, knowledge bases, or internal store data.
+Use the source type correctly. Do not treat every source as a price source.
+Do not claim you directly browsed a site unless its data is explicitly present in marketContext.
+If a listed source is not present in marketContext, you may recommend it as a future verification/search source, but do not invent titles, dates, prices, sale results, or descriptions from it.
+
+PRICE / MARKET SOURCES:
+Use these only when marketContext includes concrete comparable data such as sold price, completed sale price, auction estimate, hammer price, realized price, date, auction house, lot title, or listing URL:
+- eBay sold/completed listings
+- WorthPoint
+- Barnebys
+- LiveAuctioneers
+- Invaluable
+- AuctionZip
+- Google Custom Search results scoped to auction/market sites
+- House of Antiques internal store comparables
+
+How to use price/market sources:
+- Give strongest weight to sold/completed/realized auction prices.
+- Treat active retail asking prices as weaker than sold/completed prices.
+- Treat auction estimates as guidance, not actual sale value, unless hammer/realized price is present.
+- Compare only same object type, similar material, size, age, condition, origin/style, and completeness.
+- Ignore visually unrelated market results, even if they share one keyword.
+- If price sources conflict, explain a cautious range and why.
+- If no reliable market source is present, say the price is preliminary and based on visual/category logic, not verified sale records.
+
+KNOWLEDGE / MUSEUM / CATALOG SOURCES:
+These sources do NOT price the uploaded item. Use them only for identification, style, country/region, period, materials, iconography, terminology, and historical description:
+- Europeana
+- The Met
+- Harvard Art Museums
+- Rijksmuseum
+- Wikidata
+
+How to use knowledge sources:
+- Use museum/catalog matches to refine object type, period, origin, style, and vocabulary.
+- Do not use museum collection presence to inflate price by itself.
+- Do not say a user item is museum-grade just because a similar object appears in a museum.
+- Do not convert a museum catalog date or attribution into certainty for the uploaded item.
+- If museum/knowledge sources suggest a style or period, phrase it as comparable style/period unless marks, provenance, and construction details support stronger confidence.
+
+SEARCH KEYWORD OUTPUT:
+In visualSearchKeywords, include practical follow-up search terms for both market and knowledge checks when useful.
+Examples:
+- "[object type] sold completed eBay"
+- "[object type] LiveAuctioneers sold"
+- "[object type] WorthPoint"
+- "[object type] Barnebys"
+- "[object type] site:invaluable.com"
+- "[object type] site:metmuseum.org"
+- "[object type] Europeana"
+- "[object type] Wikidata"
+
+PRICE REASONING SOURCE DISCIPLINE:
+The priceReasoning field must state whether the valuation used:
+1. verified sold/completed/realized prices,
+2. active retail/internal comparable prices,
+3. auction estimates only,
+4. knowledge/museum references only,
+5. no reliable external comparable.
+
+If only knowledge/museum sources are available, do not present them as pricing evidence.
+`;
+}
+
 function buildPrompt(fields: {
-  
   locale: Locale;
   notes?: string;
   itemType?: string;
@@ -290,14 +360,15 @@ function buildPrompt(fields: {
   hasMark?: string;
   hasImage: boolean;
   marketContext?: string;
+  marketReferencesText?: string;
 }) {
 
   const language = getLanguageName(fields.locale);
   const languageInstruction = getLanguageInstruction(fields.locale);
   const houseOfAntiquesRule = buildHouseOfAntiquesRule(fields.marketContext);
   const objectTypeGuidance = buildObjectTypeGuidance();
+  const externalSourceGuidance = buildExternalSourceGuidance();
 const knowledgeContext = buildKnowledgeContext(
-  
   [
     fields.notes,
     fields.itemType,
@@ -307,6 +378,10 @@ const knowledgeContext = buildKnowledgeContext(
     .filter(Boolean)
     .join(" "),
 );
+
+const internalMarketReferences =
+  fields.marketReferencesText || "No internal KISHIB market references were provided.";
+
  return `
 You are Antiques Lens, a strict AI assistant for preliminary antique and collectible analysis.
 
@@ -335,6 +410,8 @@ User provided:
 - Image provided: ${fields.hasImage ? "Yes" : "No"}
 
 ${objectTypeGuidance}
+
+${externalSourceGuidance}
 
 CRITICAL USER NOTES RULE:
 The user's notes are important evidence.
@@ -380,6 +457,20 @@ Identification rules:
 Market comparison context from Google Lens, visual search, and internal House of Antiques store:
 ${fields.marketContext || "No market comparison context was provided."}
 
+INTERNAL KISHIB MARKET REFERENCES FROM SUPABASE:
+${internalMarketReferences}
+
+INTERNAL MARKET REFERENCES RULES:
+- These references come from the KISHIB internal market_references database.
+- Use them when they are relevant by object type, material, origin, style, period, or function.
+- Do not claim an exact match unless the reference is clearly the same object.
+- If references are only similar, describe them as comparable references only.
+- Verified House of Antiques references are stronger than generic references.
+- Auction, sold_listing, and house_of_antiques references are stronger than asking_price references.
+- If internal references contain useful price ranges, the estimated value must be consistent with them.
+- If internal references are weak, unrelated, or missing, lower confidence and say the valuation is preliminary.
+- Do not invent references, prices, sources, or URLs that are not listed in the internal references.
+
 ${houseOfAntiquesRule}
 
 HOW TO USE MARKET COMPARISON CONTEXT:
@@ -389,6 +480,9 @@ HOW TO USE MARKET COMPARISON CONTEXT:
 - Do not copy Google Lens titles or prices blindly.
 - Ignore unrelated visual matches.
 - Use them to understand object type, comparable forms, auction/museum presence, and market direction.
+
+If a Google Lens or Google Custom Search result points to a museum/knowledge source, use it for style and identification only.
+If it points to an auction/market source with a real sold/completed/realized price, use it as comparable market evidence only after checking relevance.
 
 2. House of Antiques internal comparables:
 - House of Antiques Store comparables are internal retail references from the owner's real antiques inventory.
@@ -848,6 +942,27 @@ const material = safeString(formData.get("material"));
 const dimensions = safeString(formData.get("dimensions"));
 const weight = safeString(formData.get("weight"));
 const hasMark = safeString(formData.get("hasMark"));
+
+const marketReferences = await searchMarketReferences({
+  itemType,
+  category: itemType,
+  material,
+  origin: "",
+  keywords: [
+    itemType,
+    material,
+    dimensions,
+    weight,
+    hasMark,
+    notes,
+  ].filter(Boolean) as string[],
+});
+
+const marketReferencesText =
+  formatMarketReferencesForPrompt(marketReferences);
+
+console.log("marketReferences found:", marketReferences.length);
+console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
    
     const hasImage = image instanceof File && image.size > 0;
 
@@ -875,7 +990,7 @@ const hasMark = safeString(formData.get("hasMark"));
     > = [
       {
         type: "input_text",
-       text: buildPrompt({
+   text: buildPrompt({
   locale,
   notes,
   itemType,
@@ -885,6 +1000,7 @@ const hasMark = safeString(formData.get("hasMark"));
   hasMark,
   hasImage,
   marketContext,
+  marketReferencesText,
 }),
       },
     ];
