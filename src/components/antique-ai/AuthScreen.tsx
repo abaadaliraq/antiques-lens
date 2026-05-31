@@ -13,6 +13,7 @@ import {
   Lock,
   Mail,
   MapPin,
+  Phone,
   User,
 } from "lucide-react";
 import Image from "next/image";
@@ -30,6 +31,12 @@ type AuthScreenProps = {
   onAuthenticated: () => void;
 };
 
+const AUTH_CACHE_KEY = "kishib:auth-session-active";
+
+function cacheAuthSession() {
+  window.localStorage.setItem(AUTH_CACHE_KEY, "true");
+}
+
 type AuthCopy = {
   eyebrow: string;
   intro: string[];
@@ -39,6 +46,7 @@ type AuthCopy = {
   name: string;
   email: string;
   password: string;
+  phone: string;
   country: string;
   province: string;
   birthDate: string;
@@ -55,6 +63,24 @@ type AuthCopy = {
   configError: string;
 };
 
+const PHONE_CODES = [
+  { flag: "🇮🇶", name: "Iraq", code: "+964" },
+  { flag: "🇺🇸", name: "United States", code: "+1" },
+  { flag: "🇬🇧", name: "United Kingdom", code: "+44" },
+  { flag: "🇦🇪", name: "United Arab Emirates", code: "+971" },
+  { flag: "🇸🇦", name: "Saudi Arabia", code: "+966" },
+  { flag: "🇹🇷", name: "Turkey", code: "+90" },
+  { flag: "🇮🇷", name: "Iran", code: "+98" },
+  { flag: "🇰🇼", name: "Kuwait", code: "+965" },
+  { flag: "🇶🇦", name: "Qatar", code: "+974" },
+  { flag: "🇯🇴", name: "Jordan", code: "+962" },
+  { flag: "🇱🇧", name: "Lebanon", code: "+961" },
+  { flag: "🇫🇷", name: "France", code: "+33" },
+  { flag: "🇩🇪", name: "Germany", code: "+49" },
+  { flag: "🇮🇳", name: "India", code: "+91" },
+  { flag: "🇷🇺", name: "Russia", code: "+7" },
+] as const;
+
 const COPY: Record<Locale, AuthCopy> = {
   en: {
     eyebrow: "Authenticate • Evaluate • Preserve",
@@ -69,6 +95,7 @@ const COPY: Record<Locale, AuthCopy> = {
     name: "Full name",
     email: "Email",
     password: "Password",
+    phone: "Phone number",
     country: "Country",
     province: "Province / City",
     birthDate: "Birth date",
@@ -81,7 +108,7 @@ const COPY: Record<Locale, AuthCopy> = {
     terms: "Terms",
     privacy: "Privacy",
     cookies: "Cookies",
-    checkEmail: "Account created. Please check your email to confirm sign in.",
+    checkEmail: "Account created. A confirmation link has been sent to your email.",
     configError: "Supabase setup is incomplete. Add the anon key to the environment file.",
   },
   ar: {
@@ -97,6 +124,7 @@ const COPY: Record<Locale, AuthCopy> = {
     name: "الاسم الكامل",
     email: "البريد الإلكتروني",
     password: "كلمة المرور",
+    phone: "رقم الهاتف",
     country: "الدولة",
     province: "المحافظة / المدينة",
     birthDate: "تاريخ الميلاد",
@@ -109,7 +137,7 @@ const COPY: Record<Locale, AuthCopy> = {
     terms: "الشروط",
     privacy: "الخصوصية",
     cookies: "الكوكيز",
-    checkEmail: "تم إنشاء الحساب. تحقق من بريدك الإلكتروني لتأكيد الدخول.",
+    checkEmail: "تم إنشاء الحساب. سيصلك رابط التأكيد على بريدك الإلكتروني.",
     configError: "إعدادات Supabase غير مكتملة. أضف anon key في ملف البيئة.",
   },
   fr: {
@@ -125,6 +153,7 @@ const COPY: Record<Locale, AuthCopy> = {
     name: "Nom complet",
     email: "E-mail",
     password: "Mot de passe",
+    phone: "Téléphone",
     country: "Pays",
     province: "Province / Ville",
     birthDate: "Date de naissance",
@@ -137,7 +166,7 @@ const COPY: Record<Locale, AuthCopy> = {
     terms: "Conditions",
     privacy: "Confidentialité",
     cookies: "Cookies",
-    checkEmail: "Compte créé. Veuillez vérifier votre e-mail pour confirmer la connexion.",
+    checkEmail: "Compte créé. Un lien de confirmation a été envoyé à votre e-mail.",
     configError: "La configuration Supabase est incomplète. Ajoutez la clé anon au fichier d'environnement.",
   },
   hi: {
@@ -153,6 +182,7 @@ const COPY: Record<Locale, AuthCopy> = {
     name: "पूरा नाम",
     email: "ईमेल",
     password: "पासवर्ड",
+    phone: "फ़ोन नंबर",
     country: "देश",
     province: "प्रदेश / शहर",
     birthDate: "जन्म तारीख",
@@ -165,7 +195,7 @@ const COPY: Record<Locale, AuthCopy> = {
     terms: "शर्तें",
     privacy: "गोपनीयता",
     cookies: "कुकीज़",
-    checkEmail: "खाता बन गया. साइन इन की पुष्टि के लिए अपना ईमेल देखें.",
+    checkEmail: "खाता बन गया. पुष्टि लिंक आपके ईमेल पर भेजा गया है.",
     configError: "Supabase setup अधूरा है. environment file में anon key जोड़ें.",
   },
   fa: {
@@ -181,6 +211,7 @@ const COPY: Record<Locale, AuthCopy> = {
     name: "نام کامل",
     email: "ایمیل",
     password: "رمز عبور",
+    phone: "شماره تلفن",
     country: "کشور",
     province: "استان / شهر",
     birthDate: "تاریخ تولد",
@@ -193,7 +224,7 @@ const COPY: Record<Locale, AuthCopy> = {
     terms: "شرایط",
     privacy: "حریم خصوصی",
     cookies: "کوکی‌ها",
-    checkEmail: "حساب ساخته شد. برای تأیید ورود ایمیل خود را بررسی کنید.",
+    checkEmail: "حساب ساخته شد. لینک تأیید به ایمیل شما ارسال شد.",
     configError: "تنظیمات Supabase کامل نیست. anon key را به فایل محیط اضافه کنید.",
   },
   tr: {
@@ -209,6 +240,7 @@ const COPY: Record<Locale, AuthCopy> = {
     name: "Ad soyad",
     email: "E-posta",
     password: "Şifre",
+    phone: "Telefon numarası",
     country: "Ülke",
     province: "İl / Şehir",
     birthDate: "Doğum tarihi",
@@ -221,7 +253,7 @@ const COPY: Record<Locale, AuthCopy> = {
     terms: "Şartlar",
     privacy: "Gizlilik",
     cookies: "Çerezler",
-    checkEmail: "Hesap oluşturuldu. Girişi onaylamak için e-postanızı kontrol edin.",
+    checkEmail: "Hesap oluşturuldu. Onay bağlantısı e-postanıza gönderildi.",
     configError: "Supabase kurulumu eksik. Ortam dosyasına anon key ekleyin.",
   },
   ru: {
@@ -237,6 +269,7 @@ const COPY: Record<Locale, AuthCopy> = {
     name: "Полное имя",
     email: "Эл. почта",
     password: "Пароль",
+    phone: "Телефон",
     country: "Страна",
     province: "Регион / Город",
     birthDate: "Дата рождения",
@@ -249,7 +282,7 @@ const COPY: Record<Locale, AuthCopy> = {
     terms: "Условиями",
     privacy: "Конфиденциальностью",
     cookies: "Cookies",
-    checkEmail: "Аккаунт создан. Проверьте почту, чтобы подтвердить вход.",
+    checkEmail: "Аккаунт создан. Ссылка подтверждения отправлена на вашу почту.",
     configError: "Настройка Supabase не завершена. Добавьте anon key в файл окружения.",
   },
   ku: {
@@ -265,6 +298,7 @@ const COPY: Record<Locale, AuthCopy> = {
     name: "ناوی تەواو",
     email: "ئیمەیڵ",
     password: "وشەی نهێنی",
+    phone: "ژمارەی تەلەفۆن",
     country: "وڵات",
     province: "پارێزگا / شار",
     birthDate: "ڕێکەوتی لەدایکبوون",
@@ -277,7 +311,7 @@ const COPY: Record<Locale, AuthCopy> = {
     terms: "مەرجەکان",
     privacy: "تایبەتمەندی",
     cookies: "کوکیز",
-    checkEmail: "هەژمار دروستکرا. تکایە ئیمەیڵەکەت بپشکنە بۆ پشتڕاستکردنەوە.",
+    checkEmail: "هەژمار دروستکرا. بەستەری پشتڕاستکردنەوە بۆ ئیمەیڵەکەت نێردرا.",
     configError: "ڕێکخستنی Supabase تەواو نییە. anon key زیاد بکە بۆ فایلەکانی ژینگە.",
   },
 };
@@ -298,6 +332,8 @@ export default function AuthScreen({
   const [country, setCountry] = useState("");
   const [province, setProvince] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [phoneCode, setPhoneCode] = useState<string>(PHONE_CODES[0].code);
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -333,19 +369,23 @@ export default function AuthScreen({
               country: country.trim(),
               province: province.trim(),
               birth_date: birthDate,
+              phone_code: phoneCode,
+              phone_number: phone.trim(),
+              phone: `${phoneCode}${phone.trim()}`,
               preferred_locale: locale,
             },
+            emailRedirectTo: window.location.origin,
           },
         });
 
         if (error) throw error;
 
         if (data.session) {
-          onAuthenticated();
-          return;
+          await supabase.auth.signOut();
         }
 
         setAuthMessage(copy.checkEmail);
+        setMode("login");
         return;
       }
 
@@ -356,6 +396,7 @@ export default function AuthScreen({
 
       if (error) throw error;
 
+      cacheAuthSession();
       onAuthenticated();
     } catch (error) {
       const message =
@@ -479,6 +520,13 @@ export default function AuthScreen({
                   <AuthInput icon={<User />} value={fullName} onChange={setFullName} placeholder={copy.name} autoComplete="name" required />
                   <AuthInput icon={<Globe2 />} value={country} onChange={setCountry} placeholder={copy.country} autoComplete="country-name" required />
                   <AuthInput icon={<MapPin />} value={province} onChange={setProvince} placeholder={copy.province} autoComplete="address-level1" required />
+                  <PhoneInput
+                    phoneCode={phoneCode}
+                    phone={phone}
+                    onCodeChange={setPhoneCode}
+                    onPhoneChange={setPhone}
+                    placeholder={copy.phone}
+                  />
                   <AuthInput icon={<CalendarDays />} type="date" value={birthDate} onChange={setBirthDate} placeholder={copy.birthDate} autoComplete="bday" required />
                 </div>
               )}
@@ -521,7 +569,7 @@ export default function AuthScreen({
                 disabled={isSubmitting}
                 className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#cf4f22] to-[#e5a052] text-[13px] font-bold text-white shadow-[0_18px_42px_rgba(207,79,34,0.28)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {isSubmitting ? "..." : copy.continue}
+                {isSubmitting ? "..." : mode === "signup" ? copy.signup : copy.continue}
                 <ArrowRight className="h-4 w-4 rtl:rotate-180" />
               </button>
 
@@ -615,6 +663,53 @@ type AuthInputProps = {
   autoComplete?: string;
   required?: boolean;
 };
+
+type PhoneInputProps = {
+  phoneCode: string;
+  phone: string;
+  onCodeChange: (value: string) => void;
+  onPhoneChange: (value: string) => void;
+  placeholder: string;
+};
+
+function PhoneInput({
+  phoneCode,
+  phone,
+  onCodeChange,
+  onPhoneChange,
+  placeholder,
+}: PhoneInputProps) {
+  return (
+    <label className="flex h-11 items-center gap-2 rounded-full border border-white/14 bg-white/9 px-3 backdrop-blur-md">
+      <Phone className="h-4 w-4 shrink-0 text-[#e7a15e]" />
+
+      <select
+        value={phoneCode}
+        onChange={(event) => onCodeChange(event.target.value)}
+        aria-label="Country phone code"
+        className="h-8 max-w-[94px] shrink-0 rounded-full border border-white/10 bg-[#1a100c] px-2 text-[11px] font-semibold text-white outline-none"
+      >
+        {PHONE_CODES.map((item) => (
+          <option key={`${item.code}-${item.name}`} value={item.code}>
+            {item.flag} {item.code}
+          </option>
+        ))}
+      </select>
+
+      <input
+        type="tel"
+        inputMode="tel"
+        value={phone}
+        onChange={(event) => onPhoneChange(event.target.value)}
+        required
+        autoComplete="tel-national"
+        placeholder={placeholder}
+        aria-label={placeholder}
+        className="min-w-0 flex-1 bg-transparent text-[12.5px] text-white outline-none placeholder:text-white/38"
+      />
+    </label>
+  );
+}
 
 function AuthInput({
   icon,

@@ -20,6 +20,8 @@ export function getSupabaseBrowserClient() {
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: true,
+        flowType: "pkce",
+        storageKey: "kishib:supabase-auth",
       },
     });
   }

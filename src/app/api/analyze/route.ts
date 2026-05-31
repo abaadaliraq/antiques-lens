@@ -8,6 +8,7 @@ type Locale = "ar" | "en" | "fr" | "hi" | "fa" | "tr" | "ru" | "ku";
 
 type AnalysisResult = {
   title: string;
+  itemType: string;
   lookup: string;
   timePeriod: string;
   origin: string;
@@ -187,6 +188,97 @@ Instead write something like:
 "اعتمد التقدير على مطابقة داخلية من متجر بيت التحفيات، حيث تظهر قطعة مطابقة أو قريبة جدًا بعنوان وسعر مدرج."
 `;
 }
+
+function buildObjectTypeGuidance() {
+  return `
+AUTOMATIC OBJECT TYPE CLASSIFICATION - REQUIRED BEFORE VALUATION:
+
+Before estimating price, first identify what kind of object this is.
+Use the uploaded image, user notes, material clues, shape, function, and market context.
+Do not value the item with one generic antique prompt.
+
+Classify the item into the closest practical type:
+- Vase / jar / vessel
+- Plate / bowl / dish / tray
+- Carpet / rug / textile
+- Statue / figurine / sculpture
+- Samovar / tea urn / traditional kettle
+- Wooden box / chest / casket / cabinet
+- Silverware / metalware / copper / brass
+- Crystal / glass object
+- Manuscript / document / book / calligraphy
+- Coin / medal / token
+- Jewelry / gemstone / ring / necklace
+- Painting / framed artwork
+- Furniture / seat / table / stand
+- Other antique or heritage object
+
+If the object is not one of the listed types, choose the nearest useful type and explain uncertainty.
+The "itemType" JSON field must contain the final classified type in the visitor language.
+
+TYPE-SPECIFIC ANALYSIS RULES:
+
+Vase / jar / vessel:
+- Check mouth, neck, body shape, base, glaze, decoration, inscriptions, handles, ceramic/porcelain/metal/glass material, and restoration.
+- Ask for underside/base and close-ups of glaze, maker marks, and rim damage.
+
+Plate / bowl / dish / tray:
+- Check shape, foot ring, rim, glaze, painted/engraved decoration, export style, use wear, hanging holes, and back/underside marks.
+- Do not price like ordinary tableware if decoration, age, or regional craft appears significant.
+
+Carpet / rug / textile:
+- Focus on weave, knots, foundation, pile, dyes, motifs, region, size, age, repairs, fading, edge/fringe condition, and handmade vs machine-made evidence.
+- Price must consider dimensions and condition strongly.
+- Needed photos must include back weave, fringe, edges, full flat view, and close-up of knots.
+
+Statue / figurine / sculpture:
+- Focus on material, carving/casting method, base, patina, tool marks, iconography, style, missing parts, and whether it is archaeological-style, religious, ethnographic, or decorative.
+- Avoid claiming ancient origin without provenance and close detail.
+- Ask for base/underside, scale, back, and close-up of surface/tool marks.
+
+Samovar / tea urn / traditional kettle:
+- Focus on metal, body shape, chimney, tap/spigot, handles, feet, maker marks, repairs, completeness, soot/wear, and regional style.
+- Do not compare it to unrelated pitchers, lamps, candlesticks, or generic brass objects unless visually/functionally close.
+- Needed photos must include tap, lid, chimney, base, handles, maker marks, and interior.
+
+Wooden box / chest / casket / cabinet:
+- Focus on wood species if visible, joinery, hinges, lock, carving, inlay, hardware, interior, underside, wear, and repairs.
+- Price must consider craftsmanship, age indicators, completeness, and hardware originality.
+- Ask for inside, underside, hinges, lock, joints, and close-up of carving/inlay.
+
+Silverware / metalware / copper / brass:
+- Focus on metal type, patina, oxidation, hand-hammering, engraving/chasing, casting seams, weight, maker marks, and solder/repairs.
+- Do not value only as scrap metal if it has heritage craft value.
+- Ask for weight, marks, underside, interior, seams, and close-ups of patina/engraving.
+
+Crystal / glass object:
+- Focus on cut quality, clarity, weight, ringing, mold seams, pontil, chips, clouding, maker marks, and whether it is cut crystal, pressed glass, or decorative glass.
+- Needed photos must include base, rim, cut facets, and chips.
+
+Manuscript / document / book / calligraphy:
+- Focus on script, paper, ink, binding, illumination, stamps, colophon/date, language, condition, missing pages, and provenance.
+- Never authenticate from one image. Ask for multiple pages, cover, binding, colophon, watermarks, and close-up of ink/paper.
+
+Coin / medal / token:
+- Focus on both sides, inscriptions, date, metal, diameter, weight, edge, mint marks, wear grade, corrosion, and authenticity risk.
+- Do not give confident value without obverse/reverse, weight, diameter, and edge photos.
+
+Jewelry / gemstone / ring / necklace:
+- Focus on metal, hallmark, stone identity, setting, craftsmanship, weight, size, condition, and whether stones/metals are verified.
+- Use conditional valuation when metal purity or gemstone identity is unverified.
+- Ask for hallmarks, weight, stone close-ups, back of setting, and certificate if available.
+
+Painting / framed artwork:
+- Focus on medium, surface, signature, back, canvas/board/paper, frame, labels, craquelure, provenance, subject, and school/style.
+- Do not attribute to a famous artist without strong evidence.
+- Ask for back, signature close-up, frame corners, labels, and side angle.
+
+Furniture / seat / table / stand:
+- Focus on construction, joinery, underside, screws/nails, wood, wear points, repairs, scale, original finish, and regional craft function.
+- Do not price heavy heritage craft furniture as ordinary used furniture.
+`;
+}
+
 function buildPrompt(fields: {
   
   locale: Locale;
@@ -203,6 +295,7 @@ function buildPrompt(fields: {
   const language = getLanguageName(fields.locale);
   const languageInstruction = getLanguageInstruction(fields.locale);
   const houseOfAntiquesRule = buildHouseOfAntiquesRule(fields.marketContext);
+  const objectTypeGuidance = buildObjectTypeGuidance();
 const knowledgeContext = buildKnowledgeContext(
   
   [
@@ -240,6 +333,8 @@ User provided:
 - Weight: ${fields.weight || "Not provided"}
 - Mark / signature / stamp: ${fields.hasMark || "Not provided"}
 - Image provided: ${fields.hasImage ? "Yes" : "No"}
+
+${objectTypeGuidance}
 
 CRITICAL USER NOTES RULE:
 The user's notes are important evidence.
@@ -452,6 +547,7 @@ All user-facing values must be in ${language}.
 Required JSON shape:
 {
   "title": "short natural object title",
+  "itemType": "classified object type in the visitor language, such as vase, plate, carpet, statue, samovar, wooden box, silverware, crystal, manuscript, coin, jewelry, painting, furniture, or other",
   "lookup": "one or two sentence identification of what the item appears to be, including likely function if relevant",
   "timePeriod": "possible period or state that evidence is insufficient",
   "origin": "possible origin or state that origin is unclear",
@@ -491,6 +587,7 @@ function buildFallbackResult(locale: Locale): AnalysisResult {
   if (locale === "en") {
     return {
       title: "Insufficient information",
+      itemType: "Unclear object type",
       lookup:
         "The item cannot be identified responsibly from the current information.",
       timePeriod: "Insufficient evidence",
@@ -532,6 +629,7 @@ function buildFallbackResult(locale: Locale): AnalysisResult {
   if (locale === "fr") {
     return {
       title: "Informations insuffisantes",
+      itemType: "Type d’objet non clair",
       lookup:
         "L’objet ne peut pas être identifié sérieusement avec les informations actuelles.",
       timePeriod: "Éléments insuffisants",
@@ -573,6 +671,7 @@ function buildFallbackResult(locale: Locale): AnalysisResult {
   if (locale === "ku") {
     return {
       title: "زانیاری پێویست نییە",
+      itemType: "جۆری پارچەکە ڕوون نییە",
       lookup:
         "بەم زانیارییەی ئێستا ناتوانرێت پارچەکە بە شێوەیەکی بەرپرسانە بناسرێتەوە.",
       timePeriod: "بەڵگە پێویستەکان نییە",
@@ -613,6 +712,7 @@ function buildFallbackResult(locale: Locale): AnalysisResult {
 
   return {
     title: "معلومات غير كافية",
+    itemType: "نوع القطعة غير واضح",
     lookup: "لا يمكن تحديد القطعة بشكل مسؤول من المعلومات الحالية.",
     timePeriod: "الأدلة غير كافية",
     origin: "المنشأ غير واضح",
@@ -676,6 +776,7 @@ function normalizeResult(
 
   return {
     title: normalizeString(parsed.title, fallback.title),
+    itemType: normalizeString(parsed.itemType, fallback.itemType),
     lookup: normalizeString(parsed.lookup, fallback.lookup),
     timePeriod: normalizeString(parsed.timePeriod, fallback.timePeriod),
     origin: normalizeString(parsed.origin, fallback.origin),

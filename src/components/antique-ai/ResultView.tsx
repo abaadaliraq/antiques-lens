@@ -125,6 +125,17 @@ function getSimilarSourceLabel(locale: Locale) {
   return "مصادر مشابهة";
 }
 
+function getItemTypeLabel(locale: Locale) {
+  if (locale === "en") return "Object type";
+  if (locale === "fr") return "Type d’objet";
+  if (locale === "hi") return "वस्तु का प्रकार";
+  if (locale === "fa") return "نوع شیء";
+  if (locale === "tr") return "Nesne türü";
+  if (locale === "ru") return "Тип предмета";
+  if (locale === "ku") return "جۆری پارچە";
+  return "نوع القطعة";
+}
+
 function buildReportId() {
   const now = new Date();
   const year = now.getFullYear();
@@ -152,6 +163,7 @@ export default function ResultView({
   const fallbackText = getFallbackText(locale);
   const reportLabels = getReportLabels(locale);
   const similarSourceLabel = getSimilarSourceLabel(locale);
+  const itemTypeLabel = getItemTypeLabel(locale);
 
   const galleryImages =
     imagePreviews.length > 0 ? imagePreviews : imagePreview ? [imagePreview] : [];
@@ -348,7 +360,12 @@ export default function ResultView({
           </section>
         ) : null}
 
-        <section className="mt-7 grid grid-cols-2 gap-x-4 gap-y-6 border-y border-white/10 py-6 md:grid-cols-4">
+        <section className="mt-7 grid grid-cols-2 gap-x-4 gap-y-6 border-y border-white/10 py-6 md:grid-cols-5">
+          <MetricBlock
+            label={itemTypeLabel}
+            value={result.itemType}
+            fallback={fallbackText}
+          />
           <MetricBlock
             label={labels.age}
             value={result.timePeriod || result.period}

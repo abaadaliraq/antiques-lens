@@ -30,6 +30,7 @@ const SUPPORTED_AUTH_LOCALES: Locale[] = [
 ];
 
 const PENDING_OAUTH_LOCALE_KEY = "kishib:pending-oauth-locale";
+const AUTH_CACHE_KEY = "kishib:auth-session-active";
 
 function getSessionLocale(session: unknown): Locale | null {
   const record =
@@ -59,6 +60,19 @@ function getPendingOAuthLocale(): Locale | null {
     SUPPORTED_AUTH_LOCALES.includes(savedLocale as Locale)
     ? (savedLocale as Locale)
     : null;
+}
+
+function hasCachedAuthSession() {
+  return window.localStorage.getItem(AUTH_CACHE_KEY) === "true";
+}
+
+function cacheAuthSession(active: boolean) {
+  if (active) {
+    window.localStorage.setItem(AUTH_CACHE_KEY, "true");
+    return;
+  }
+
+  window.localStorage.removeItem(AUTH_CACHE_KEY);
 }
 
 function getSafeSimilarImages(lens: ReturnType<typeof useAntiqueLens>) {
@@ -93,8 +107,12 @@ function getSafeSimilarImages(lens: ReturnType<typeof useAntiqueLens>) {
 
 export default function AntiqueLensShell() {
   const lens = useAntiqueLens();
-  const [authReady, setAuthReady] = useState(false);
-  const [hasSession, setHasSession] = useState(false);
+  const [hasSession, setHasSession] = useState(() =>
+    typeof window === "undefined" ? false : hasCachedAuthSession()
+  );
+  const [authReady, setAuthReady] = useState(() =>
+    typeof window === "undefined" ? false : hasCachedAuthSession()
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -124,11 +142,12 @@ export default function AntiqueLensShell() {
             });
           }
 
+          cacheAuthSession(Boolean(data.session));
           setHasSession(Boolean(data.session));
           setAuthReady(true);
         });
 
-        const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data } = supabase.auth.onAuthStateChange((event, session) => {
           const pendingLocale = getPendingOAuthLocale();
           const sessionLocale = getSessionLocale(session);
           const preferredLocale = pendingLocale || sessionLocale;
@@ -147,7 +166,10 @@ export default function AntiqueLensShell() {
             });
           }
 
-          setHasSession(Boolean(session));
+          const sessionIsActive = Boolean(session) && event !== "SIGNED_OUT";
+
+          cacheAuthSession(sessionIsActive);
+          setHasSession(sessionIsActive);
           setAuthReady(true);
         });
 
@@ -195,6 +217,7 @@ export default function AntiqueLensShell() {
     ) : null;
 
   function handleAuthenticated() {
+    cacheAuthSession(true);
     setHasSession(true);
     setAuthReady(true);
   }

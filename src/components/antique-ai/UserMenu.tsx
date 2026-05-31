@@ -23,6 +23,8 @@ type UserMenuProps = {
   setLocale?: (locale: Locale) => void;
 };
 
+const AUTH_CACHE_KEY = "kishib:auth-session-active";
+
 type Profile = {
   full_name?: string | null;
   email?: string | null;
@@ -298,6 +300,7 @@ setProfile({
   async function handleLogout() {
     const supabase = getSupabaseBrowserClient();
     await supabase.auth.signOut();
+    window.localStorage.removeItem(AUTH_CACHE_KEY);
     window.location.reload();
   }
 
