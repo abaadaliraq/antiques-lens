@@ -429,6 +429,31 @@ function productTitleText(product: ProductRow) {
     .join(" ");
 }
 
+function productIdentityFields(product: ProductRow) {
+  return [
+    product.id,
+    product.slug,
+    product.sku,
+    product.name_ar,
+    product.name_en,
+    product.name_ku,
+  ]
+    .map(normalizeText)
+    .filter(Boolean);
+}
+
+function hasExactProductIdentityMatch(product: ProductRow, terms: string[]) {
+  const identityFields = productIdentityFields(product);
+
+  return terms.some((term) => {
+    const normalizedTerm = normalizeArabic(term);
+
+    if (normalizedTerm.length < 4) return false;
+
+    return identityFields.some((field) => field === normalizedTerm);
+  });
+}
+
 function getMatchReason(product: ProductRow, terms: string[]) {
   const titleText = productTitleText(product);
   const haystack = productHaystack(product);
@@ -542,8 +567,12 @@ function scoreProduct(product: ProductRow, terms: string[]) {
   return score;
 }
 
-function getConfidence(score: number): MatchConfidence {
-  if (score >= 140) return "exact";
+function getConfidence(
+  score: number,
+  product: ProductRow,
+  terms: string[],
+): MatchConfidence {
+  if (score >= 140 && hasExactProductIdentityMatch(product, terms)) return "exact";
   if (score >= 80) return "strong";
   if (score >= 35) return "partial";
   if (score > 0) return "weak";
@@ -622,7 +651,7 @@ function toComparable(
     url: buildProductUrl(product),
     source: "House of Antiques Store",
     score,
-    confidence: getConfidence(score),
+    confidence: getConfidence(score, product, terms),
     matchReason: getMatchReason(product, terms),
   };
 }
@@ -657,7 +686,7 @@ Description: ${item.description || "N/A"}
 
 function getHouseOfAntiquesContext(items: HouseComparable[]): HouseOfAntiquesContext {
   const matches = items.filter((item) =>
-    ["exact", "strong"].includes(item.confidence),
+    item.confidence === "exact",
   );
 
   return {
@@ -836,8 +865,8 @@ const expandedSearchText = searchText;
       storeContext: houseContext.contextText,
       note:
         houseContext.found
-          ? "One or two strong House of Antiques comparable store items were found. Use them only as optional comparable references, not as the main appraisal basis."
-          : "No strong House of Antiques comparable store item was found from text search.",
+          ? "An exact House of Antiques store match was found. Use it only as one internal pricing reference."
+          : "No exact House of Antiques store match was found.",
     });
   } catch (error) {
     console.error("House comparables route error:", error);

@@ -392,37 +392,25 @@ function buildPinterestSearchQuery(result: AnalysisResult) {
 }
 
 function isUsableHouseMatch(item: HouseOfAntiquesMatch) {
-  return ["exact", "strong"].includes(item.confidence || "none");
+  return item.confidence === "exact";
 }
 
-function buildHouseSimilarImages(
-  houseContext?: HouseOfAntiquesContext | null,
-): SimilarImageResult[] {
-  const matches = houseContext?.matches || [];
+function buildHouseSimilarImages(): SimilarImageResult[] {
+  return [];
+}
 
-  return matches
-    .filter(isUsableHouseMatch)
-    .filter((item) => Boolean(item.imageUrl || item.images?.[0]))
-    .slice(0, 2)
-    .map((item) => {
-      const imageUrl = item.imageUrl || item.images?.[0] || "";
-      const price =
-        item.price && item.price !== "No listed price"
-          ? `${item.price} ${item.currency || ""}`.trim()
-          : "";
+function isHouseOfAntiquesSimilarImage(item: SimilarImageResult) {
+  const sourceText = `${item.source || ""} ${item.link || ""} ${item.imageUrl || ""}`
+    .toLowerCase();
 
-      return {
-        title: item.title || "House of Antiques item",
-        imageUrl,
-        link: item.url || imageUrl,
-        source: item.source || "House of Antiques Store",
-        price,
-        description: item.description,
-        confidence: item.confidence,
-        matchReason: item.matchReason,
-        isHouseOfAntiques: true,
-      };
-    });
+  return (
+    sourceText.includes("house of antiques") ||
+    sourceText.includes("houseofantiques.store")
+  );
+}
+
+function filterExternalSimilarImages(items: SimilarImageResult[]) {
+  return items.filter((item) => !isHouseOfAntiquesSimilarImage(item));
 }
 
 function mergeSimilarImages(
@@ -765,7 +753,9 @@ async function fetchSimilarImagesByImage(imageUrl: string) {
       throw new Error(data?.error || "Google Lens search failed.");
     }
 
-    setSimilarImages(Array.isArray(data.items) ? data.items : []);
+    setSimilarImages(
+      Array.isArray(data.items) ? filterExternalSimilarImages(data.items) : [],
+    );
   } catch (error) {
     console.error("Google Lens similar images failed:", error);
     setSimilarImages([]);
@@ -846,7 +836,7 @@ async function handleAnalyze() {
         const lensData = await lensResponse.json();
 
         if (lensResponse.ok && Array.isArray(lensData.items)) {
-          const items = lensData.items.slice(0, 16);
+          const items = filterExternalSimilarImages(lensData.items).slice(0, 16);
 
           googleLensItems = items;
           setSimilarImages(items);
@@ -887,21 +877,26 @@ async function handleAnalyze() {
       const houseData = await houseResponse.json();
 
       if (houseResponse.ok && Array.isArray(houseData.items)) {
-        const matches = houseData.items as HouseOfAntiquesMatch[];
+        const matches = (houseData.items as HouseOfAntiquesMatch[]).filter(
+          isUsableHouseMatch,
+        );
         houseStoreContext = {
-          found: Boolean(houseData.found ?? matches.length > 0),
-          confidence: houseData.confidence || "none",
+          found: matches.length > 0,
+          confidence: matches.length > 0 ? "exact" : "none",
           matches,
-          contextText: houseData.contextText || houseData.storeContext || "",
+          contextText:
+            matches.length > 0
+              ? houseData.contextText || houseData.storeContext || ""
+              : "",
         };
 
-        const houseSimilarImages = buildHouseSimilarImages(houseStoreContext);
+        const houseSimilarImages = buildHouseSimilarImages();
 
         if (houseSimilarImages.length > 0) {
           setSimilarImages(mergeSimilarImages(houseSimilarImages, googleLensItems));
         }
 
-        houseContext = houseData.items
+        houseContext = matches
           .slice(0, 8)
           .map((item: HouseOfAntiquesMatch, index: number) => {
             return [
@@ -932,7 +927,7 @@ async function handleAnalyze() {
       googleLensContext
         ? `Google Lens visual matches:\n${googleLensContext}`
         : "",
-      houseContext
+      houseContext && houseStoreContext?.confidence === "exact"
         ? `House of Antiques internal comparables:\n${houseContext}`
         : "",
     ]
@@ -988,17 +983,21 @@ async function handleAnalyze() {
     const refinedHouseData = await refinedHouseResponse.json();
 
     if (refinedHouseResponse.ok && Array.isArray(refinedHouseData.items)) {
-      const matches = refinedHouseData.items as HouseOfAntiquesMatch[];
+      const matches = (refinedHouseData.items as HouseOfAntiquesMatch[]).filter(
+        isUsableHouseMatch,
+      );
 
       houseStoreContext = {
-        found: Boolean(refinedHouseData.found ?? matches.length > 0),
-        confidence: refinedHouseData.confidence || "none",
+        found: matches.length > 0,
+        confidence: matches.length > 0 ? "exact" : "none",
         matches,
         contextText:
-          refinedHouseData.contextText || refinedHouseData.storeContext || "",
+          matches.length > 0
+            ? refinedHouseData.contextText || refinedHouseData.storeContext || ""
+            : "",
       };
 
-      const houseSimilarImages = buildHouseSimilarImages(houseStoreContext);
+      const houseSimilarImages = buildHouseSimilarImages();
 
       if (houseSimilarImages.length > 0) {
         setSimilarImages(mergeSimilarImages(houseSimilarImages, googleLensItems));

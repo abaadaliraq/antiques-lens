@@ -375,6 +375,47 @@ export default function AuthScreen({
   const formRef = useRef<HTMLFormElement | null>(null);
 
   useEffect(() => {
+  let mounted = true;
+
+  async function restoreSession() {
+    try {
+      const supabase = getSupabaseBrowserClient();
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!mounted) return;
+
+      if (session?.user) {
+        cacheAuthSession();
+        onAuthenticated();
+      }
+    } catch {
+      // نخلي شاشة الدخول تظهر إذا صار خطأ
+    }
+  }
+
+  restoreSession();
+
+  const supabase = getSupabaseBrowserClient();
+
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, session) => {
+    if (session?.user) {
+      cacheAuthSession();
+      onAuthenticated();
+    }
+  });
+
+  return () => {
+    mounted = false;
+    subscription.unsubscribe();
+  };
+}, [onAuthenticated]);
+
+  useEffect(() => {
     const interval = window.setInterval(() => {
       setActiveLine((current) => (current + 1) % copy.intro.length);
     }, 3200);

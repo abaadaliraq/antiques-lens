@@ -22,6 +22,10 @@ export function getSupabaseBrowserClient() {
         detectSessionInUrl: true,
         flowType: "pkce",
         storageKey: "kishib:supabase-auth",
+        storage:
+          typeof window !== "undefined"
+            ? window.localStorage
+            : undefined,
       },
     });
   }
