@@ -513,7 +513,7 @@ export default function GemstoneFields({
 
   return (
 <section dir={dir} className="mt-2 px-1">
-        <div className="mb-3 flex items-center gap-2 text-[#e6c089]">
+        <div className="mb-3 flex items-center gap-2 text-[#22D3EE]">
         <Gem className="h-4 w-4" />
         <p className="text-[12px] font-medium tracking-[0.18em]">
           {t.typeTitle}
@@ -535,8 +535,8 @@ export default function GemstoneFields({
               "shrink-0 border px-3 py-1.5 text-[11px] font-medium leading-none transition",
               "rounded-full",
               active
-                ? "border-[#d6a25f]/42 bg-[#d6a25f]/12 text-[#f1cf9a]"
-                : "border-white/8 bg-white/[0.035] text-white/42 hover:border-[#d6a25f]/20 hover:text-white/68",
+                ? "border-[#22D3EE]/45 bg-[#2563EB]/18 text-[#E0F2FE]"
+                : "border-white/8 bg-white/[0.035] text-[#94A3B8] hover:border-[#22D3EE]/25 hover:text-white",
             ].join(" ")}
           >
             {item[0]}
@@ -547,9 +547,9 @@ export default function GemstoneFields({
   </div>
 
       {isGemMode && (
-        <div className="mt-4 border-y border-[#d6a25f]/12 py-4">
-          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-[#d6a25f]/12 bg-[#d6a25f]/[0.055] px-4 py-3">
-            <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#d6a25f]" />
+        <div className="mt-4 border-y border-[#22D3EE]/12 py-4">
+          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-[#22D3EE]/12 bg-[#2563EB]/[0.08] px-4 py-3">
+            <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#22D3EE]" />
             <p className="text-[12px] leading-6 text-white/58">{t.notice}</p>
           </div>
 
@@ -584,7 +584,7 @@ export default function GemstoneFields({
           <button
             type="button"
             onClick={() => setAdvancedOpen((current) => !current)}
-            className="mt-4 flex h-10 w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.035] px-4 text-[12px] font-medium text-white/65 transition hover:border-[#d6a25f]/25 hover:text-white/82"
+            className="mt-4 flex h-10 w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.035] px-4 text-[12px] font-medium text-white/65 transition hover:border-[#22D3EE]/25 hover:text-white"
           >
             <span>{advancedOpen ? t.hideAdvanced : t.showAdvanced}</span>
             <ChevronDown
@@ -676,7 +676,7 @@ export default function GemstoneFields({
           )}
 
           <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-            <div className="mb-2 flex items-center gap-2 text-[#e6c089]">
+            <div className="mb-2 flex items-center gap-2 text-[#22D3EE]">
               <Sparkles className="h-4 w-4" />
               <p className="text-[12px] font-medium">{t.helpfulPhotos}</p>
             </div>
@@ -719,7 +719,7 @@ function TextField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-11 w-full rounded-2xl border border-white/10 bg-black/20 px-4 text-[13px] text-white/76 outline-none transition placeholder:text-white/25 focus:border-[#d6a25f]/35"
+        className="h-11 w-full rounded-2xl border border-white/10 bg-black/20 px-4 text-[13px] text-white/76 outline-none transition placeholder:text-white/25 focus:border-[#22D3EE]/40"
       />
     </label>
   );
@@ -741,7 +741,7 @@ function IconTextField({
   return (
     <label className="block">
       <span className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium text-white/48">
-        <span className="text-[#d6a25f]/70">{icon}</span>
+        <span className="text-[#22D3EE]/80">{icon}</span>
         {label}
       </span>
 
@@ -749,7 +749,7 @@ function IconTextField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-11 w-full rounded-2xl border border-white/10 bg-black/20 px-4 text-[13px] text-white/76 outline-none transition placeholder:text-white/25 focus:border-[#d6a25f]/35"
+        className="h-11 w-full rounded-2xl border border-white/10 bg-black/20 px-4 text-[13px] text-white/76 outline-none transition placeholder:text-white/25 focus:border-[#22D3EE]/40"
       />
     </label>
   );
@@ -777,7 +777,7 @@ function SelectField({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-2xl border border-white/10 bg-black/20 px-4 text-[13px] text-white/76 outline-none transition focus:border-[#d6a25f]/35"
+        className="h-11 w-full rounded-2xl border border-white/10 bg-black/20 px-4 text-[13px] text-white/76 outline-none transition focus:border-[#22D3EE]/40"
       >
         <option value="">{selectLabel}</option>
         {options.map((option) => (

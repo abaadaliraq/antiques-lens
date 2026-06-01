@@ -34,14 +34,14 @@ export default function CookieBar() {
             We use cookies to improve your experience and remember basic preferences.
           </p>
 
-          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-medium text-[#d6a25f]/78">
-            <Link href="/terms" className="transition hover:text-[#f0c987]">
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-medium text-[#22D3EE]/80">
+            <Link href="/terms" className="transition hover:text-[#BAE6FD]">
               Terms
             </Link>
-            <Link href="/privacy" className="transition hover:text-[#f0c987]">
+            <Link href="/privacy" className="transition hover:text-[#BAE6FD]">
               Privacy
             </Link>
-            <Link href="/cookies" className="transition hover:text-[#f0c987]">
+            <Link href="/cookies" className="transition hover:text-[#BAE6FD]">
               Cookies
             </Link>
           </div>

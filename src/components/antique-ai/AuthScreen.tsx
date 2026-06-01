@@ -541,18 +541,12 @@ export default function AuthScreen({
   return (
     <main
       dir={direction}
-      className="relative h-dvh overflow-hidden bg-[#070403] text-white"
+      className="relative h-dvh overflow-hidden bg-black text-white"
     >
-      <Image
-        src="/bg-1.jpg"
-        alt=""
-        fill
-        priority
-        sizes="100vw"
-        className="object-cover object-center opacity-42"
-      />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_18%,rgba(206,87,35,0.42),transparent_28%),radial-gradient(circle_at_18%_78%,rgba(190,92,48,0.36),transparent_32%),linear-gradient(135deg,rgba(8,5,3,0.78),rgba(21,10,5,0.9)_52%,rgba(5,3,2,0.96))]" />
-      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/62 to-transparent" />
+      <div className="absolute inset-0 bg-black" />
+      <div className="absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[#22D3EE]/10 blur-3xl" />
+      <div className="absolute left-1/2 top-0 h-64 w-[82vw] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(37,99,235,0.14),transparent_62%)]" />
+      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/90 to-transparent" />
 
       <div
         ref={scrollRef}

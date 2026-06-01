@@ -137,7 +137,7 @@ export default function FollowUpEvaluationPanel({
   return (
     <section className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.045] p-5 backdrop-blur-2xl">
       <div className="mb-5">
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.32em] text-[#d6a25f]/70">
+        <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.32em] text-[#22D3EE]/70">
           {t.eyebrow}
         </p>
 
@@ -154,11 +154,11 @@ export default function FollowUpEvaluationPanel({
         value={followUpText}
         onChange={(event) => setFollowUpText(event.target.value)}
         placeholder={t.placeholder}
-        className="min-h-[130px] w-full resize-none rounded-[1.4rem] border border-white/10 bg-black/35 p-4 text-[15px] font-light leading-7 text-white outline-none placeholder:text-white/25 focus:border-[#d6a25f]/35"
+        className="min-h-[130px] w-full resize-none rounded-[1.4rem] border border-white/10 bg-black/35 p-4 text-[15px] font-light leading-7 text-white outline-none placeholder:text-white/25 focus:border-[#22D3EE]/35"
       />
 
       <div className="mt-4">
-        <label className="flex cursor-pointer items-center justify-center rounded-[1.4rem] border border-dashed border-white/15 bg-white/[0.03] px-4 py-6 text-center text-[13px] font-medium text-white/55 transition hover:border-[#d6a25f]/35 hover:text-[#d6a25f]">
+        <label className="flex cursor-pointer items-center justify-center rounded-[1.4rem] border border-dashed border-white/15 bg-white/[0.03] px-4 py-6 text-center text-[13px] font-medium text-white/55 transition hover:border-[#22D3EE]/35 hover:text-[#22D3EE]">
           <input
             type="file"
             accept="image/*"
@@ -202,7 +202,7 @@ export default function FollowUpEvaluationPanel({
           type="button"
           onClick={handleFollowUpAnalyze}
           disabled={isFollowUpAnalyzing}
-          className="flex h-12 flex-1 items-center justify-center rounded-full bg-[#d6a25f] px-5 text-[13px] font-bold text-black transition hover:bg-[#edbc78] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-12 flex-1 items-center justify-center rounded-full bg-[#2563EB] px-5 text-[13px] font-bold text-white transition hover:bg-[#1D4ED8] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isFollowUpAnalyzing ? t.updating : t.update}
         </button>

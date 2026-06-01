@@ -243,7 +243,7 @@ export default function ResultView({
   return (
     <article className="relative pb-12 text-white">
       <div className="mx-auto w-full max-w-6xl px-3 pt-4 sm:px-5 md:pt-7">
-        <header className="overflow-hidden rounded-[2rem] border border-[#d6a25f]/12 bg-[#130c08]/52 shadow-[0_28px_90px_rgba(0,0,0,0.34)] backdrop-blur-2xl">
+        <header className="overflow-hidden rounded-[2rem] border border-[#22D3EE]/12 bg-[#07111F]/70 shadow-[0_28px_90px_rgba(0,0,0,0.34)] backdrop-blur-2xl">
           {mainImage ? (
             <div className="relative min-h-[520px] overflow-hidden bg-[#0b0705] sm:min-h-[610px] md:min-h-[680px]">
               <div className="absolute inset-0">
@@ -279,7 +279,7 @@ export default function ResultView({
               </button>
 
               {galleryImages.length > 1 && (
-                <div className="relative z-20 border-y border-[#d6a25f]/10 bg-[#160d08]/70 px-3 py-3 backdrop-blur-xl">
+                <div className="relative z-20 border-y border-[#22D3EE]/10 bg-[#07111F]/70 px-3 py-3 backdrop-blur-xl">
                   <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
                     {galleryImages.map((src, index) => (
                       <button
@@ -289,8 +289,8 @@ export default function ResultView({
                         className={[
                           "relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border bg-white/[0.04] transition sm:h-28 sm:w-28",
                           index === 0
-                            ? "border-[#d6a25f]/55"
-                            : "border-white/10 hover:border-[#d6a25f]/45",
+                            ? "border-[#22D3EE]/55"
+                            : "border-white/10 hover:border-[#22D3EE]/45",
                         ].join(" ")}
                         aria-label={`Open image ${index + 1}`}
                       >
@@ -310,7 +310,7 @@ export default function ResultView({
               )}
 
               <div className="relative z-10 px-5 py-7 sm:px-8 md:px-10">
-                <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.3em] text-[#d6a25f]/75">
+                <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.3em] text-[#22D3EE]/75">
                   {labels.result}
                 </p>
 
@@ -322,7 +322,7 @@ export default function ResultView({
                   <button
                     type="button"
                     onClick={handleAddInfoClick}
-                    className="mt-5 inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#d6a25f]/22 bg-[#d6a25f]/8 px-3.5 text-[11.5px] font-medium text-[#d6a25f]/90 transition hover:bg-[#d6a25f]/13 hover:text-[#f0c987]"
+                    className="mt-5 inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#22D3EE]/22 bg-[#2563EB]/10 px-3.5 text-[11.5px] font-medium text-[#BAE6FD] transition hover:bg-[#2563EB]/16 hover:text-white"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     {labels.addInfo || getAddInfoText(locale)}
@@ -332,7 +332,7 @@ export default function ResultView({
             </div>
           ) : (
             <div className="px-5 py-8 sm:px-8 md:px-10">
-              <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.3em] text-[#d6a25f]/75">
+              <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.3em] text-[#22D3EE]/75">
                 {labels.result}
               </p>
 
@@ -344,7 +344,7 @@ export default function ResultView({
                 <button
                   type="button"
                   onClick={handleAddInfoClick}
-                  className="mt-5 inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#d6a25f]/22 bg-[#d6a25f]/8 px-3.5 text-[11.5px] font-medium text-[#d6a25f]/90 transition hover:bg-[#d6a25f]/13 hover:text-[#f0c987]"
+                  className="mt-5 inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#22D3EE]/22 bg-[#2563EB]/10 px-3.5 text-[11.5px] font-medium text-[#BAE6FD] transition hover:bg-[#2563EB]/16 hover:text-white"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   {labels.addInfo || getAddInfoText(locale)}
@@ -355,7 +355,7 @@ export default function ResultView({
         </header>
 
         {followUpPanel ? (
-          <section className="mt-4 border-y border-[#d6a25f]/10 bg-[#120c08]/28 px-3 py-4 backdrop-blur-xl sm:px-5">
+          <section className="mt-4 border-y border-[#22D3EE]/10 bg-[#07111F]/35 px-3 py-4 backdrop-blur-xl sm:px-5">
             <div className="compact-followup-panel">{followUpPanel}</div>
           </section>
         ) : null}
@@ -412,7 +412,7 @@ export default function ResultView({
           <section className="mt-8">
             <div className="mb-5 flex items-end justify-between gap-4">
               <div>
-                <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#d6a25f]/70">
+                <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#22D3EE]/70">
                   {similarSourceLabel}
                 </p>
                 <h2 className="text-[24px] font-medium leading-8 tracking-[-0.035em] text-white/92">
@@ -441,7 +441,7 @@ export default function ResultView({
                     href={item.link || item.imageUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="group overflow-hidden border border-white/10 bg-[#120c08]/34 transition hover:border-[#d6a25f]/35"
+                    className="group overflow-hidden border border-white/10 bg-[#07111F]/55 transition hover:border-[#22D3EE]/35"
                   >
                     <div className="aspect-[3/4] overflow-hidden bg-black/50">
                       <img
@@ -460,7 +460,7 @@ export default function ResultView({
                           {item.price}
                         </p>
                       ) : null}
-                      <p className="mt-2 text-[10.5px] font-medium text-[#d6a25f]/75">
+                      <p className="mt-2 text-[10.5px] font-medium text-[#22D3EE]/75">
                         {item.source || "Google Lens"}
                       </p>
                     </div>
@@ -475,7 +475,7 @@ export default function ResultView({
 
         {result.followUpQuestion && (
           <section className="mt-8 border-t border-white/10 pt-6">
-            <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#d6a25f]/70">
+            <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#22D3EE]/70">
               {labels.followUp}
             </p>
 
@@ -491,10 +491,10 @@ export default function ResultView({
           </p>
         </section>
 
-        <section className="mt-9 border-y border-[#d6a25f]/12 py-6">
+        <section className="mt-9 border-y border-[#22D3EE]/12 py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#d6a25f]/70">
+              <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#22D3EE]/70">
                 {reportLabels.eyebrow}
               </p>
 
@@ -510,7 +510,7 @@ export default function ResultView({
             <button
               type="button"
               onClick={() => setIsReportOpen(true)}
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#d6a25f]/22 bg-[#d6a25f]/8 px-4 text-[12px] font-medium text-[#d6a25f]/90 transition hover:bg-[#d6a25f]/13 hover:text-[#f0c987]"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#22D3EE]/22 bg-[#2563EB]/10 px-4 text-[12px] font-medium text-[#BAE6FD] transition hover:bg-[#2563EB]/16 hover:text-white"
             >
               <FileText className="h-4 w-4" />
               {reportLabels.open}
@@ -589,12 +589,12 @@ export default function ResultView({
           onClick={() => setIsReportOpen(false)}
         >
           <div
-            className="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden border border-[#d6a25f]/15 bg-[#0d0805]"
+            className="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden border border-[#22D3EE]/15 bg-[#020617]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-3 py-3 sm:px-4">
               <div className="min-w-0">
-                <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-[#d6a25f]/70">
+                <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-[#22D3EE]/70">
                   {reportLabels.eyebrow}
                 </p>
                 <h3 className="mt-1 truncate text-[16px] font-medium text-white/90">
@@ -606,7 +606,7 @@ export default function ResultView({
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#d6a25f]/22 bg-[#d6a25f]/8 px-3 text-[11.5px] font-medium text-[#d6a25f]/90 transition hover:bg-[#d6a25f]/13"
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#22D3EE]/22 bg-[#2563EB]/10 px-3 text-[11.5px] font-medium text-[#BAE6FD] transition hover:bg-[#2563EB]/16"
                 >
                   <Printer className="h-3.5 w-3.5" />
                   {reportLabels.print}
@@ -824,7 +824,7 @@ function MetricBlock({
 }) {
   return (
     <div className="min-w-0">
-      <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-[#d6a25f]/58">
+      <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-[#22D3EE]/58">
         {label}
       </p>
 
@@ -893,7 +893,7 @@ function SoftList({ title, items }: { title: string; items?: string[] }) {
             key={`${item}-${index}`}
             className="inline-flex min-w-0 items-start gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-[12.5px] font-normal leading-6 text-white/68"
           >
-            <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#d6a25f]/80" />
+            <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#22D3EE]/80" />
             <span className="whitespace-normal">{item}</span>
           </span>
         ))}
@@ -926,7 +926,7 @@ function CompactNeededPhotos({
               key={`${item}-${index}`}
               className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-[12px] font-normal leading-5 text-white/62"
             >
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#d6a25f]/80" />
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#22D3EE]/80" />
               {item}
             </span>
           ))}

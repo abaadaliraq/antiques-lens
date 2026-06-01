@@ -2,11 +2,10 @@
 
 import {
   BadgeCheck,
-  ChevronDown,
   Check,
   Cookie,
-  CreditCard,
   Crown,
+  ExternalLink,
   FileText,
   Globe2,
   LogOut,
@@ -14,7 +13,8 @@ import {
   UserRound,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import type { Locale } from "./types";
 
@@ -24,13 +24,14 @@ type UserMenuProps = {
 };
 
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
+const SUBSCRIPTIONS_URL = "";
 
-type Profile = {
-  full_name?: string | null;
-  email?: string | null;
-  country?: string | null;
-  province?: string | null;
-  birth_date?: string | null;
+type ProfileInfo = {
+  name: string;
+  email: string;
+  country: string;
+  city: string;
+  birthdate: string;
 };
 
 type MenuCopy = {
@@ -48,6 +49,7 @@ type MenuCopy = {
   freePlan: string;
   comingSoon: string;
   unknown: string;
+  editProfile: string;
 };
 
 const COPY: Record<Locale, MenuCopy> = {
@@ -66,6 +68,7 @@ const COPY: Record<Locale, MenuCopy> = {
     freePlan: "الخطة المجانية",
     comingSoon: "قريباً",
     unknown: "غير مضاف",
+    editProfile: "تعديل الملف الشخصي",
   },
   en: {
     profile: "Profile",
@@ -82,6 +85,7 @@ const COPY: Record<Locale, MenuCopy> = {
     freePlan: "Free plan",
     comingSoon: "Coming soon",
     unknown: "Not added",
+    editProfile: "Edit profile",
   },
   fr: {
     profile: "Profil",
@@ -98,6 +102,7 @@ const COPY: Record<Locale, MenuCopy> = {
     freePlan: "Forfait gratuit",
     comingSoon: "Bientôt",
     unknown: "Non ajouté",
+    editProfile: "Modifier le profil",
   },
   hi: {
     profile: "प्रोफ़ाइल",
@@ -114,6 +119,7 @@ const COPY: Record<Locale, MenuCopy> = {
     freePlan: "मुफ़्त योजना",
     comingSoon: "जल्द",
     unknown: "जोड़ा नहीं गया",
+    editProfile: "प्रोफ़ाइल संपादित करें",
   },
   fa: {
     profile: "پروفایل",
@@ -130,6 +136,7 @@ const COPY: Record<Locale, MenuCopy> = {
     freePlan: "پلن رایگان",
     comingSoon: "به‌زودی",
     unknown: "اضافه نشده",
+    editProfile: "ویرایش پروفایل",
   },
   tr: {
     profile: "Profil",
@@ -146,6 +153,7 @@ const COPY: Record<Locale, MenuCopy> = {
     freePlan: "Ücretsiz plan",
     comingSoon: "Yakında",
     unknown: "Eklenmedi",
+    editProfile: "Profili düzenle",
   },
   ru: {
     profile: "Профиль",
@@ -162,6 +170,7 @@ const COPY: Record<Locale, MenuCopy> = {
     freePlan: "Бесплатный план",
     comingSoon: "Скоро",
     unknown: "Не добавлено",
+    editProfile: "Редактировать профиль",
   },
   ku: {
     profile: "پرۆفایل",
@@ -178,6 +187,7 @@ const COPY: Record<Locale, MenuCopy> = {
     freePlan: "پلانی خۆڕایی",
     comingSoon: "بەم زووانە",
     unknown: "زیاد نەکراوە",
+    editProfile: "دەستکاری پرۆفایل",
   },
 };
 
@@ -201,89 +211,100 @@ function getInitial(name?: string | null, email?: string | null) {
   return source.charAt(0).toUpperCase();
 }
 
-function formatBirthDate(value?: string | null) {
-  if (!value) return "";
-  return value.slice(0, 10);
+function getFallbackName(email?: string | null) {
+  if (!email) return "مستخدم كيشيب";
+  return email.split("@")[0] || "مستخدم كيشيب";
 }
 
-function getPlanCards(locale: Locale) {
-  if (locale === "ar") {
-    return [
-      { title: "الباقة الشهرية", price: "$5", note: "شهرياً" },
-      { title: "الباقة السنوية", price: "$42", note: "سنوياً" },
-      { title: "تفعيل التقارير", price: "$50", note: "سنوياً" },
-    ];
+function readMetadataText(
+  metadata: Record<string, unknown>,
+  keys: string[],
+) {
+  for (const key of keys) {
+    const value = metadata[key];
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
   }
 
-  return [
-    { title: "Monthly plan", price: "$5", note: "per month" },
-    { title: "Annual plan", price: "$42", note: "per year" },
-    { title: "Reports add-on", price: "$50", note: "per year" },
-  ];
+  return "";
+}
+
+function buildProfileInfo(
+  user: {
+    email?: string | null;
+    user_metadata?: Record<string, unknown> | null;
+  } | null,
+  notAdded: string,
+): ProfileInfo {
+  const metadata = user?.user_metadata ?? {};
+  const email = user?.email || notAdded;
+
+  return {
+    name:
+      readMetadataText(metadata, ["full_name", "name"]) ||
+      getFallbackName(user?.email),
+    email,
+    country:
+      readMetadataText(metadata, ["country", "country_name"]) || notAdded,
+    city:
+      readMetadataText(metadata, ["city", "governorate", "province"]) ||
+      notAdded,
+    birthdate:
+      readMetadataText(metadata, ["birthdate", "date_of_birth", "birth_date"]) ||
+      notAdded,
+  };
+}
+
+function formatBirthDate(value: string) {
+  if (!value) return value;
+  return /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : value;
 }
 
 export default function UserMenu({ locale, setLocale }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileInfo, setProfileInfo] = useState<ProfileInfo | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const copy = COPY[locale];
   const rtl = isRtl(locale);
 
-  const displayName = useMemo(() => {
-    return profile?.full_name?.trim() || email || copy.account;
-  }, [copy.account, email, profile?.full_name]);
-
-  const displayEmail = profile?.email || email;
-  const planCards = getPlanCards(locale);
+  const displayName = profileInfo?.name || getFallbackName(null);
+  const displayEmail = profileInfo?.email || copy.unknown;
 
   useEffect(() => {
     let mounted = true;
+    let unsubscribe: (() => void) | undefined;
 
     async function loadUser() {
       const supabase = getSupabaseBrowserClient();
-
       const { data: userData } = await supabase.auth.getUser();
-      const user = userData.user;
 
-      if (!mounted || !user) return;
+      if (!mounted) return;
 
-      const userEmail = user.email || "";
-      const metaName =
-        typeof user.user_metadata?.full_name === "string"
-          ? user.user_metadata.full_name
-          : typeof user.user_metadata?.name === "string"
-            ? user.user_metadata.name
-            : "";
-
-      setEmail(userEmail);
-
-    const { data } = await supabase
-  .from("profiles")
-  .select("full_name,email,country,province,birth_date")
-  .eq("id", user.id)
-  .maybeSingle();
-
-if (!mounted) return;
-
-const profileData = data as Profile | null;
-
-setProfile({
-  full_name: profileData?.full_name || metaName,
-  email: profileData?.email || userEmail,
-  country: profileData?.country || null,
-  province: profileData?.province || null,
-  birth_date: profileData?.birth_date || null,
-});
+      setProfileInfo(buildProfileInfo(userData.user, copy.unknown));
     }
 
     void loadUser();
 
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!mounted) return;
+        setProfileInfo(buildProfileInfo(session?.user ?? null, copy.unknown));
+      });
+
+      unsubscribe = () => data.subscription.unsubscribe();
+    } catch {
+      unsubscribe = undefined;
+    }
+
     return () => {
       mounted = false;
+      unsubscribe?.();
     };
-  }, []);
+  }, [copy.unknown]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -304,27 +325,22 @@ setProfile({
     window.location.reload();
   }
 
+  function handleSubscriptionsClick() {
+    if (!SUBSCRIPTIONS_URL) return;
+    window.location.href = SUBSCRIPTIONS_URL;
+  }
+
   return (
     <div ref={menuRef} dir={rtl ? "rtl" : "ltr"} className="relative z-50">
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="flex h-10 items-center gap-2 rounded-full border border-white/10 bg-[#120c08]/82 px-2.5 text-white shadow-[0_14px_38px_rgba(0,0,0,0.34)] backdrop-blur-2xl transition hover:border-[#d89a4f]/30 hover:bg-[#1b110c]/90 md:h-11 md:px-3"
+        className="grid h-11 w-11 place-items-center rounded-full border border-[rgba(34,211,238,0.18)] bg-[#0B1220]/88 text-white shadow-[0_14px_38px_rgba(0,0,0,0.34)] backdrop-blur-2xl transition hover:border-[#22D3EE]/35 hover:bg-[#07111F]"
+        aria-label={copy.profile}
       >
-        <span className="grid h-7 w-7 place-items-center rounded-full bg-[#d89a4f] text-xs font-bold text-[#130905] md:h-8 md:w-8">
+        <span className="grid h-8 w-8 place-items-center rounded-full bg-[#22D3EE] text-xs font-bold text-black">
           {getInitial(displayName, displayEmail)}
         </span>
-
-        <span className="hidden max-w-[130px] truncate text-[12px] font-semibold text-white/82 md:block">
-          {displayName}
-        </span>
-
-        <ChevronDown
-          className={[
-            "h-4 w-4 text-white/45 transition",
-            isOpen ? "rotate-180" : "",
-          ].join(" ")}
-        />
       </button>
 
       {isOpen ? (
@@ -333,19 +349,20 @@ setProfile({
             type="button"
             aria-label="Close user menu"
             onClick={() => setIsOpen(false)}
-            className="fixed inset-0 z-[9998] bg-black/30 backdrop-blur-[1px] md:hidden"
+            className="fixed inset-0 z-[9998] bg-black/55 backdrop-blur-[2px]"
           />
 
           <div
             className={[
-              "fixed right-3 top-16 z-[9999] max-h-[calc(100dvh-5rem)] w-[268px] overflow-y-auto rounded-[1.25rem] border border-white/10 bg-[#100905]/96 p-2 shadow-[0_26px_82px_rgba(0,0,0,0.68)] backdrop-blur-2xl",
-              "md:absolute md:top-auto md:mt-3 md:max-h-[calc(100dvh-6rem)] md:w-[300px] md:rounded-[1.35rem]",
-              rtl ? "md:left-0 md:right-auto" : "md:right-0",
+              "fixed inset-x-3 bottom-3 z-[9999] h-[54dvh] min-h-[320px] max-h-[520px] overflow-hidden rounded-[1.6rem] border border-[rgba(34,211,238,0.18)] bg-[#020617]/96 shadow-[0_26px_82px_rgba(0,0,0,0.72)] backdrop-blur-2xl",
+              "md:inset-x-auto md:bottom-auto md:top-16 md:h-auto md:max-h-[calc(100dvh-5rem)] md:w-[340px] md:rounded-[1.35rem]",
+              rtl ? "md:left-4" : "md:right-4",
             ].join(" ")}
           >
-            <div className="rounded-[1rem] border border-[#d89a4f]/12 bg-[#1b100b]/68 p-3">
+            <div className="flex h-full flex-col overflow-y-auto p-3">
+            <div className="rounded-[1.15rem] border border-[#22D3EE]/12 bg-[#07111F]/80 p-3.5">
               <div className="flex items-center gap-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#d89a4f] text-sm font-bold text-[#130905]">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#22D3EE] text-sm font-bold text-black">
                   {getInitial(displayName, displayEmail)}
                 </span>
 
@@ -364,14 +381,22 @@ setProfile({
               <MenuButton
                 icon={<UserRound className="h-4 w-4" />}
                 label={copy.profile}
-                value={copy.account}
+                value={displayEmail}
               />
-              <InfoRow label={copy.country} value={profile?.country || copy.unknown} />
-              <InfoRow label={copy.province} value={profile?.province || copy.unknown} />
+              <InfoRow label={copy.country} value={profileInfo?.country || copy.unknown} />
+              <InfoRow label={copy.province} value={profileInfo?.city || copy.unknown} />
               <InfoRow
                 label={copy.birthDate}
-                value={formatBirthDate(profile?.birth_date) || copy.unknown}
+                value={formatBirthDate(profileInfo?.birthdate || copy.unknown)}
               />
+              <button
+                type="button"
+                disabled
+                title={copy.comingSoon}
+                className="mt-1 flex h-9 w-full cursor-not-allowed items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 text-[11.5px] font-medium text-white/28"
+              >
+                {copy.editProfile}
+              </button>
             </div>
 
             {setLocale ? (
@@ -385,27 +410,10 @@ setProfile({
               <MenuButton
                 icon={<Crown className="h-4 w-4" />}
                 label={copy.subscriptions}
-                value={copy.freePlan}
+                value={copy.comingSoon}
+                onClick={handleSubscriptionsClick}
+                trailing={<ExternalLink className="h-3.5 w-3.5 text-white/28" />}
               />
-
-              <div className="my-1 h-px bg-white/[0.06]" />
-
-              <div className="px-2 py-1.5">
-                <div className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold text-white/56">
-                  <CreditCard className="h-3.5 w-3.5 text-[#d89a4f]" />
-                  {copy.packages}
-                </div>
-                <div className="grid gap-1">
-                  {planCards.map((plan) => (
-                    <PlanButton
-                      key={plan.title}
-                      title={plan.title}
-                      price={plan.price}
-                      note={plan.note}
-                    />
-                  ))}
-                </div>
-              </div>
             </div>
 
             <div className="mt-2 rounded-[1rem] border border-white/[0.07] bg-white/[0.025] p-1.5">
@@ -434,6 +442,7 @@ setProfile({
               <LogOut className="h-4 w-4 text-red-300/82" />
               <span className="flex-1">{copy.logout}</span>
             </button>
+            </div>
           </div>
         </>
       ) : null}
@@ -445,22 +454,28 @@ function MenuButton({
   icon,
   label,
   value,
+  onClick,
+  trailing,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   value: string;
+  onClick?: () => void;
+  trailing?: ReactNode;
 }) {
   return (
     <button
       type="button"
+      onClick={onClick}
       className="flex h-9 w-full items-center gap-3 rounded-xl px-2.5 text-start transition hover:bg-white/[0.055]"
     >
-      <span className="text-[#d89a4f]/78">{icon}</span>
+      <span className="text-[#22D3EE]/85">{icon}</span>
       <span className="flex-1 text-[12px] font-medium text-white/76">
         {label}
       </span>
-      <span className="max-w-[110px] truncate text-[10.5px] font-medium text-white/34">
-        {value}
+      <span className="flex max-w-[126px] items-center gap-1.5 truncate text-[10.5px] font-medium text-white/34">
+        <span className="truncate">{value}</span>
+        {trailing}
       </span>
     </button>
   );
@@ -488,7 +503,7 @@ function LanguageMenu({
     <div className="mt-2 rounded-[1rem] border border-white/[0.07] bg-white/[0.025] p-2">
       <div className="mb-2 flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <span className="grid h-7 w-7 place-items-center rounded-xl bg-[#d89a4f]/12 text-[#d89a4f]">
+          <span className="grid h-7 w-7 place-items-center rounded-xl bg-[#2563EB]/18 text-[#22D3EE]">
             <Globe2 className="h-3.5 w-3.5" />
           </span>
           <div>
@@ -496,7 +511,7 @@ function LanguageMenu({
             <p className="text-[9.5px] text-white/32">Interface language</p>
           </div>
         </div>
-        <span className="rounded-full border border-[#d89a4f]/18 bg-[#d89a4f]/10 px-2 py-1 text-[10px] font-semibold text-[#efc783]">
+        <span className="rounded-full border border-[#22D3EE]/18 bg-[#2563EB]/16 px-2 py-1 text-[10px] font-semibold text-[#BAE6FD]">
           {activeLocale.toUpperCase()}
         </span>
       </div>
@@ -513,7 +528,7 @@ function LanguageMenu({
               className={[
                 "flex h-8 items-center gap-2 rounded-xl px-2 text-start text-[11px] transition",
                 active
-                  ? "bg-[#d89a4f] text-[#120804]"
+                  ? "bg-[#22D3EE] text-black"
                   : "text-white/58 hover:bg-white/[0.055] hover:text-white/82",
               ].join(" ")}
             >
@@ -521,7 +536,7 @@ function LanguageMenu({
                 className={[
                   "grid h-5 w-6 shrink-0 place-items-center rounded-lg text-[9px] font-semibold",
                   active
-                    ? "bg-black/12 text-[#120804]"
+                    ? "bg-black/12 text-black"
                     : "border border-white/8 text-white/34",
                 ].join(" ")}
               >
@@ -539,40 +554,13 @@ function LanguageMenu({
   );
 }
 
-function PlanButton({
-  title,
-  price,
-  note,
-}: {
-  title: string;
-  price: string;
-  note: string;
-}) {
-  return (
-    <button
-      type="button"
-      className="flex min-h-10 w-full items-center justify-between gap-3 rounded-xl bg-[#d89a4f]/7 px-2.5 py-1.5 text-start transition hover:bg-[#d89a4f]/12"
-    >
-      <span className="min-w-0">
-        <span className="block truncate text-[11.5px] font-medium text-white/78">
-          {title}
-        </span>
-        <span className="block text-[9.5px] text-white/32">{note}</span>
-      </span>
-      <span className="rounded-full bg-[#d89a4f] px-2.5 py-1 text-[10.5px] font-bold text-[#130905]">
-        {price}
-      </span>
-    </button>
-  );
-}
-
 function MenuLink({
   href,
   icon,
   label,
 }: {
   href: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
 }) {
   return (
@@ -580,7 +568,7 @@ function MenuLink({
       href={href}
       className="flex h-9 w-full items-center gap-3 rounded-xl px-2.5 text-start transition hover:bg-white/[0.055]"
     >
-      <span className="text-[#d89a4f]/78">{icon}</span>
+      <span className="text-[#22D3EE]/85">{icon}</span>
       <span className="flex-1 text-[12px] font-medium text-white/76">
         {label}
       </span>

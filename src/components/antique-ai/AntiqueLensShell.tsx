@@ -6,17 +6,13 @@ import BottomBar from "@/components/antique-ai/BottomBar";
 import CookieBar from "@/components/antique-ai/CookieBar";
 import EvaluationComposer from "@/components/antique-ai/EvaluationComposer";
 import FollowUpEvaluationPanel from "@/components/antique-ai/FollowUpEvaluationPanel";
-import HistorySidebar from "@/components/antique-ai/HistorySidebar";
-import MobileTopBar from "@/components/antique-ai/MobileTopBar";
 import ResultView from "@/components/antique-ai/ResultView";
 import ThinkingMotion from "@/components/antique-ai/ThinkingMotion";
+import UserMenu from "@/components/antique-ai/UserMenu";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { useEffect, useState } from "react";
-import type { Locale } from "./types";
+import type { HistoryItem, Locale } from "./types";
 import { useAntiqueLens } from "./useAntiqueLens";
-import UserMenu from "@/components/antique-ai/UserMenu";
-
-
 
 const SUPPORTED_AUTH_LOCALES: Locale[] = [
   "ar",
@@ -62,10 +58,6 @@ function getPendingOAuthLocale(): Locale | null {
     : null;
 }
 
-function hasCachedAuthSession() {
-  return window.localStorage.getItem(AUTH_CACHE_KEY) === "true";
-}
-
 function cacheAuthSession(active: boolean) {
   if (active) {
     window.localStorage.setItem(AUTH_CACHE_KEY, "true");
@@ -105,14 +97,89 @@ function getSafeSimilarImages(lens: ReturnType<typeof useAntiqueLens>) {
   return [];
 }
 
+function homeCopy(locale: Locale) {
+  const text = {
+    ar: {
+      eyebrow: "KISHIB",
+      title: "Antique AI Lens",
+      subtitle: "قيّم قطعة بصورة واحدة",
+      cta: "قيّم قطعة",
+      collection: "مجموعتي",
+      latest: "آخر التقييمات",
+      empty: "لا توجد تقييمات بعد",
+    },
+    en: {
+      eyebrow: "KISHIB",
+      title: "Antique AI Lens",
+      subtitle: "Evaluate an item with one photo",
+      cta: "Evaluate item",
+      collection: "My collection",
+      latest: "Latest evaluations",
+      empty: "No evaluations yet",
+    },
+    fr: {
+      eyebrow: "KISHIB",
+      title: "Antique AI Lens",
+      subtitle: "Évaluez une pièce avec une photo",
+      cta: "Évaluer",
+      collection: "Ma collection",
+      latest: "Dernières évaluations",
+      empty: "Aucune évaluation",
+    },
+    hi: {
+      eyebrow: "KISHIB",
+      title: "Antique AI Lens",
+      subtitle: "एक फ़ोटो से वस्तु का मूल्यांकन करें",
+      cta: "मूल्यांकन करें",
+      collection: "मेरा संग्रह",
+      latest: "हाल की जाँच",
+      empty: "अभी कोई मूल्यांकन नहीं",
+    },
+    fa: {
+      eyebrow: "KISHIB",
+      title: "Antique AI Lens",
+      subtitle: "با یک عکس قطعه را ارزیابی کنید",
+      cta: "ارزیابی قطعه",
+      collection: "مجموعه من",
+      latest: "آخرین ارزیابی‌ها",
+      empty: "هنوز ارزیابی وجود ندارد",
+    },
+    tr: {
+      eyebrow: "KISHIB",
+      title: "Antique AI Lens",
+      subtitle: "Bir fotoğrafla parçayı değerlendir",
+      cta: "Parçayı değerlendir",
+      collection: "Koleksiyonum",
+      latest: "Son değerlendirmeler",
+      empty: "Henüz değerlendirme yok",
+    },
+    ru: {
+      eyebrow: "KISHIB",
+      title: "Antique AI Lens",
+      subtitle: "Оцените предмет по одному фото",
+      cta: "Оценить предмет",
+      collection: "Моя коллекция",
+      latest: "Последние оценки",
+      empty: "Оценок пока нет",
+    },
+    ku: {
+      eyebrow: "KISHIB",
+      title: "Antique AI Lens",
+      subtitle: "بە یەک وێنە پارچەکە هەڵبسەنگێنە",
+      cta: "هەڵسەنگاندن",
+      collection: "کۆمەڵەکەم",
+      latest: "دوایین هەڵسەنگاندن",
+      empty: "هێشتا هەڵسەنگاندن نییە",
+    },
+  } satisfies Record<Locale, Record<string, string>>;
+
+  return text[locale] || text.en;
+}
+
 export default function AntiqueLensShell() {
   const lens = useAntiqueLens();
-  const [hasSession, setHasSession] = useState(() =>
-    typeof window === "undefined" ? false : hasCachedAuthSession()
-  );
-  const [authReady, setAuthReady] = useState(() =>
-    typeof window === "undefined" ? false : hasCachedAuthSession()
-  );
+  const [hasSession, setHasSession] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -186,19 +253,40 @@ export default function AntiqueLensShell() {
       window.clearTimeout(timer);
       unsubscribe?.();
     };
-    
   }, []);
 
+  function handleAuthenticated() {
+    cacheAuthSession(true);
+    setHasSession(true);
+    setAuthReady(true);
+  }
+
+  if (!authReady) {
+    return <main className="min-h-dvh bg-black" />;
+  }
+
+  if (!hasSession) {
+    return (
+      <>
+        <AuthScreen
+          locale={lens.locale}
+          setLocale={lens.changeLocale}
+          onAuthenticated={handleAuthenticated}
+        />
+        <CookieBar />
+      </>
+    );
+  }
+
   const activeLocale = String(lens.locale);
-
   const safeSimilarImages = getSafeSimilarImages(lens);
-
   const isSimilarLoading =
     Boolean(lens.isLoadingSimilar) && safeSimilarImages.length === 0;
-
   const canUseFollowUp = Boolean(
-    lens.result && !lens.followUpOpen && !lens.followUpUsed
+    lens.result && !lens.followUpOpen && !lens.followUpUsed,
   );
+  const copy = homeCopy(lens.locale);
+  const latestItems = lens.history.slice(0, 4);
 
   const followUpPanel =
     lens.followUpOpen && !lens.followUpUsed ? (
@@ -216,124 +304,98 @@ export default function AntiqueLensShell() {
       />
     ) : null;
 
-  function handleAuthenticated() {
-    cacheAuthSession(true);
-    setHasSession(true);
-    setAuthReady(true);
-  }
-
-  if (!authReady || !hasSession) {
-    return (
-      <>
-        <AuthScreen
-          locale={lens.locale}
-          setLocale={lens.changeLocale}
-          onAuthenticated={handleAuthenticated}
-        />
-        <CookieBar />
-      </>
-    );
-  }
-
   return (
     <main
       dir={lens.t.dir}
-      data-theme={lens.theme}
-      className="relative min-h-dvh overflow-x-hidden bg-black text-white transition-colors duration-500"
+      data-theme={lens.theme ?? "dark"}
+      className="relative min-h-dvh overflow-x-hidden bg-black text-[#F8FAFC]"
     >
-      <AntiqueBackground imageSrc="/bg-1.jpg" />
+      <AntiqueBackground />
 
       <div className="relative z-10 min-h-dvh">
-        <HistorySidebar
-          open={lens.historyOpen}
-          history={lens.history}
-          labels={{
-            brand: lens.t.badge,
-            sub: lens.t.sub,
-            new: lens.t.new,
-            archive: lens.t.archive,
-            empty: lens.t.emptyArchive,
-            clear: lens.t.clearArchive,
-            notice: lens.t.notice,
-          }}
-          onOpen={() => lens.setHistoryOpen(true)}
-          onClose={() => lens.setHistoryOpen(false)}
-          onDeleteItem={lens.deleteHistoryItem}
-          onNewEvaluation={() => {
-            lens.resetEvaluation();
-            lens.setHistoryOpen(false);
-          }}
-          onOpenItem={lens.openHistoryItem}
-          onClearHistory={lens.clearHistory}
-        />
-
-        <div className="lg:hidden">
-          <MobileTopBar
-            locale={lens.locale}
-            setLocale={lens.changeLocale}
-            onOpenArchive={() => lens.setHistoryOpen(true)}
-          />
+        <div className="fixed right-4 top-4 z-40">
+          <UserMenu locale={lens.locale} setLocale={lens.changeLocale} />
         </div>
 
-      <div className="fixed right-4 top-4 z-[9999] hidden items-center gap-2 md:right-8 md:top-6 lg:flex">
-  <UserMenu locale={lens.locale} setLocale={lens.changeLocale} />
-</div>
-
         {lens.isTranslatingResult && (
-          <div className="fixed inset-x-0 top-20 z-50 mx-auto flex w-fit items-center gap-3 rounded-full border border-[#d6a25f]/20 bg-black/70 px-5 py-3 text-[12px] font-medium text-[#f4d29b] shadow-2xl shadow-black/30 backdrop-blur-2xl">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-[#d6a25f]" />
-
+          <div className="fixed inset-x-0 top-20 z-50 mx-auto flex w-fit items-center gap-3 rounded-full border border-[#22D3EE]/20 bg-[#07111F]/90 px-5 py-3 text-[12px] font-medium text-[#BAE6FD] shadow-2xl shadow-black/30 backdrop-blur-2xl">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-[#22D3EE]" />
             <span>
               {activeLocale === "en"
                 ? "Translating report..."
                 : activeLocale === "fr"
                   ? "Traduction du rapport..."
-                  : activeLocale === "ku"
-                    ? "وەرگێڕانی ڕاپۆرت..."
-                    : activeLocale === "hi"
-                      ? "रिपोर्ट का अनुवाद हो रहा है..."
-                      : activeLocale === "fa"
-                        ? "در حال ترجمه گزارش..."
-                        : activeLocale === "tr"
-                          ? "Rapor çevriliyor..."
-                          : activeLocale === "ru"
-                            ? "Перевод отчёта..."
-                            : "جاري ترجمة التقرير..."}
+                  : activeLocale === "tr"
+                    ? "Rapor çevriliyor..."
+                    : "جاري ترجمة التقرير..."}
             </span>
           </div>
         )}
 
-        <section className="relative z-10 min-h-dvh lg:pl-[280px]">
+        <section className="relative z-10 mx-auto min-h-dvh w-full max-w-5xl px-4 pb-28 pt-24 md:px-8">
           {!lens.result && !lens.isAnalyzing && (
-            <div className="mx-auto flex min-h-dvh w-full max-w-[760px] flex-col justify-center px-4 pb-24 pt-16 md:px-8 md:pb-28 md:pt-20">
-              <EvaluationComposer
-                theme={lens.theme}
-                labels={lens.t}
-                prompt={lens.prompt}
-                setPrompt={lens.setPrompt}
-                selectedFiles={lens.selectedFiles}
-                imagePreviews={lens.imagePreviews}
-                selectedFile={lens.selectedFile}
-                imagePreview={lens.imagePreview}
-                error={lens.error}
-                locale={lens.locale}
-                handleImageChange={lens.handleImageChange}
-                removeImage={lens.removeImage}
-                removeImageAt={lens.removeImageAt}
-                handleAnalyze={lens.handleAnalyze}
-                isAnalyzing={lens.isAnalyzing}
+            <div className="mx-auto flex w-full max-w-[560px] flex-col gap-7">
+              <div className="pt-4 text-center">
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#22D3EE]">
+                  {copy.eyebrow}
+                </p>
+                <h1 className="mt-3 text-4xl font-semibold leading-tight text-white sm:text-5xl">
+                  {copy.title}
+                </h1>
+                <p className="mx-auto mt-3 max-w-[280px] text-sm leading-6 text-[#94A3B8]">
+                  {copy.subtitle}
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    document
+                      .getElementById("kishib-evaluation-card")
+                      ?.scrollIntoView({ behavior: "smooth", block: "center" })
+                  }
+                  className="mt-5 h-11 rounded-full bg-[#2563EB] px-6 text-sm font-semibold text-white shadow-[0_14px_36px_rgba(37,99,235,0.32)] transition hover:bg-[#1D4ED8]"
+                >
+                  {copy.cta}
+                </button>
+              </div>
+
+              <div id="kishib-evaluation-card">
+                <EvaluationComposer
+                  theme={lens.theme}
+                  labels={lens.t}
+                  prompt={lens.prompt}
+                  setPrompt={lens.setPrompt}
+                  selectedFiles={lens.selectedFiles}
+                  imagePreviews={lens.imagePreviews}
+                  selectedFile={lens.selectedFile}
+                  imagePreview={lens.imagePreview}
+                  error={lens.error}
+                  locale={lens.locale}
+                  handleImageChange={lens.handleImageChange}
+                  removeImage={lens.removeImage}
+                  removeImageAt={lens.removeImageAt}
+                  handleAnalyze={lens.handleAnalyze}
+                  isAnalyzing={lens.isAnalyzing}
+                />
+              </div>
+
+              <LatestCollection
+                title={copy.collection}
+                subtitle={copy.latest}
+                empty={copy.empty}
+                items={latestItems}
+                onOpenItem={lens.openHistoryItem}
               />
             </div>
           )}
 
           {lens.isAnalyzing && (
-            <div className="flex min-h-dvh items-center justify-center px-4 pb-24 pt-20">
+            <div className="flex min-h-[calc(100dvh-8rem)] items-center justify-center">
               <ThinkingMotion locale={lens.locale} />
             </div>
           )}
 
           {lens.result && !lens.isAnalyzing && (
-            <div className="mx-auto w-full max-w-[980px] px-4 pb-28 pt-20 md:px-8 lg:pt-24">
+            <div className="mx-auto w-full max-w-[980px] pt-2">
               <ResultView
                 locale={lens.locale}
                 labels={{
@@ -382,8 +444,66 @@ export default function AntiqueLensShell() {
           onShare={lens.handleShare}
         />
         <CookieBar />
-      
       </div>
     </main>
+  );
+}
+
+function LatestCollection({
+  title,
+  subtitle,
+  empty,
+  items,
+  onOpenItem,
+}: {
+  title: string;
+  subtitle: string;
+  empty: string;
+  items: HistoryItem[];
+  onOpenItem: (item: HistoryItem) => void;
+}) {
+  return (
+    <section className="pb-4">
+      <div className="mb-3 flex items-end justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-white">{title}</h2>
+          <p className="mt-1 text-xs text-[#94A3B8]">{subtitle}</p>
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="rounded-3xl border border-[rgba(34,211,238,0.18)] bg-[#07111F]/70 px-4 py-5 text-sm text-[#94A3B8]">
+          {empty}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onOpenItem(item)}
+              className="group overflow-hidden rounded-3xl border border-white/10 bg-[#0B1220] text-start transition hover:border-[#22D3EE]/45"
+            >
+              <div className="aspect-square bg-black">
+                {item.imagePreview ? (
+                  <img
+                    src={item.imagePreview}
+                    alt={item.title}
+                    className="h-full w-full object-cover opacity-90 transition group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="grid h-full w-full place-items-center text-xs text-[#64748B]">
+                    KISHIB
+                  </div>
+                )}
+              </div>
+              <p className="truncate px-3 py-3 text-xs font-medium text-[#E2E8F0]">
+                {item.title}
+              </p>
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
