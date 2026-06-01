@@ -101,72 +101,64 @@ function homeCopy(locale: Locale) {
   const text = {
     ar: {
       eyebrow: "KISHIB",
-      title: "Antique AI Lens",
-      subtitle: "قيّم قطعة بصورة واحدة",
-      cta: "قيّم قطعة",
+      title: "KISHIB",
+      slogan: "Scan. Value. Verify.",
       collection: "مجموعتي",
       latest: "آخر التقييمات",
       empty: "لا توجد تقييمات بعد",
     },
     en: {
       eyebrow: "KISHIB",
-      title: "Antique AI Lens",
-      subtitle: "Evaluate an item with one photo",
-      cta: "Evaluate item",
+      title: "KISHIB",
+      slogan: "Scan. Value. Verify.",
       collection: "My collection",
       latest: "Latest evaluations",
       empty: "No evaluations yet",
     },
     fr: {
       eyebrow: "KISHIB",
-      title: "Antique AI Lens",
-      subtitle: "Évaluez une pièce avec une photo",
-      cta: "Évaluer",
+      title: "KISHIB",
+      slogan: "Scan. Value. Verify.",
       collection: "Ma collection",
       latest: "Dernières évaluations",
       empty: "Aucune évaluation",
     },
     hi: {
       eyebrow: "KISHIB",
-      title: "Antique AI Lens",
-      subtitle: "एक फ़ोटो से वस्तु का मूल्यांकन करें",
-      cta: "मूल्यांकन करें",
+      title: "KISHIB",
+      slogan: "Scan. Value. Verify.",
       collection: "मेरा संग्रह",
       latest: "हाल की जाँच",
       empty: "अभी कोई मूल्यांकन नहीं",
     },
     fa: {
       eyebrow: "KISHIB",
-      title: "Antique AI Lens",
-      subtitle: "با یک عکس قطعه را ارزیابی کنید",
-      cta: "ارزیابی قطعه",
+      title: "KISHIB",
+      slogan: "Scan. Value. Verify.",
       collection: "مجموعه من",
       latest: "آخرین ارزیابی‌ها",
       empty: "هنوز ارزیابی وجود ندارد",
     },
     tr: {
       eyebrow: "KISHIB",
-      title: "Antique AI Lens",
-      subtitle: "Bir fotoğrafla parçayı değerlendir",
-      cta: "Parçayı değerlendir",
+      title: "KISHIB",
+      slogan: "Scan. Value. Verify.",
       collection: "Koleksiyonum",
       latest: "Son değerlendirmeler",
       empty: "Henüz değerlendirme yok",
     },
     ru: {
       eyebrow: "KISHIB",
-      title: "Antique AI Lens",
-      subtitle: "Оцените предмет по одному фото",
-      cta: "Оценить предмет",
+      title: "KISHIB",
+      slogan: "Scan. Value. Verify.",
       collection: "Моя коллекция",
       latest: "Последние оценки",
       empty: "Оценок пока нет",
     },
     ku: {
       eyebrow: "KISHIB",
-      title: "Antique AI Lens",
-      subtitle: "بە یەک وێنە پارچەکە هەڵبسەنگێنە",
-      cta: "هەڵسەنگاندن",
+      title: "KISHIB",
+      slogan: "Scan. Value. Verify.",
       collection: "کۆمەڵەکەم",
       latest: "دوایین هەڵسەنگاندن",
       empty: "هێشتا هەڵسەنگاندن نییە",
@@ -336,26 +328,12 @@ export default function AntiqueLensShell() {
           {!lens.result && !lens.isAnalyzing && (
             <div className="mx-auto flex w-full max-w-[560px] flex-col gap-7">
               <div className="pt-4 text-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[#22D3EE]">
-                  {copy.eyebrow}
-                </p>
-                <h1 className="mt-3 text-4xl font-semibold leading-tight text-white sm:text-5xl">
+                <h1 className="text-4xl font-semibold leading-tight tracking-[0.08em] text-white sm:text-5xl">
                   {copy.title}
                 </h1>
-                <p className="mx-auto mt-3 max-w-[280px] text-sm leading-6 text-[#94A3B8]">
-                  {copy.subtitle}
+                <p className="mx-auto mt-2 text-[10px] font-semibold uppercase tracking-[0.32em] text-[#67E8F9]/72">
+                  {copy.slogan}
                 </p>
-                <button
-                  type="button"
-                  onClick={() =>
-                    document
-                      .getElementById("kishib-evaluation-card")
-                      ?.scrollIntoView({ behavior: "smooth", block: "center" })
-                  }
-                  className="mt-5 h-11 rounded-full bg-[#2563EB] px-6 text-sm font-semibold text-white shadow-[0_14px_36px_rgba(37,99,235,0.32)] transition hover:bg-[#1D4ED8]"
-                >
-                  {copy.cta}
-                </button>
               </div>
 
               <div id="kishib-evaluation-card">
@@ -390,7 +368,10 @@ export default function AntiqueLensShell() {
 
           {lens.isAnalyzing && (
             <div className="flex min-h-[calc(100dvh-8rem)] items-center justify-center">
-              <ThinkingMotion locale={lens.locale} />
+             <ThinkingMotion
+  locale={lens.locale}
+  imagePreview={lens.imagePreview ?? null}
+/>
             </div>
           )}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, ImagePlus, Send, Sparkles, X } from "lucide-react";
+import { Camera, Send, Sparkles, X } from "lucide-react";
 import type { ChangeEvent } from "react";
 import { useState } from "react";
 import GemstoneFields, {
@@ -212,9 +212,9 @@ export default function EvaluationComposer({
           <p className="relative mt-4 text-lg font-semibold text-[#F8FAFC]">
             {t.uploadBox}
           </p>
-          <p className="relative mt-1 text-sm text-[#94A3B8]">
-            {previews.length > 0 ? t.ready : labels.imageReady}
-          </p>
+          {previews.length > 0 ? (
+            <p className="relative mt-1 text-sm text-[#94A3B8]">{t.ready}</p>
+          ) : null}
           <input
             type="file"
             accept="image/*"
@@ -223,32 +223,6 @@ export default function EvaluationComposer({
             className="hidden"
           />
         </label>
-
-        <div className="mt-3 flex gap-2">
-          <label className="flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 text-sm font-medium text-[#CBD5E1] transition hover:border-[#22D3EE]/35 hover:text-white">
-            <ImagePlus className="h-4 w-4 text-[#22D3EE]" />
-            {labels.upload}
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleImageChange}
-              className="hidden"
-            />
-          </label>
-
-          <label className="flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 text-sm font-medium text-[#CBD5E1] transition hover:border-[#22D3EE]/35 hover:text-white">
-            <Camera className="h-4 w-4 text-[#22D3EE]" />
-            {labels.camera}
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleImageChange}
-              className="hidden"
-            />
-          </label>
-        </div>
 
         {previews.length > 0 && (
           <div className="mt-4 rounded-3xl border border-white/10 bg-black/25 p-2">
@@ -308,11 +282,13 @@ export default function EvaluationComposer({
           ].join(" ")}
         />
 
-        <GemstoneFields
-          value={gemstoneData}
-          onChange={setGemstoneData}
-          locale={safeLocale}
-        />
+        <div className="hidden">
+          <GemstoneFields
+            value={gemstoneData}
+            onChange={setGemstoneData}
+            locale={safeLocale}
+          />
+        </div>
 
         <button
           type="button"

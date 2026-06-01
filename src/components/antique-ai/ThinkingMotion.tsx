@@ -1,263 +1,144 @@
 "use client";
 
-import Image from "next/image";
+/* eslint-disable @next/next/no-img-element */
+
 import { AnimatePresence, motion } from "framer-motion";
-import { Check } from "lucide-react";
+import { Camera, Check } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { Locale } from "./types";
 
-const LOGO_SRC = "/brand/kishib-logo.png";
-
-const STEP_DURATION_MS = 5200;
-const STAMP_DURATION = 1.9;
-const SEAL_DURATION = 2.25;
+const STEP_DURATION_MS = 3200;
 
 type ThinkingStep = {
   title: string;
-  subtitle: string;
 };
 
 type ThinkingCopy = {
   eyebrow: string;
-  headline: string;
-  stage: string;
-  finalNote: string;
+  fallbackTitle: string;
   steps: ThinkingStep[];
 };
 
 const THINKING_COPY: Record<Locale, ThinkingCopy> = {
   ar: {
     eyebrow: "KISHIB",
-    headline: "يتم ختم مراحل التقييم خطوة بخطوة",
-    stage: "المرحلة",
-    finalNote:
-      "قد تستغرق صياغة التقرير النهائي وقتاً أطول حسب الصورة والتفاصيل المدخلة.",
+    fallbackTitle: "جاري الفحص",
     steps: [
-      {
-        title: "جمع البيانات",
-        subtitle: "نقرأ الصورة، نوع القطعة، المادة، العلامات، والملاحظات المدخلة",
-      },
-      {
-        title: "تحليل المؤشرات",
-        subtitle: "نراجع العمر، المنشأ، الأسلوب، الحالة، واحتمالات الأصالة",
-      },
-      {
-        title: "تقدير القيمة",
-        subtitle: "نوازن بين قيمة المادة، الندرة، التوثيق، السوق، والنواقص",
-      },
-      {
-        title: "صياغة التقرير",
-        subtitle: "نرتب النتيجة النهائية بسعر مشروط وتنبيه واضح",
-      },
+      { title: "فحص الصورة" },
+      { title: "قراءة المؤشرات" },
+      { title: "تقدير القيمة" },
+      { title: "إعداد التقرير" },
     ],
   },
 
   en: {
     eyebrow: "KISHIB",
-    headline: "Sealing the evaluation stages step by step",
-    stage: "Stage",
-    finalNote:
-      "Preparing the final report may take longer depending on the image and submitted details.",
+    fallbackTitle: "Scanning",
     steps: [
-      {
-        title: "Collecting data",
-        subtitle: "Reading the image, object type, material, marks, and submitted notes",
-      },
-      {
-        title: "Analyzing indicators",
-        subtitle: "Reviewing age, origin, style, condition, and authenticity signals",
-      },
-      {
-        title: "Estimating value",
-        subtitle: "Balancing material value, rarity, documentation, market context, and flaws",
-      },
-      {
-        title: "Preparing report",
-        subtitle: "Structuring the final result with conditional value and clear notice",
-      },
+      { title: "Scanning image" },
+      { title: "Reading signals" },
+      { title: "Valuing item" },
+      { title: "Preparing report" },
     ],
   },
 
   fr: {
     eyebrow: "KISHIB",
-    headline: "Validation des étapes d’évaluation une par une",
-    stage: "Étape",
-    finalNote:
-      "La préparation du rapport final peut prendre plus de temps selon l’image et les détails fournis.",
+    fallbackTitle: "Analyse",
     steps: [
-      {
-        title: "Collecte des données",
-        subtitle: "Lecture de l’image, du type d’objet, de la matière, des marques et des notes",
-      },
-      {
-        title: "Analyse des indices",
-        subtitle: "Vérification de l’âge, de l’origine, du style, de l’état et des signes d’authenticité",
-      },
-      {
-        title: "Estimation de la valeur",
-        subtitle: "Équilibre entre matière, rareté, documentation, marché et défauts",
-      },
-      {
-        title: "Préparation du rapport",
-        subtitle: "Organisation du résultat final avec valeur conditionnelle et avertissement clair",
-      },
+      { title: "Analyse de l’image" },
+      { title: "Lecture des indices" },
+      { title: "Estimation" },
+      { title: "Rapport" },
     ],
   },
 
   hi: {
     eyebrow: "KISHIB",
-    headline: "मूल्यांकन चरणों को क्रम से सील किया जा रहा है",
-    stage: "चरण",
-    finalNote:
-      "अंतिम रिपोर्ट तैयार होने में तस्वीर और दी गई जानकारी के अनुसार अधिक समय लग सकता है.",
+    fallbackTitle: "स्कैन हो रहा है",
     steps: [
-      {
-        title: "डेटा एकत्र करना",
-        subtitle: "तस्वीर, वस्तु का प्रकार, सामग्री, निशान और दर्ज नोट्स पढ़े जा रहे हैं",
-      },
-      {
-        title: "संकेतों का विश्लेषण",
-        subtitle: "उम्र, उत्पत्ति, शैली, स्थिति और प्रामाणिकता संकेतों की समीक्षा हो रही है",
-      },
-      {
-        title: "मूल्य अनुमान",
-        subtitle: "सामग्री, दुर्लभता, प्रमाण, बाज़ार संदर्भ और कमियों को संतुलित किया जा रहा है",
-      },
-      {
-        title: "रिपोर्ट तैयार करना",
-        subtitle: "अंतिम परिणाम को शर्तों वाले मूल्य और स्पष्ट सूचना के साथ व्यवस्थित किया जा रहा है",
-      },
+      { title: "तस्वीर स्कैन" },
+      { title: "संकेत पढ़ना" },
+      { title: "मूल्य अनुमान" },
+      { title: "रिपोर्ट तैयार" },
     ],
   },
 
   fa: {
     eyebrow: "KISHIB",
-    headline: "مراحل ارزیابی مرحله‌به‌مرحله مهر می‌شود",
-    stage: "مرحله",
-    finalNote:
-      "آماده‌سازی گزارش نهایی ممکن است بسته به تصویر و جزئیات واردشده زمان بیشتری ببرد.",
+    fallbackTitle: "در حال اسکن",
     steps: [
-      {
-        title: "جمع‌آوری داده‌ها",
-        subtitle: "تصویر، نوع قطعه، جنس، نشانه‌ها و یادداشت‌های واردشده بررسی می‌شود",
-      },
-      {
-        title: "تحلیل شاخص‌ها",
-        subtitle: "سن، منشأ، سبک، وضعیت و نشانه‌های اصالت بررسی می‌شود",
-      },
-      {
-        title: "برآورد ارزش",
-        subtitle: "ارزش جنس، کمیابی، مستندات، بازار و نواقص با هم سنجیده می‌شود",
-      },
-      {
-        title: "تهیه گزارش",
-        subtitle: "نتیجه نهایی با ارزش مشروط و هشدار روشن تنظیم می‌شود",
-      },
+      { title: "اسکن تصویر" },
+      { title: "خواندن نشانه‌ها" },
+      { title: "برآورد ارزش" },
+      { title: "آماده‌سازی گزارش" },
     ],
   },
 
   tr: {
     eyebrow: "KISHIB",
-    headline: "Değerlendirme aşamaları adım adım mühürleniyor",
-    stage: "Aşama",
-    finalNote:
-      "Son raporun hazırlanması, görsel ve girilen detaylara göre daha uzun sürebilir.",
+    fallbackTitle: "Taranıyor",
     steps: [
-      {
-        title: "Veri toplama",
-        subtitle: "Görsel, parça türü, malzeme, işaretler ve girilen notlar okunuyor",
-      },
-      {
-        title: "Göstergeleri analiz etme",
-        subtitle: "Yaş, köken, stil, durum ve özgünlük sinyalleri inceleniyor",
-      },
-      {
-        title: "Değer tahmini",
-        subtitle: "Malzeme değeri, nadirlik, belge, piyasa ve kusurlar dengeleniyor",
-      },
-      {
-        title: "Raporu hazırlama",
-        subtitle: "Sonuç, koşullu değer ve açık uyarı ile düzenleniyor",
-      },
+      { title: "Görsel tarama" },
+      { title: "Sinyalleri okuma" },
+      { title: "Değerleme" },
+      { title: "Rapor" },
     ],
   },
 
   ru: {
     eyebrow: "KISHIB",
-    headline: "Этапы оценки подтверждаются шаг за шагом",
-    stage: "Этап",
-    finalNote:
-      "Подготовка итогового отчёта может занять больше времени в зависимости от изображения и введённых данных.",
+    fallbackTitle: "Сканирование",
     steps: [
-      {
-        title: "Сбор данных",
-        subtitle: "Считываем изображение, тип предмета, материал, отметки и введённые заметки",
-      },
-      {
-        title: "Анализ признаков",
-        subtitle: "Проверяем возраст, происхождение, стиль, состояние и признаки подлинности",
-      },
-      {
-        title: "Оценка стоимости",
-        subtitle: "Сопоставляем материал, редкость, документы, рынок и недостатки",
-      },
-      {
-        title: "Подготовка отчёта",
-        subtitle: "Формируем итоговый результат с условной стоимостью и понятным предупреждением",
-      },
+      { title: "Сканирование" },
+      { title: "Признаки" },
+      { title: "Оценка" },
+      { title: "Отчёт" },
     ],
   },
 
   ku: {
     eyebrow: "KISHIB",
-    headline: "قۆناغەکانی هەڵسەنگاندن یەک بە یەک مۆر دەکرێن",
-    stage: "قۆناغ",
-    finalNote:
-      "ئامادەکردنی ڕاپۆرتی کۆتایی لەوانەیە کاتی زیاتر بخایەنێت بەپێی وێنە و وردەکارییەکان.",
+    fallbackTitle: "پشکنین",
     steps: [
-      {
-        title: "کۆکردنەوەی داتا",
-        subtitle: "وێنە، جۆری پارچە، مادە، نیشانەکان و تێبینییەکان دەخوێنرێنەوە",
-      },
-      {
-        title: "شیکردنەوەی نیشانەکان",
-        subtitle: "تەمەن، سەرچاوە، شێواز، دۆخ و نیشانەکانی ڕەسەنایەتی دەبینرێن",
-      },
-      {
-        title: "خەملاندنی نرخ",
-        subtitle: "بەهای مادە، دەگمەنی، بەڵگە، بازاڕ و کەموکوڕییەکان هەڵدەسەنگێنرێن",
-      },
-      {
-        title: "ئامادەکردنی ڕاپۆرت",
-        subtitle: "ئەنجامی کۆتایی بە نرخێکی مەرجدار و ئاگادارییەکی ڕوون ڕێکدەخرێت",
-      },
+      { title: "پشکنینی وێنە" },
+      { title: "خوێندنەوەی نیشانەکان" },
+      { title: "خەملاندنی نرخ" },
+      { title: "ئامادەکردنی ڕاپۆرت" },
     ],
   },
 };
 
 type ThinkingMotionProps = {
   locale?: Locale;
+  imagePreview?: string | null;
 };
 
-export default function ThinkingMotion({ locale = "ar" }: ThinkingMotionProps) {
+function isRtlLocale(locale: Locale) {
+  return locale === "ar" || locale === "fa" || locale === "ku";
+}
+
+export default function ThinkingMotion({
+  locale = "ar",
+  imagePreview = null,
+}: ThinkingMotionProps) {
   const copy = THINKING_COPY[locale] ?? THINKING_COPY.ar;
   const steps = copy.steps;
+  const dir = isRtlLocale(locale) ? "rtl" : "ltr";
 
   const [activeStep, setActiveStep] = useState(0);
-  const [sealedSteps, setSealedSteps] = useState<number[]>([]);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
 
   useEffect(() => {
     let current = 0;
 
-    const resetTimer = window.setTimeout(() => {
-      setActiveStep(0);
-      setSealedSteps([]);
-    }, 0);
+    setActiveStep(0);
+    setCompletedSteps([]);
 
     const interval = window.setInterval(() => {
       current += 1;
 
-      setSealedSteps((prev) => {
+      setCompletedSteps((prev) => {
         const completedStep = current - 1;
 
         if (completedStep < 0) return prev;
@@ -268,10 +149,8 @@ export default function ThinkingMotion({ locale = "ar" }: ThinkingMotionProps) {
 
       if (current >= steps.length) {
         window.clearInterval(interval);
-
         setActiveStep(steps.length - 1);
-        setSealedSteps(steps.map((_, index) => index));
-
+        setCompletedSteps(steps.map((_, index) => index));
         return;
       }
 
@@ -279,242 +158,182 @@ export default function ThinkingMotion({ locale = "ar" }: ThinkingMotionProps) {
     }, STEP_DURATION_MS);
 
     return () => {
-      window.clearTimeout(resetTimer);
       window.clearInterval(interval);
     };
   }, [steps]);
 
   const currentStep = steps[activeStep] ?? steps[0];
 
-  const progressText = useMemo(() => {
-    return `${activeStep + 1} / ${steps.length}`;
+  const progressWidth = useMemo(() => {
+    return `${((activeStep + 1) / steps.length) * 100}%`;
   }, [activeStep, steps.length]);
 
-  const progressWidth = `${((activeStep + 1) / steps.length) * 100}%`;
-
   return (
-    <div className="flex w-full items-center justify-center px-4 py-5">
+    <div
+      dir={dir}
+     className="flex min-h-[calc(100dvh-5rem)] w-full items-start justify-center px-4 pb-3 pt-2"
+    >
       <div
-        className={[
-          "relative w-full max-w-[500px] overflow-hidden rounded-[2.25rem]",
-          "border border-[#a9653a]/20 bg-[#1b1009]/92",
-          "px-5 py-7 shadow-[0_28px_90px_rgba(39,20,10,0.58)] backdrop-blur-2xl",
+       className={[
+  "relative mt-1 w-full max-w-[390px] overflow-hidden rounded-[1.7rem]",
+          "border border-cyan-300/15 bg-[#030712]/95",
+          "p-4 shadow-[0_24px_80px_rgba(0,0,0,0.72)] backdrop-blur-2xl",
         ].join(" ")}
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(236,210,166,0.16),transparent_38%),radial-gradient(circle_at_50%_100%,rgba(169,101,58,0.26),transparent_45%)]" />
-        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#ecd2a6]/50 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-8 bottom-0 h-px bg-gradient-to-r from-transparent via-[#a9653a]/42 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.14),transparent_36%),radial-gradient(circle_at_50%_100%,rgba(37,99,235,0.12),transparent_44%)]" />
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/55 to-transparent" />
 
         <div className="relative">
-          <div className="mb-6 text-center">
-            <p className="text-[11px] font-semibold tracking-[0.42em] text-[#d7a066]">
+          <div className="mb-3 text-center">
+            <p className="text-[10px] font-bold tracking-[0.48em] text-cyan-300">
               {copy.eyebrow}
             </p>
-
-            <p className="mt-2 text-[12px] leading-5 text-[#f3dfbd]/58">
-              {copy.headline}
-            </p>
           </div>
 
-          <div className="relative mx-auto mb-7 flex h-[210px] w-full items-center justify-center">
-            <motion.div
-              animate={{
-                opacity: [0.18, 0.32, 0.18],
-                scale: [0.95, 1.05, 0.95],
-              }}
-              transition={{
-                duration: 4.2,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              className={[
-                "absolute h-[164px] w-[164px] rounded-full",
-                "border border-[#d7a066]/16 bg-[#ecd2a6]/[0.035]",
-              ].join(" ")}
-            />
+          <div
+            className={[
+              "relative mx-auto overflow-hidden rounded-[1.35rem]",
+              "border border-cyan-300/18 bg-black",
+              "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.035),0_18px_55px_rgba(0,0,0,0.5)]",
+            ].join(" ")}
+          >
+            <div className="relative flex h-[330px] items-center justify-center bg-black p-2">
+              {imagePreview ? (
+                <img
+                  src={imagePreview}
+                  alt=""
+                  className="max-h-[306px] w-full select-none rounded-[1rem] object-contain"
+                  draggable={false}
+                />
+              ) : (
+                <div className="grid h-full w-full place-items-center rounded-[1rem] border border-cyan-300/10 bg-[#07111F]">
+                  <div className="text-center">
+                    <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-cyan-300/25 bg-cyan-300/10 text-cyan-300">
+                      <Camera className="h-6 w-6" />
+                    </div>
+                    <p className="mt-3 text-sm font-bold text-white">
+                      {copy.fallbackTitle}
+                    </p>
+                  </div>
+                </div>
+              )}
 
-            <motion.div
-              animate={{
-                opacity: [0.06, 0.16, 0.06],
-                scale: [0.86, 1.18, 0.86],
-              }}
-              transition={{
-                duration: 5.2,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              className="absolute h-[120px] w-[120px] rounded-full border border-[#ecd2a6]/16"
-            />
+              <div className="pointer-events-none absolute inset-2 rounded-[1rem] bg-[linear-gradient(rgba(34,211,238,0.045)_1px,transparent_1px)] bg-[length:100%_16px] opacity-45" />
 
-            <AnimatePresence mode="wait">
+              <div className="pointer-events-none absolute inset-2 rounded-[1rem] bg-gradient-to-b from-cyan-300/10 via-transparent to-blue-500/10" />
+
               <motion.div
-                key={`${locale}-${activeStep}`}
-                initial={{
-                  opacity: 0,
-                  y: 18,
-                  scale: 0.97,
-                  filter: "blur(8px)",
-                }}
+                className="pointer-events-none absolute left-2 right-2 top-2 z-20"
                 animate={{
-                  opacity: 1,
-                  y: 0,
-                  scale: 1,
-                  filter: "blur(0px)",
-                }}
-                exit={{
-                  opacity: 0,
-                  y: -14,
-                  scale: 0.97,
-                  filter: "blur(8px)",
+                  y: ["0%", "calc(100% - 8px)", "0%"],
                 }}
                 transition={{
-                  duration: 0.58,
-                  ease: "easeOut",
+                  duration: 2.65,
+                  repeat: Infinity,
+                  ease: "easeInOut",
                 }}
-                className="absolute inset-x-0 bottom-0 text-center"
+                style={{
+                  height: "calc(100% - 16px)",
+                }}
               >
-                <p className="text-[18px] font-bold text-[#fff0d4]">
-                  {currentStep.title}
-                </p>
-
-                <p className="mx-auto mt-2 max-w-[330px] text-[12px] leading-6 text-[#f3dfbd]/58">
-                  {currentStep.subtitle}
-                </p>
+                <div className="relative h-[3px] w-full rounded-full bg-cyan-300 shadow-[0_0_28px_rgba(34,211,238,0.95)]">
+                  <div className="absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-200 shadow-[0_0_28px_rgba(34,211,238,1)]" />
+                  <div className="absolute inset-x-0 -top-6 h-12 bg-gradient-to-b from-cyan-300/20 via-cyan-300/8 to-transparent blur-sm" />
+                </div>
               </motion.div>
+
+              <ScanCorners />
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={`${locale}-${activeStep}`}
+                initial={{ opacity: 0, y: 8, filter: "blur(6px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: -8, filter: "blur(6px)" }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+                className="text-center text-[15px] font-bold text-white"
+              >
+                {currentStep.title}
+              </motion.p>
             </AnimatePresence>
 
-            <motion.div
-              key={`stamp-${locale}-${activeStep}`}
-              initial={{
-                y: -46,
-                rotate: -7,
-                scale: 1.05,
-                opacity: 0,
-              }}
-              animate={{
-                y: [-46, -18, 12, -7],
-                rotate: [-7, -3, 0, 1.5],
-                scale: [1.05, 1, 0.8, 0.95],
-                opacity: [0, 1, 1, 1],
-              }}
-              transition={{
-                duration: STAMP_DURATION,
-                times: [0, 0.42, 0.66, 1],
-                ease: "easeInOut",
-              }}
-              className="absolute top-1 z-20 h-[96px] w-[96px]"
-            >
-              <Image
-                src={LOGO_SRC}
-                alt="KISHIB stamp"
-                fill
-                sizes="96px"
-                className="object-contain drop-shadow-[0_20px_34px_rgba(35,16,7,0.55)]"
-                priority
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {steps.map((step, index) => {
+                const isActive = index === activeStep;
+                const isDone = completedSteps.includes(index);
+
+                return (
+                  <div
+                    key={`${step.title}-${index}`}
+                    className={[
+                      "flex min-h-[58px] flex-col items-center justify-center rounded-2xl border px-1.5 py-2 text-center transition duration-300",
+                      isActive
+                        ? "border-cyan-300/45 bg-cyan-300/[0.09]"
+                        : isDone
+                          ? "border-blue-400/22 bg-blue-500/[0.06]"
+                          : "border-white/6 bg-white/[0.025]",
+                    ].join(" ")}
+                  >
+                    <div
+                      className={[
+                        "mb-1.5 grid h-6 w-6 place-items-center rounded-full border transition duration-300",
+                        isDone
+                          ? "border-cyan-300 bg-cyan-300 text-black"
+                          : isActive
+                            ? "border-cyan-300/70 bg-cyan-300/15 text-cyan-200"
+                            : "border-white/10 bg-white/[0.03] text-slate-500",
+                      ].join(" ")}
+                    >
+                      {isDone ? (
+                        <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                      ) : (
+                        <span className="text-[9px] font-black">
+                          {index + 1}
+                        </span>
+                      )}
+                    </div>
+
+                    <p
+                      className={[
+                        "line-clamp-2 text-[9px] font-bold leading-3",
+                        isActive
+                          ? "text-cyan-100"
+                          : isDone
+                            ? "text-slate-200"
+                            : "text-slate-500",
+                      ].join(" ")}
+                    >
+                      {step.title}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-white/7">
+              <motion.div
+                animate={{ width: progressWidth }}
+                transition={{ duration: 0.75, ease: "easeOut" }}
+                className="h-full rounded-full bg-gradient-to-r from-blue-600 via-cyan-300 to-blue-500 shadow-[0_0_22px_rgba(34,211,238,0.45)]"
               />
-            </motion.div>
-
-            <motion.div
-              key={`seal-${locale}-${activeStep}`}
-              initial={{
-                opacity: 0,
-                scale: 0.52,
-                rotate: -7,
-              }}
-              animate={{
-                opacity: [0, 0, 0.5, 0.18, 0],
-                scale: [0.52, 0.52, 1.06, 1.2, 1.3],
-                rotate: [-7, -7, 0, 0, 0],
-              }}
-              transition={{
-                duration: SEAL_DURATION,
-                times: [0, 0.46, 0.64, 0.82, 1],
-                ease: "easeOut",
-              }}
-              className={[
-                "absolute top-[62px] z-10 grid h-[104px] w-[104px] place-items-center rounded-full",
-                "border border-[#d7a066]/70 bg-[#a9653a]/10 text-[#d7a066]",
-                "shadow-[0_0_48px_rgba(215,160,102,0.16)]",
-              ].join(" ")}
-            >
-              <div className="relative h-[62px] w-[62px] opacity-75">
-                <Image
-                  src={LOGO_SRC}
-                  alt=""
-                  fill
-                  sizes="62px"
-                  className="object-contain"
-                />
-              </div>
-            </motion.div>
+            </div>
           </div>
-
-          <div className="mx-auto mb-5 flex w-fit items-center gap-2 rounded-full border border-[#d7a066]/16 bg-[#ecd2a6]/[0.045] px-3 py-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#d7a066]" />
-            <span className="text-[11px] font-medium text-[#f3dfbd]/62">
-              {copy.stage} {progressText}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-center gap-2">
-            {steps.map((step, index) => {
-              const isActive = index === activeStep;
-              const isSealed = sealedSteps.includes(index);
-
-              return (
-                <div
-                  key={`${step.title}-${index}`}
-                  className={[
-                    "relative grid h-8 w-8 place-items-center rounded-full border transition duration-300",
-                    isActive
-                      ? "border-[#d7a066]/65 bg-[#d7a066]/16 text-[#d7a066]"
-                      : isSealed
-                        ? "border-[#a9653a]/42 bg-[#a9653a]/12 text-[#d7a066]/78"
-                        : "border-[#ecd2a6]/10 bg-[#ecd2a6]/[0.025] text-[#f3dfbd]/25",
-                  ].join(" ")}
-                >
-                  {isSealed ? (
-                    <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
-                  ) : (
-                    <span className="text-[10px] font-bold">{index + 1}</span>
-                  )}
-
-                  {isActive ? (
-                    <motion.span
-                      layoutId="active-thinking-dot"
-                      className="absolute -bottom-2 h-1 w-1 rounded-full bg-[#d7a066]"
-                    />
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mx-auto mt-6 h-1 w-full max-w-[320px] overflow-hidden rounded-full bg-[#ecd2a6]/10">
-            <motion.div
-              animate={{
-                width: progressWidth,
-              }}
-              transition={{
-                duration: 1,
-                ease: "easeOut",
-              }}
-              className="h-full rounded-full bg-gradient-to-r from-[#7a3f22] via-[#d7a066] to-[#ecd2a6]"
-            />
-          </div>
-
-          {activeStep === steps.length - 1 ? (
-            <motion.p
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.1, duration: 0.55 }}
-              className="mx-auto mt-5 max-w-[320px] text-center text-[11px] leading-5 text-[#f3dfbd]/42"
-            >
-              {copy.finalNote}
-            </motion.p>
-          ) : null}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ScanCorners() {
+  return (
+    <div className="pointer-events-none absolute inset-2 z-30 rounded-[1rem]">
+      <span className="absolute left-0 top-0 h-9 w-9 rounded-tl-[1rem] border-l-2 border-t-2 border-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.55)]" />
+      <span className="absolute right-0 top-0 h-9 w-9 rounded-tr-[1rem] border-r-2 border-t-2 border-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.55)]" />
+      <span className="absolute bottom-0 left-0 h-9 w-9 rounded-bl-[1rem] border-b-2 border-l-2 border-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.55)]" />
+      <span className="absolute bottom-0 right-0 h-9 w-9 rounded-br-[1rem] border-b-2 border-r-2 border-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.55)]" />
     </div>
   );
 }

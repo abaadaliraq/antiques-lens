@@ -32,6 +32,7 @@ type ProfileInfo = {
   country: string;
   city: string;
   birthdate: string;
+  avatarUrl: string;
 };
 
 type MenuCopy = {
@@ -254,12 +255,46 @@ function buildProfileInfo(
     birthdate:
       readMetadataText(metadata, ["birthdate", "date_of_birth", "birth_date"]) ||
       notAdded,
+    avatarUrl: readMetadataText(metadata, ["avatar_url", "picture", "photo_url"]),
   };
 }
 
 function formatBirthDate(value: string) {
   if (!value) return value;
   return /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : value;
+}
+
+function Avatar({
+  name,
+  email,
+  avatarUrl,
+  className,
+}: {
+  name: string;
+  email: string;
+  avatarUrl?: string;
+  className?: string;
+}) {
+  const initial = getInitial(name, email);
+  const baseClass = [
+    "grid place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#22D3EE] via-[#2563EB] to-[#0F172A] font-bold text-white ring-1 ring-[#22D3EE]/25",
+    className || "",
+  ].join(" ");
+
+  if (avatarUrl) {
+    return (
+      <span className={baseClass}>
+        <img
+          src={avatarUrl}
+          alt={name || email || "KISHIB user"}
+          className="h-full w-full object-cover"
+          referrerPolicy="no-referrer"
+        />
+      </span>
+    );
+  }
+
+  return <span className={baseClass}>{initial}</span>;
 }
 
 export default function UserMenu({ locale, setLocale }: UserMenuProps) {
@@ -272,6 +307,7 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
 
   const displayName = profileInfo?.name || getFallbackName(null);
   const displayEmail = profileInfo?.email || copy.unknown;
+  const avatarUrl = profileInfo?.avatarUrl || "";
 
   useEffect(() => {
     let mounted = true;
@@ -338,9 +374,12 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
         className="grid h-11 w-11 place-items-center rounded-full border border-[rgba(34,211,238,0.18)] bg-[#0B1220]/88 text-white shadow-[0_14px_38px_rgba(0,0,0,0.34)] backdrop-blur-2xl transition hover:border-[#22D3EE]/35 hover:bg-[#07111F]"
         aria-label={copy.profile}
       >
-        <span className="grid h-8 w-8 place-items-center rounded-full bg-[#22D3EE] text-xs font-bold text-black">
-          {getInitial(displayName, displayEmail)}
-        </span>
+        <Avatar
+          name={displayName}
+          email={displayEmail}
+          avatarUrl={avatarUrl}
+          className="h-8 w-8 text-xs"
+        />
       </button>
 
       {isOpen ? (
@@ -362,9 +401,12 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
             <div className="flex h-full flex-col overflow-y-auto p-3">
             <div className="rounded-[1.15rem] border border-[#22D3EE]/12 bg-[#07111F]/80 p-3.5">
               <div className="flex items-center gap-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#22D3EE] text-sm font-bold text-black">
-                  {getInitial(displayName, displayEmail)}
-                </span>
+                <Avatar
+                  name={displayName}
+                  email={displayEmail}
+                  avatarUrl={avatarUrl}
+                  className="h-10 w-10 shrink-0 rounded-2xl text-sm"
+                />
 
                 <div className="min-w-0">
                   <p className="truncate text-[13px] font-semibold text-white/90">
