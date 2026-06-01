@@ -136,6 +136,28 @@ function getItemTypeLabel(locale: Locale) {
   return "نوع القطعة";
 }
 
+function getSilverScenarioLabels(locale: Locale) {
+  if (locale === "en") {
+    return {
+      title: "Silver value scenarios by weight",
+      note:
+        "No exact weight was entered, so these are scenario estimates. Final valuation requires weighing the item and checking purity marks.",
+      weight: "Assumed weight",
+      melt: "Raw silver value",
+      antique: "With antique value",
+    };
+  }
+
+  return {
+    title: "احتمالات قيمة الفضة حسب الوزن",
+    note:
+      "لم يتم إدخال وزن دقيق، لذلك هذه تقديرات احتمالية. الوزن والعيار ضروريان لتقييم نهائي.",
+    weight: "الوزن المفترض",
+    melt: "قيمة الفضة الخام",
+    antique: "مع قيمة الأنتيك",
+  };
+}
+
 function buildReportId() {
   const now = new Date();
   const year = now.getFullYear();
@@ -164,6 +186,7 @@ export default function ResultView({
   const reportLabels = getReportLabels(locale);
   const similarSourceLabel = getSimilarSourceLabel(locale);
   const itemTypeLabel = getItemTypeLabel(locale);
+  const silverScenarioLabels = getSilverScenarioLabels(locale);
 
   const galleryImages =
     imagePreviews.length > 0 ? imagePreviews : imagePreview ? [imagePreview] : [];
@@ -388,6 +411,52 @@ export default function ResultView({
             fallback={fallbackText}
           />
         </section>
+
+        {result.metalValue?.scenarios?.length ? (
+          <section className="mt-7 rounded-[1.5rem] border border-[#22D3EE]/15 bg-[#07111F]/80 p-4">
+            <p className="text-xs font-semibold text-[#67E8F9]">
+              {silverScenarioLabels.title}
+            </p>
+
+            <p className="mt-2 text-xs leading-5 text-[#94A3B8]">
+              {silverScenarioLabels.note}
+            </p>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {result.metalValue.scenarios.map((scenario) => (
+                <div
+                  key={scenario.label}
+                  className="rounded-2xl border border-white/10 bg-black/25 p-3"
+                >
+                  <p className="text-sm font-bold text-white">
+                    {locale === "en" ? scenario.label : scenario.labelAr}
+                  </p>
+
+                  <p className="mt-2 text-xs text-[#94A3B8]">
+                    {silverScenarioLabels.weight}: {scenario.weightGrams}g
+                  </p>
+
+                  <p className="mt-2 text-xs text-[#94A3B8]">
+                    {silverScenarioLabels.melt}
+                  </p>
+
+                  <p className="text-sm font-bold text-[#A5F3FC]">
+                    ${scenario.meltValueUsdMid}
+                  </p>
+
+                  <p className="mt-2 text-xs text-[#94A3B8]">
+                    {silverScenarioLabels.antique}
+                  </p>
+
+                  <p className="text-sm font-bold text-white">
+                    ${scenario.antiqueEstimateUsdLow} - $
+                    {scenario.antiqueEstimateUsdHigh}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {result.lookup && <TextSection title={labels.lookup} body={result.lookup} />}
 

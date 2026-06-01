@@ -132,8 +132,10 @@ export default function ThinkingMotion({
   useEffect(() => {
     let current = 0;
 
-    setActiveStep(0);
-    setCompletedSteps([]);
+    const resetTimer = window.setTimeout(() => {
+      setActiveStep(0);
+      setCompletedSteps([]);
+    }, 0);
 
     const interval = window.setInterval(() => {
       current += 1;
@@ -158,6 +160,7 @@ export default function ThinkingMotion({
     }, STEP_DURATION_MS);
 
     return () => {
+      window.clearTimeout(resetTimer);
       window.clearInterval(interval);
     };
   }, [steps]);

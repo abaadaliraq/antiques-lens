@@ -3,6 +3,18 @@ import { NextResponse } from "next/server";
 import { buildKnowledgeContext } from "../../../lib/antiqueKnowledge";
 export const runtime = "nodejs";
 import {
+  calculateSilverMeltValue,
+  calculateSilverScenarioValues,
+  detectSilver,
+  detectSilverPurity,
+  getSilverWeightScenarios,
+  normalizeWeightToGrams,
+  TROY_OUNCE_GRAMS,
+  type SilverMeltValue,
+  type SilverScenario,
+} from "@/lib/metalValue";
+import {
+  
   searchMarketReferences,
   formatMarketReferencesForPrompt,
 } from "@/lib/marketReferences";
@@ -30,6 +42,17 @@ type AnalysisResult = {
   confidence: number;
   confidenceNote: string;
   disclaimer: string;
+    metalValue?: {
+    metal: "silver" | "gold" | "unknown";
+    weightGrams?: number;
+    purityAssumption?: string;
+    spotPricePerGramUsd?: number;
+    meltValueUsdLow?: number;
+    meltValueUsdMid?: number;
+    meltValueUsdHigh?: number;
+    note?: string;
+    scenarios?: SilverScenario[];
+  };
 };
 
 function normalizeLocale(locale: string): Locale {
@@ -131,6 +154,73 @@ Do not use English, Kurdish, or French except for necessary antique terms.
 
 function safeString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
+}
+function toPositiveNumber(value: unknown) {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : null;
+}
+
+function normalizeWeightFromNotes(input?: string | null) {
+  const value = (input || "").toLowerCase();
+
+  const hasWeightWithUnit =
+    /\d+(?:[\.,]\d+)?\s*(kg|kgs|g|gram|grams|oz|ounce|ounces|غرام|جرام|غم|كيلو|كيلوغرام|كغم|اونصة|أونصة)\b/.test(
+      value,
+    ) ||
+    /(kg|kgs|g|gram|grams|oz|ounce|ounces|غرام|جرام|غم|كيلو|كيلوغرام|كغم|اونصة|أونصة)\s*\d+(?:[\.,]\d+)?/.test(
+      value,
+    );
+
+  if (!hasWeightWithUnit) {
+    return null;
+  }
+
+  return normalizeWeightToGrams(value);
+}
+
+async function fetchSilverPricePerGramUsd() {
+  const fallback = toPositiveNumber(process.env.SILVER_PRICE_PER_GRAM_USD);
+  const apiKey = process.env.METALS_API_KEY;
+
+  try {
+    if (!apiKey) {
+      throw new Error("Missing METALS_API_KEY");
+    }
+
+    const url = new URL("https://metals-api.com/api/latest");
+    url.searchParams.set("access_key", apiKey);
+    url.searchParams.set("base", "USD");
+    url.searchParams.set("symbols", "XAG");
+
+    const response = await fetch(url.toString(), {
+      next: { revalidate: 60 * 60 },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Metals API failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const rates = data?.rates ?? {};
+
+    const directUsdXag = toPositiveNumber(rates.USDXAG);
+    const invertedXag = toPositiveNumber(rates.XAG);
+
+    const pricePerOz =
+      directUsdXag ?? (invertedXag ? 1 / invertedXag : null);
+
+    if (!pricePerOz) {
+      throw new Error("Missing silver XAG price");
+    }
+
+    return pricePerOz / TROY_OUNCE_GRAMS;
+  } catch (error) {
+    console.warn("Silver price fallback used:", error);
+
+    if (fallback) return fallback;
+
+    return null;
+  }
 }
 function hasHouseOfAntiquesContext(marketContext?: string) {
   const text = (marketContext || "").toLowerCase();
@@ -356,6 +446,7 @@ function buildPrompt(fields: {
   hasImage: boolean;
   marketContext?: string;
   marketReferencesText?: string;
+  silverMarketContext?: string;
 }) {
 
   const language = getLanguageName(fields.locale);
@@ -451,6 +542,17 @@ Identification rules:
 
 Market comparison context from Google Lens, visual search, and internal House of Antiques store:
 ${fields.marketContext || "No market comparison context was provided."}
+
+SILVER MARKET FLOOR CONTEXT:
+${fields.silverMarketContext || "No silver floor value context was provided."}
+
+SILVER VALUATION RULE:
+If silver floor value context is provided, you must treat it as deterministic calculation, not opinion.
+Do not estimate a silver item below its raw metal floor value unless weight or purity is uncertain.
+For antique, handmade, engraved, or collectible silver, the valuation should be the metal floor value plus craftsmanship, age, rarity, condition, provenance, and market premium.
+Mention raw silver value separately inside priceReasoning.
+If weight is missing, ask for weight and purity marks such as 800, 925, sterling, or 999.
+If silver scenarios are provided, do not provide a single confident valuation. Present the valuation as light, medium, and heavy weight scenarios. Explain that the final value depends on actual weight and purity. Never ignore the silver floor value.
 
 INTERNAL KISHIB MARKET REFERENCES FROM SUPABASE:
 ${internalMarketReferences}
@@ -650,6 +752,39 @@ Required JSON shape:
   "followUpQuestion": "one clear next question",
   "confidence": 1,
   "confidenceNote": "why confidence is low, medium, or high",
+    "metalValue": null,
+
+If a silver floor value was provided, set "metalValue" as an object:
+{
+  "metal": "silver",
+  "weightGrams": number,
+  "purityAssumption": string,
+  "spotPricePerGramUsd": number,
+  "meltValueUsdLow": number,
+  "meltValueUsdMid": number,
+  "meltValueUsdHigh": number,
+  "note": string,
+  "scenarios": [
+    {
+      "label": "light",
+      "labelAr": string,
+      "weightGrams": number,
+      "purityAssumption": string,
+      "spotPricePerGramUsd": number,
+      "meltValueUsdLow": number,
+      "meltValueUsdMid": number,
+      "meltValueUsdHigh": number,
+      "antiqueEstimateUsdLow": number,
+      "antiqueEstimateUsdHigh": number,
+      "note": string
+    }
+  ]
+}
+
+If no silver floor value was provided, use:
+"metalValue": null
+
+
   "disclaimer": "preliminary visual estimate, not an authenticity certificate or formal appraisal"
 }
 
@@ -887,6 +1022,7 @@ function normalizeResult(
     confidence,
     confidenceNote: normalizeString(parsed.confidenceNote, fallback.confidenceNote),
     disclaimer: normalizeString(parsed.disclaimer, fallback.disclaimer),
+        metalValue: parsed.metalValue,
   };
 }
 
@@ -935,6 +1071,109 @@ const dimensions = safeString(formData.get("dimensions"));
 const weight = safeString(formData.get("weight"));
 const hasMark = safeString(formData.get("hasMark"));
 
+const silverContextText = [
+  notes,
+  itemType,
+  material,
+  dimensions,
+  weight,
+  hasMark,
+  marketContext,
+]
+  .filter(Boolean)
+  .join(" ");
+
+let silverMarketContext = "";
+let silverMetalValue: (SilverMeltValue & { scenarios?: SilverScenario[] }) | null = null;
+
+if (detectSilver(silverContextText)) {
+  const weightGrams =
+    normalizeWeightToGrams(weight) ?? normalizeWeightFromNotes(notes);
+  const purity = detectSilverPurity(silverContextText);
+  const pricePerGramUsd = await fetchSilverPricePerGramUsd();
+
+  if (weightGrams && pricePerGramUsd) {
+    silverMetalValue = calculateSilverMeltValue({
+      weightGrams,
+      purity,
+      pricePerGramUsd,
+    });
+
+    silverMarketContext = `
+The item appears to be silver.
+
+Current silver spot price:
+- USD per gram: ${silverMetalValue.spotPricePerGramUsd}
+
+Detected / user-provided weight:
+- ${silverMetalValue.weightGrams} grams
+
+Purity assumption:
+- ${silverMetalValue.purityAssumption}
+
+Raw silver melt / floor value:
+- Low: $${silverMetalValue.meltValueUsdLow}
+- Mid: $${silverMetalValue.meltValueUsdMid}
+- High: $${silverMetalValue.meltValueUsdHigh}
+
+This raw metal value is a hard valuation floor.
+Do not estimate the item below this raw silver value unless the weight or purity is uncertain.
+If the piece is antique, engraved, handmade, or collectible, add antique/craft premium above the metal value.
+`;
+  } else if (pricePerGramUsd) {
+    const scenarioWeights = getSilverWeightScenarios(silverContextText);
+    const scenarios = calculateSilverScenarioValues({
+      scenarioWeights,
+      purity,
+      pricePerGramUsd,
+    });
+
+    silverMetalValue = {
+      metal: "silver",
+      weightGrams: scenarios[1]?.weightGrams ?? scenarioWeights[1],
+      purityAssumption: purity
+        ? `${Math.round(purity * 1000)}/1000`
+        : "range: 800 / 925 / 999",
+      spotPricePerGramUsd: Math.round(pricePerGramUsd * 100) / 100,
+      meltValueUsdLow: scenarios[0]?.meltValueUsdMid ?? 0,
+      meltValueUsdMid: scenarios[1]?.meltValueUsdMid ?? 0,
+      meltValueUsdHigh: scenarios[2]?.meltValueUsdMid ?? 0,
+      note:
+        "Weight was not provided. These are scenario estimates based on likely object weight ranges. Final valuation requires weighing the item.",
+      scenarios,
+    };
+
+    silverMarketContext = `
+The item appears to be silver, but no usable weight was provided.
+
+Do NOT give one fixed valuation.
+Use these three weight scenarios:
+
+${scenarios
+  .map(
+    (scenario) => `
+${scenario.label.toUpperCase()} / ${scenario.labelAr}
+- Assumed weight: ${scenario.weightGrams}g
+- Silver floor value low/mid/high: $${scenario.meltValueUsdLow} / $${scenario.meltValueUsdMid} / $${scenario.meltValueUsdHigh}
+- Suggested antique estimate: $${scenario.antiqueEstimateUsdLow} - $${scenario.antiqueEstimateUsdHigh}
+`,
+  )
+  .join("\n")}
+
+Strict rule:
+Explain that weight is not confirmed from image alone.
+Present valuation as scenarios, not a single final number.
+Ask the user to weigh the item for a precise valuation.
+If the piece is handmade, engraved, antique, or rare, explain that value can exceed melt value.
+`;
+  } else {
+    silverMarketContext = `
+The item appears to be silver, but live silver price could not be fetched.
+Do not undervalue silver. Ask for weight and purity and explain that silver price must be checked.
+`;
+  }
+}
+
 const marketReferences = await searchMarketReferences({
   itemType,
   category: itemType,
@@ -982,7 +1221,7 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
     > = [
       {
         type: "input_text",
-   text: buildPrompt({
+text: buildPrompt({
   locale,
   notes,
   itemType,
@@ -993,6 +1232,7 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
   hasImage,
   marketContext,
   marketReferencesText,
+  silverMarketContext,
 }),
       },
     ];
@@ -1041,9 +1281,27 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
     }
 
     const fallback = buildFallbackResult(locale);
-    const normalized = normalizeResult(parsed, fallback);
+const normalized = normalizeResult(parsed, fallback);
 
-    return NextResponse.json(normalized);
+if (silverMetalValue) {
+  normalized.metalValue = silverMetalValue;
+
+  if (silverMetalValue.scenarios?.length) {
+    const firstScenario = silverMetalValue.scenarios[0];
+    const lastScenario =
+      silverMetalValue.scenarios[silverMetalValue.scenarios.length - 1];
+
+    const scenarioSuffix =
+      locale === "ar" ? "حسب احتمالات الوزن" : "based on weight scenarios";
+    normalized.estimatedValue = `$${firstScenario.antiqueEstimateUsdLow} - $${lastScenario.antiqueEstimateUsdHigh} ${scenarioSuffix}`;
+  } else if (silverMetalValue.meltValueUsdMid) {
+    const min = Math.round(silverMetalValue.meltValueUsdMid);
+    const max = Math.round(silverMetalValue.meltValueUsdHigh * 1.8);
+    normalized.estimatedValue = `$${min} - $${max}`;
+  }
+}
+
+return NextResponse.json(normalized);
   } catch (error) {
     console.error("Analyze API error:", error);
 

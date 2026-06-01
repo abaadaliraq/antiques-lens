@@ -37,6 +37,29 @@ export type AnalysisResult = {
   period?: string;
   keywords?: string[];
   houseOfAntiques?: HouseOfAntiquesContext;
+  metalValue?: {
+    metal: "silver" | "gold" | "unknown";
+    weightGrams?: number;
+    purityAssumption?: string;
+    spotPricePerGramUsd?: number;
+    meltValueUsdLow?: number;
+    meltValueUsdMid?: number;
+    meltValueUsdHigh?: number;
+    note?: string;
+    scenarios?: {
+      label: "light" | "medium" | "heavy";
+      labelAr: string;
+      weightGrams: number;
+      purityAssumption: string;
+      spotPricePerGramUsd: number;
+      meltValueUsdLow: number;
+      meltValueUsdMid: number;
+      meltValueUsdHigh: number;
+      antiqueEstimateUsdLow: number;
+      antiqueEstimateUsdHigh: number;
+      note: string;
+    }[];
+  };
 };
 
 export type SimilarImageResult = {
