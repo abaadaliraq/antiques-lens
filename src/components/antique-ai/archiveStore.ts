@@ -3,6 +3,7 @@ export type ArchiveItem = {
   title: string;
   prompt?: string;
   imagePreview?: string;
+  imagePreviews?: string[];
   createdAt: string;
   result: any;
 };
@@ -15,16 +16,27 @@ function isClientSide() {
 }
 
 function cleanArchiveItem(item: ArchiveItem): ArchiveItem {
+  const imagePreviews = Array.isArray(item.imagePreviews)
+    ? item.imagePreviews.filter(
+        (preview) => typeof preview === "string" && !preview.startsWith("blob:"),
+      )
+    : [];
+
   const imagePreview =
     item.imagePreview && !item.imagePreview.startsWith("blob:")
       ? item.imagePreview
-      : undefined;
+      : imagePreviews[0];
 
   return {
     id: item.id || createArchiveId(),
     title: item.title || "Untitled item",
     prompt: item.prompt || "",
     imagePreview,
+    imagePreviews: imagePreviews.length
+      ? imagePreviews
+      : imagePreview
+        ? [imagePreview]
+        : [],
     createdAt: item.createdAt || new Date().toISOString(),
     result: item.result || {},
   };
