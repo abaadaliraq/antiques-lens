@@ -277,7 +277,7 @@ function Avatar({
 }) {
   const initial = getInitial(name, email);
   const baseClass = [
-    "grid place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#22D3EE] via-[#2563EB] to-[#0F172A] font-bold text-white ring-1 ring-[#22D3EE]/25",
+    "grid place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#dcc18a] via-[#b88a3d] to-[#6d241d] font-bold text-[#fff4e2] ring-1 ring-[#b88a3d]/25",
     className || "",
   ].join(" ");
 
@@ -371,7 +371,7 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="grid h-11 w-11 place-items-center rounded-full border border-[rgba(34,211,238,0.18)] bg-[#0B1220]/88 text-white shadow-[0_14px_38px_rgba(0,0,0,0.34)] backdrop-blur-2xl transition hover:border-[#22D3EE]/35 hover:bg-[#07111F]"
+        className="grid h-11 w-11 place-items-center rounded-full border border-[#d2b98f] bg-[#fff4e2]/88 text-[#241913] shadow-[0_14px_38px_rgba(62,39,22,0.14)] backdrop-blur-2xl transition hover:border-[#b88a3d]/55 hover:bg-[#fff4e2]"
         aria-label={copy.profile}
       >
         <Avatar
@@ -388,18 +388,18 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
             type="button"
             aria-label="Close user menu"
             onClick={() => setIsOpen(false)}
-            className="fixed inset-0 z-[9998] bg-black/55 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[9998] bg-[#241913]/20 backdrop-blur-[2px]"
           />
 
           <div
             className={[
-              "fixed inset-x-3 bottom-3 z-[9999] h-[54dvh] min-h-[320px] max-h-[520px] overflow-hidden rounded-[1.6rem] border border-[rgba(34,211,238,0.18)] bg-[#020617]/96 shadow-[0_26px_82px_rgba(0,0,0,0.72)] backdrop-blur-2xl",
+              "fixed inset-x-3 bottom-3 z-[9999] h-[54dvh] min-h-[320px] max-h-[520px] overflow-hidden rounded-[22px] border border-[#d2b98f] bg-[#fff4e2]/96 shadow-[0_26px_82px_rgba(62,39,22,0.18)] backdrop-blur-2xl",
               "md:inset-x-auto md:bottom-auto md:top-16 md:h-auto md:max-h-[calc(100dvh-5rem)] md:w-[340px] md:rounded-[1.35rem]",
               rtl ? "md:left-4" : "md:right-4",
             ].join(" ")}
           >
             <div className="flex h-full flex-col overflow-y-auto p-3">
-            <div className="rounded-[1.15rem] border border-[#22D3EE]/12 bg-[#07111F]/80 p-3.5">
+            <div className="rounded-[18px] border border-[#d2b98f] bg-[#efe3cf]/70 p-3.5">
               <div className="flex items-center gap-3">
                 <Avatar
                   name={displayName}
@@ -409,17 +409,17 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
                 />
 
                 <div className="min-w-0">
-                  <p className="truncate text-[13px] font-semibold text-white/90">
+                  <p className="truncate text-[13px] font-semibold text-[#241913]">
                     {displayName}
                   </p>
-                  <p className="truncate text-[11px] text-white/38">
+                  <p className="truncate text-[11px] text-[#735f4b]">
                     {displayEmail || copy.account}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="mt-2 rounded-[1rem] border border-white/[0.07] bg-white/[0.025] p-1.5">
+            <div className="mt-2 rounded-[16px] border border-[#d2b98f] bg-[#fff4e2]/55 p-1.5">
               <MenuButton
                 icon={<UserRound className="h-4 w-4" />}
                 label={copy.profile}
@@ -435,7 +435,7 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
                 type="button"
                 disabled
                 title={copy.comingSoon}
-                className="mt-1 flex h-9 w-full cursor-not-allowed items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 text-[11.5px] font-medium text-white/28"
+                className="mt-1 flex h-9 w-full cursor-not-allowed items-center justify-center rounded-[12px] border border-[#d2b98f] bg-[#efe3cf]/55 px-3 text-[11.5px] font-medium text-[#735f4b]/55"
               >
                 {copy.editProfile}
               </button>
@@ -448,17 +448,17 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
               />
             ) : null}
 
-            <div className="mt-2 rounded-[1rem] border border-white/[0.07] bg-white/[0.025] p-1.5">
+            <div className="mt-2 rounded-[16px] border border-[#d2b98f] bg-[#fff4e2]/55 p-1.5">
               <MenuButton
                 icon={<Crown className="h-4 w-4" />}
                 label={copy.subscriptions}
                 value={copy.comingSoon}
                 onClick={handleSubscriptionsClick}
-                trailing={<ExternalLink className="h-3.5 w-3.5 text-white/28" />}
+                trailing={<ExternalLink className="h-3.5 w-3.5 text-[#735f4b]/55" />}
               />
             </div>
 
-            <div className="mt-2 rounded-[1rem] border border-white/[0.07] bg-white/[0.025] p-1.5">
+            <div className="mt-2 rounded-[16px] border border-[#d2b98f] bg-[#fff4e2]/55 p-1.5">
               <MenuLink
                 href="/cookies"
                 icon={<Cookie className="h-4 w-4" />}
@@ -479,9 +479,9 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
             <button
               type="button"
               onClick={() => void handleLogout()}
-              className="mt-2 flex h-10 w-full items-center gap-3 rounded-xl px-3 text-start text-[12px] font-medium text-red-100/88 transition hover:bg-red-500/10"
+              className="mt-2 flex h-10 w-full items-center gap-3 rounded-[12px] px-3 text-start text-[12px] font-medium text-[#6d241d] transition hover:bg-[#d9b59e]/55"
             >
-              <LogOut className="h-4 w-4 text-red-300/82" />
+              <LogOut className="h-4 w-4 text-[#a35a44]" />
               <span className="flex-1">{copy.logout}</span>
             </button>
             </div>
@@ -509,13 +509,13 @@ function MenuButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex h-9 w-full items-center gap-3 rounded-xl px-2.5 text-start transition hover:bg-white/[0.055]"
+      className="flex h-9 w-full items-center gap-3 rounded-[12px] px-2.5 text-start transition hover:bg-[#d9b59e]/55"
     >
-      <span className="text-[#22D3EE]/85">{icon}</span>
-      <span className="flex-1 text-[12px] font-medium text-white/76">
+      <span className="text-[#986f2e]">{icon}</span>
+      <span className="flex-1 text-[12px] font-medium text-[#241913]">
         {label}
       </span>
-      <span className="flex max-w-[126px] items-center gap-1.5 truncate text-[10.5px] font-medium text-white/34">
+      <span className="flex max-w-[126px] items-center gap-1.5 truncate text-[10.5px] font-medium text-[#735f4b]">
         <span className="truncate">{value}</span>
         {trailing}
       </span>
@@ -526,8 +526,8 @@ function MenuButton({
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex h-8 items-center justify-between gap-3 rounded-xl px-2.5">
-      <span className="text-[11px] font-medium text-white/40">{label}</span>
-      <span className="max-w-[142px] truncate text-[11px] font-medium text-white/68">
+      <span className="text-[11px] font-medium text-[#735f4b]">{label}</span>
+      <span className="max-w-[142px] truncate text-[11px] font-medium text-[#241913]/72">
         {value}
       </span>
     </div>
@@ -542,18 +542,18 @@ function LanguageMenu({
   onChange: (locale: Locale) => void;
 }) {
   return (
-    <div className="mt-2 rounded-[1rem] border border-white/[0.07] bg-white/[0.025] p-2">
+    <div className="mt-2 rounded-[16px] border border-[#d2b98f] bg-[#fff4e2]/55 p-2">
       <div className="mb-2 flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <span className="grid h-7 w-7 place-items-center rounded-xl bg-[#2563EB]/18 text-[#22D3EE]">
+          <span className="grid h-7 w-7 place-items-center rounded-[12px] bg-[#d9b59e]/55 text-[#986f2e]">
             <Globe2 className="h-3.5 w-3.5" />
           </span>
           <div>
-            <p className="text-[11px] font-semibold text-white/74">Language</p>
-            <p className="text-[9.5px] text-white/32">Interface language</p>
+            <p className="text-[11px] font-semibold text-[#241913]">Language</p>
+            <p className="text-[9.5px] text-[#735f4b]">Interface language</p>
           </div>
         </div>
-        <span className="rounded-full border border-[#22D3EE]/18 bg-[#2563EB]/16 px-2 py-1 text-[10px] font-semibold text-[#BAE6FD]">
+        <span className="rounded-[10px] border border-[#d2b98f] bg-[#efe3cf] px-2 py-1 text-[10px] font-semibold text-[#735f4b]">
           {activeLocale.toUpperCase()}
         </span>
       </div>
@@ -570,16 +570,16 @@ function LanguageMenu({
               className={[
                 "flex h-8 items-center gap-2 rounded-xl px-2 text-start text-[11px] transition",
                 active
-                  ? "bg-[#22D3EE] text-black"
-                  : "text-white/58 hover:bg-white/[0.055] hover:text-white/82",
+                  ? "bg-[#b88a3d] text-[#fff4e2]"
+                  : "text-[#735f4b] hover:bg-[#d9b59e]/55 hover:text-[#241913]",
               ].join(" ")}
             >
               <span
                 className={[
                   "grid h-5 w-6 shrink-0 place-items-center rounded-lg text-[9px] font-semibold",
                   active
-                    ? "bg-black/12 text-black"
-                    : "border border-white/8 text-white/34",
+                    ? "bg-[#fff4e2]/20 text-[#fff4e2]"
+                    : "border border-[#d2b98f] text-[#735f4b]",
                 ].join(" ")}
               >
                 {item.short}
@@ -608,13 +608,13 @@ function MenuLink({
   return (
     <Link
       href={href}
-      className="flex h-9 w-full items-center gap-3 rounded-xl px-2.5 text-start transition hover:bg-white/[0.055]"
+      className="flex h-9 w-full items-center gap-3 rounded-[12px] px-2.5 text-start transition hover:bg-[#d9b59e]/55"
     >
-      <span className="text-[#22D3EE]/85">{icon}</span>
-      <span className="flex-1 text-[12px] font-medium text-white/76">
+      <span className="text-[#986f2e]">{icon}</span>
+      <span className="flex-1 text-[12px] font-medium text-[#241913]">
         {label}
       </span>
-      <BadgeCheck className="h-3.5 w-3.5 text-white/20" />
+      <BadgeCheck className="h-3.5 w-3.5 text-[#735f4b]/45" />
     </Link>
   );
 }

@@ -135,17 +135,17 @@ export default function FollowUpEvaluationPanel({
   const t = copy(locale);
 
   return (
-    <section className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.045] p-5 backdrop-blur-2xl">
+    <section className="mt-8 rounded-[2rem] border border-[#d8c8ae] bg-[#fff8ec]/82 p-5 text-[#241912] backdrop-blur-2xl">
       <div className="mb-5">
-        <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.32em] text-[#22D3EE]/70">
+        <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.32em] text-[#b58a45]">
           {t.eyebrow}
         </p>
 
-        <h2 className="text-[22px] font-semibold tracking-[-0.04em] text-white">
+        <h2 className="text-[22px] font-semibold tracking-[-0.04em] text-[#294436]">
           {t.title}
         </h2>
 
-        <p className="mt-2 text-[13px] font-light leading-6 text-white/45">
+        <p className="mt-2 text-[13px] font-light leading-6 text-[#705f4d]">
           {t.hint}
         </p>
       </div>
@@ -154,11 +154,11 @@ export default function FollowUpEvaluationPanel({
         value={followUpText}
         onChange={(event) => setFollowUpText(event.target.value)}
         placeholder={t.placeholder}
-        className="min-h-[130px] w-full resize-none rounded-[1.4rem] border border-white/10 bg-black/35 p-4 text-[15px] font-light leading-7 text-white outline-none placeholder:text-white/25 focus:border-[#22D3EE]/35"
+        className="min-h-[130px] w-full resize-none rounded-[1.4rem] border border-[#d8c8ae] bg-[#fff8ec] p-4 text-[15px] font-light leading-7 text-[#241912] outline-none placeholder:text-[#8d7a65] focus:border-[#b58a45]/70"
       />
 
       <div className="mt-4">
-        <label className="flex cursor-pointer items-center justify-center rounded-[1.4rem] border border-dashed border-white/15 bg-white/[0.03] px-4 py-6 text-center text-[13px] font-medium text-white/55 transition hover:border-[#22D3EE]/35 hover:text-[#22D3EE]">
+        <label className="flex cursor-pointer items-center justify-center rounded-[1.4rem] border border-dashed border-[#b58a45]/35 bg-[#f3eadc]/70 px-4 py-6 text-center text-[13px] font-medium text-[#705f4d] transition hover:border-[#b58a45] hover:text-[#7b2f25]">
           <input
             type="file"
             accept="image/*"
@@ -175,14 +175,14 @@ export default function FollowUpEvaluationPanel({
           {followUpPreviews.map((src, index) => (
             <div
               key={`${src}-${index}`}
-              className="relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]"
+              className="relative aspect-square overflow-hidden rounded-2xl border border-[#d8c8ae] bg-[#ead2c2]"
             >
               <img src={src} alt="" className="h-full w-full object-cover" />
 
               <button
                 type="button"
                 onClick={() => removeFollowUpImageAt(index)}
-                className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-black/70 text-xs text-white"
+                className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-[#241912]/70 text-xs text-[#fff8ec]"
               >
                 ×
               </button>
@@ -192,7 +192,7 @@ export default function FollowUpEvaluationPanel({
       )}
 
       {error ? (
-        <p className="mt-4 text-[13px] font-medium leading-6 text-red-300">
+        <p className="mt-4 text-[13px] font-medium leading-6 text-[#7b2f25]">
           {error}
         </p>
       ) : null}
@@ -202,7 +202,7 @@ export default function FollowUpEvaluationPanel({
           type="button"
           onClick={handleFollowUpAnalyze}
           disabled={isFollowUpAnalyzing}
-          className="flex h-12 flex-1 items-center justify-center rounded-full bg-[#2563EB] px-5 text-[13px] font-bold text-white transition hover:bg-[#1D4ED8] disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-12 flex-1 items-center justify-center rounded-full bg-[#b58a45] px-5 text-[13px] font-bold text-[#fff8ec] transition hover:bg-[#9f7639] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isFollowUpAnalyzing ? t.updating : t.update}
         </button>
@@ -211,7 +211,7 @@ export default function FollowUpEvaluationPanel({
           type="button"
           onClick={() => setFollowUpOpen(false)}
           disabled={isFollowUpAnalyzing}
-          className="h-12 rounded-full border border-white/10 px-5 text-[13px] font-medium text-white/55 transition hover:bg-white/[0.06] disabled:opacity-50"
+          className="h-12 rounded-full border border-[#d8c8ae] px-5 text-[13px] font-medium text-[#705f4d] transition hover:bg-[#ead2c2]/55 disabled:opacity-50"
         >
           {t.cancel}
         </button>

@@ -79,19 +79,19 @@ export default function LanguagePills({
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className={[
-          "flex items-center gap-2 rounded-full border border-[rgba(34,211,238,0.18)] bg-[#0B1220]/88 text-[#E2E8F0] transition hover:border-[#22D3EE]/45 hover:text-white",
+          "flex items-center gap-2 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/88 text-[#241913] transition hover:border-[#b88a3d]/55 hover:bg-[#fff4e2]",
           isMenu ? "h-9 px-3 text-xs" : "h-10 px-3 text-xs font-semibold",
         ].join(" ")}
         aria-label="Change language"
         aria-expanded={open}
       >
-        <Globe2 className="h-4 w-4 text-[#22D3EE]" />
+        <Globe2 className="h-4 w-4 text-[#986f2e]" />
         <span className="min-w-[22px] text-center tracking-[0.08em]">
           {activeLanguage.short}
         </span>
         <ChevronDown
           className={[
-            "h-3.5 w-3.5 text-[#94A3B8] transition",
+            "h-3.5 w-3.5 text-[#735f4b] transition",
             open ? "rotate-180" : "",
           ].join(" ")}
         />
@@ -103,11 +103,11 @@ export default function LanguagePills({
             isMenu
               ? "absolute left-0 top-11 w-[244px]"
               : "absolute right-0 top-12 w-[286px] max-w-[calc(100vw-2rem)]",
-            "rounded-3xl border border-[rgba(34,211,238,0.18)] bg-[#020617]/98 p-2 shadow-[0_26px_80px_rgba(0,0,0,0.72)] backdrop-blur-2xl",
+            "rounded-[20px] border border-[#d2b98f] bg-[#fff4e2]/98 p-2 shadow-[0_26px_80px_rgba(62,39,22,0.18)] backdrop-blur-2xl",
           ].join(" ")}
         >
           <div className="px-2 pb-2 pt-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#22D3EE]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#986f2e]">
               Language
             </p>
           </div>
@@ -124,8 +124,8 @@ export default function LanguagePills({
                   className={[
                     "flex h-11 items-center justify-between rounded-2xl px-3 text-start transition",
                     active
-                      ? "bg-[#2563EB]/18 text-white ring-1 ring-[#22D3EE]/28"
-                      : "text-[#94A3B8] hover:bg-white/[0.05] hover:text-white",
+                      ? "bg-[#b88a3d] text-[#fff4e2] ring-1 ring-[#b88a3d]/28"
+                      : "text-[#735f4b] hover:bg-[#d9b59e]/55 hover:text-[#241913]",
                   ].join(" ")}
                 >
                   <span>

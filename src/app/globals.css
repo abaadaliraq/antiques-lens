@@ -1,23 +1,43 @@
 @import url("https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap");
-
-html,
-body {
-  font-family: "Tajawal", system-ui, sans-serif;
-}@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
-  --background: #07080d;
-  --foreground: #ffffff;
+  color-scheme: light;
+
+  --kishib-auth-fallback: #efe3cf;
+  --kishib-home-fallback: #7a2f25;
+  --kishib-result-fallback: #dfe6d8;
+
+  --background: var(--kishib-auth-fallback);
+  --foreground: #241913;
+  --kishib-ink: #241913;
+  --kishib-muted: #735f4b;
+  --muted-foreground: #735f4b;
+
+  --kishib-card: rgba(255, 244, 226, 0.9);
+  --kishib-card-solid: #fff4e2;
+
+  --kishib-gold: #b88a3d;
+  --kishib-gold-dark: #986f2e;
+  --kishib-border: #d2b98f;
+  --gold: #b88a3d;
+  --border-soft: #d2b98f;
+
+  --kishib-shadow: 0 14px 34px rgba(62, 39, 22, 0.12);
 }
 
 html {
+  color-scheme: light;
   scroll-behavior: smooth;
+  background: var(--kishib-auth-fallback);
 }
 
 body {
   margin: 0;
-  background: var(--background);
-  color: var(--foreground);
+  font-family: "Tajawal", system-ui, sans-serif;
+  color-scheme: light;
+  background: var(--kishib-auth-fallback);
+  color: var(--kishib-ink);
 }
 
 * {
@@ -33,13 +53,128 @@ input,
 textarea,
 select,
 button {
+  color-scheme: light;
   font: inherit;
 }
 
-option {
-  background: #0b0d15;
-  color: white;
+input,
+textarea,
+select {
+  background-color: #fff4e2;
+  border-color: #d2b98f;
+  color: #241913;
 }
+
+button {
+  color: inherit;
+}
+
+option {
+  background: #fff4e2;
+  color: #241913;
+}
+
+.kishib-bg-auth {
+  background-color: var(--kishib-auth-fallback);
+  background-image: url("/images/kishib-auth-bg.jpg");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.kishib-bg-home {
+  background-color: var(--kishib-home-fallback);
+  background-image: url("/images/kishib-home-bg.jpg");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.kishib-bg-result {
+  background-color: #fff5df00;
+  background-image: url("/images/kishib-result-bg.png");
+  background-position: top center;
+  background-repeat: repeat;
+  background-size: 420px auto;
+}
+
+.kishib-soft-overlay {
+  background: rgba(255, 244, 226, 0.08);
+}
+
+.kishib-card {
+  background: var(--kishib-card);
+  border: 1px solid rgba(210, 185, 143, 0.72);
+  border-radius: 20px;
+  box-shadow: var(--kishib-shadow);
+  color: var(--kishib-ink);
+  backdrop-filter: blur(6px);
+}
+
+.kishib-card-solid,
+.kishib-card-compact {
+  background: rgba(255, 244, 226, 0.88);
+  border: 1px solid rgba(184, 138, 61, 0.28);
+  border-radius: 18px;
+  box-shadow: 0 12px 28px rgba(62, 39, 22, 0.1);
+  color: #241913;
+}
+
+.kishib-primary-result-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(214, 181, 118, 0.42);
+  border-radius: 24px;
+  background-color: #4e1612;
+  background-image: url("/images/kishib-result-card-bg.jpg");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  box-shadow: 0 18px 40px rgba(48, 24, 12, 0.22);
+  color: #fff4e2;
+}
+
+.kishib-primary-result-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(35, 12, 8, 0.48);
+  pointer-events: none;
+}
+
+.kishib-primary-result-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.kishib-muted {
+  color: #735f4b;
+}
+
+.kishib-gold {
+  color: #b88a3d;
+}
+
+.kishib-input {
+  border: 1px solid #d2b98f;
+  background: rgba(255, 244, 226, 0.78);
+  border-radius: 12px;
+  color: #241913;
+}
+
+.kishib-input::placeholder {
+  color: #8c765e;
+}
+
+.kishib-primary {
+  background: #b88a3d;
+  color: #fff4e2;
+}
+
+.kishib-primary:hover {
+  background: #986f2e;
+}
+
 html,
 body {
   overflow-x: hidden;

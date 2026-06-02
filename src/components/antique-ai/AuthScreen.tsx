@@ -541,19 +541,19 @@ export default function AuthScreen({
   return (
     <main
       dir={direction}
-      className="relative h-dvh overflow-hidden bg-black text-white"
+      className="relative h-dvh overflow-hidden kishib-bg-auth text-[#241913]"
     >
-      <div className="absolute inset-0 bg-black" />
-      <div className="absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[#22D3EE]/10 blur-3xl" />
-      <div className="absolute left-1/2 top-0 h-64 w-[82vw] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(37,99,235,0.14),transparent_62%)]" />
-      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/90 to-transparent" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(181,138,69,0.16),transparent_58%)]" />
+      <div className="absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[#d9b59e]/55 blur-3xl" />
+      <div className="absolute left-1/2 top-0 h-64 w-[82vw] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(181,138,69,0.14),transparent_62%)]" />
+      <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#d2b98f]/35 via-[#efe3cf]/18 to-transparent" />
 
       <div
         ref={scrollRef}
         className="relative z-10 flex h-dvh flex-col overflow-y-auto overscroll-contain px-4 py-4 [scrollbar-width:thin] md:overflow-hidden md:px-10 md:py-8"
       >
         <header className="flex shrink-0 items-center justify-between">
-          <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-white/78">
+          <div className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.18em] text-[#241913]/78">
             <Image
               src="/kishib-logo.png"
               alt="KISHIB"
@@ -572,17 +572,17 @@ export default function AuthScreen({
             animate={{ opacity: 1, x: 0 }}
             className="mx-auto w-full max-w-[390px] pb-8 md:mx-0 md:pb-0"
           >
-            <div className="mb-5 grid grid-cols-2 rounded-full border border-white/12 bg-black/18 p-1 backdrop-blur-md">
+            <div className="mb-5 grid grid-cols-2 rounded-[16px] border border-[#d2b98f] bg-[#f8edda]/78 p-1 backdrop-blur-md">
               {(["login", "signup"] as AuthMode[]).map((item) => (
                 <button
                   key={item}
                   type="button"
                   onClick={() => changeMode(item)}
                   className={[
-                    "h-10 rounded-full px-4 text-[12px] font-bold transition",
+                    "h-9 rounded-[12px] px-4 text-[12px] font-bold transition",
                     mode === item
-                      ? "bg-[#d96b32] text-white shadow-[0_14px_34px_rgba(217,107,50,0.28)]"
-                      : "text-white/62 hover:bg-white/8 hover:text-white",
+                      ? "bg-[#b88a3d] text-[#fff4e2] shadow-[0_10px_24px_rgba(62,39,22,0.14)]"
+                      : "text-[#735f4b] hover:bg-[#d9b59e]/50 hover:text-[#241913]",
                   ].join(" ")}
                 >
                   {item === "login" ? copy.login : copy.signup}
@@ -590,10 +590,10 @@ export default function AuthScreen({
               ))}
             </div>
 
-            <h2 className="text-[27px] font-semibold tracking-normal text-white">
+            <h2 className="text-[25px] font-semibold tracking-normal text-[#241913]">
               {mode === "login" ? copy.login : copy.signup}
             </h2>
-            <p className="mt-2 text-[12px] leading-5 text-white/52">
+            <p className="mt-2 text-[12px] leading-5 text-[#735f4b]">
               {copy.subtitle}
             </p>
 
@@ -630,8 +630,8 @@ export default function AuthScreen({
 
               <AuthInput icon={<Mail />} type="email" value={email} onChange={setEmail} placeholder={copy.email} autoComplete="email" required />
 
-              <label className="flex h-11 items-center gap-3 rounded-full border border-white/14 bg-white/9 px-4 backdrop-blur-md">
-                <Lock className="h-4 w-4 shrink-0 text-[#e7a15e]" />
+              <label className="flex h-11 items-center gap-3 rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/78 px-4 backdrop-blur-md">
+                <Lock className="h-4 w-4 shrink-0 text-[#b88a3d]" />
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
@@ -640,12 +640,12 @@ export default function AuthScreen({
                   minLength={6}
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
                   placeholder={copy.password}
-                  className="min-w-0 flex-1 bg-transparent text-[12.5px] text-white outline-none placeholder:text-white/38"
+                  className="min-w-0 flex-1 bg-transparent text-[13px] text-[#241913] outline-none placeholder:text-[#8c765e]"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((current) => !current)}
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] text-[#735f4b] transition hover:bg-[#d9b59e]/50 hover:text-[#241913]"
                   aria-label={copy.password}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -655,7 +655,7 @@ export default function AuthScreen({
               {mode === "login" && (
                 <button
                   type="button"
-                  className="block w-full text-end text-[11px] font-semibold text-[#e7a15e]"
+                  className="block w-full text-end text-[11px] font-semibold text-[#986f2e]"
                 >
                   {copy.forgot}
                 </button>
@@ -664,25 +664,25 @@ export default function AuthScreen({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#cf4f22] to-[#e5a052] text-[13px] font-bold text-white shadow-[0_18px_42px_rgba(207,79,34,0.28)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-[#b88a3d] text-[13px] font-bold text-[#fff4e2] shadow-[0_12px_28px_rgba(62,39,22,0.14)] transition hover:bg-[#986f2e] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? "..." : mode === "signup" ? copy.signup : copy.continue}
                 <ArrowRight className="h-4 w-4 rtl:rotate-180" />
               </button>
 
               <div className="flex items-center gap-3 py-1">
-                <span className="h-px flex-1 bg-white/12" />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/34">
+                <span className="h-px flex-1 bg-[#d2b98f]" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#735f4b]">
                   {copy.or}
                 </span>
-                <span className="h-px flex-1 bg-white/12" />
+                <span className="h-px flex-1 bg-[#d2b98f]" />
               </div>
 
               <button
                 type="button"
                 disabled={isSubmitting}
                 onClick={() => void handleGoogleSignIn()}
-                className="flex h-11 w-full items-center justify-center gap-3 rounded-full border border-white/12 bg-white/10 text-[12.5px] font-bold text-white backdrop-blur-md transition hover:bg-white/16 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex h-11 w-full items-center justify-center gap-3 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/78 text-[12.5px] font-bold text-[#241913] backdrop-blur-md transition hover:bg-[#f4e2c4] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <span className="grid h-6 w-6 place-items-center rounded-full bg-white text-[15px] font-bold text-[#1f1f1f]">
                   G
@@ -691,29 +691,29 @@ export default function AuthScreen({
               </button>
 
               {authMessage ? (
-                <p className="rounded-2xl border border-[#d96b32]/25 bg-[#d96b32]/12 px-3 py-2 text-[11.5px] leading-5 text-[#ffd3b6]">
+                <p className="rounded-[14px] border border-[#b88a3d]/30 bg-[#fff4e2]/80 px-3 py-2 text-[11.5px] leading-5 text-[#735f4b]">
                   {authMessage}
                 </p>
               ) : null}
 
               {authError ? (
-                <p className="rounded-2xl border border-red-400/25 bg-red-500/10 px-3 py-2 text-[11.5px] leading-5 text-red-100">
+                <p className="rounded-[14px] border border-[#8b3a2b]/30 bg-[#d9b59e]/70 px-3 py-2 text-[11.5px] leading-5 text-[#6d241d]">
                   {authError}
                 </p>
               ) : null}
             </form>
 
-            <p className="mt-4 text-center text-[10.5px] leading-5 text-white/42">
+            <p className="mt-4 text-center text-[10.5px] leading-5 text-[#735f4b]">
               {copy.legal}{" "}
-              <Link href="/terms" className="font-semibold text-[#e7a15e] hover:text-[#ffd3a8]">
+              <Link href="/terms" className="font-semibold text-[#986f2e] hover:text-[#6d241d]">
                 {copy.terms}
               </Link>
               {" · "}
-              <Link href="/privacy" className="font-semibold text-[#e7a15e] hover:text-[#ffd3a8]">
+              <Link href="/privacy" className="font-semibold text-[#986f2e] hover:text-[#6d241d]">
                 {copy.privacy}
               </Link>
               {" · "}
-              <Link href="/cookies" className="font-semibold text-[#e7a15e] hover:text-[#ffd3a8]">
+              <Link href="/cookies" className="font-semibold text-[#986f2e] hover:text-[#6d241d]">
                 {copy.cookies}
               </Link>
             </p>
@@ -724,7 +724,7 @@ export default function AuthScreen({
             animate={{ opacity: 1, x: 0 }}
             className="order-first text-center md:order-last md:text-start"
           >
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#e7a15e] md:text-[12px]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-[#986f2e] md:text-[12px]">
               {copy.eyebrow}
             </p>
             <div className="mt-4 flex min-h-[118px] items-center justify-center md:min-h-[255px] md:justify-start">
@@ -735,13 +735,13 @@ export default function AuthScreen({
                   animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                   exit={{ opacity: 0, y: -18, filter: "blur(8px)" }}
                   transition={{ duration: 0.45 }}
-                  className="max-w-[760px] text-[38px] font-semibold leading-[0.98] tracking-normal text-white md:text-[76px]"
+                  className="max-w-[760px] text-[38px] font-semibold leading-[0.98] tracking-normal text-[#241913] md:text-[76px]"
                 >
                   {activeIntro}
                 </motion.h1>
               </AnimatePresence>
             </div>
-            <p className="mx-auto mt-3 max-w-[520px] text-[12px] leading-6 text-white/58 md:mx-0 md:text-[15px] md:leading-7">
+            <p className="mx-auto mt-3 max-w-[520px] text-[12px] leading-6 text-[#735f4b] md:mx-0 md:text-[15px] md:leading-7">
               {copy.subtitle}
             </p>
           </motion.aside>
@@ -785,22 +785,22 @@ function GenderInput({
   female,
 }: GenderInputProps) {
   return (
-    <label className="flex h-11 items-center gap-3 rounded-full border border-white/14 bg-white/9 px-4 backdrop-blur-md">
-      <Users className="h-4 w-4 shrink-0 text-[#e7a15e]" />
+    <label className="flex h-11 items-center gap-3 rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/78 px-4 backdrop-blur-md">
+      <Users className="h-4 w-4 shrink-0 text-[#b88a3d]" />
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
         required
         aria-label={label}
-        className="min-w-0 flex-1 bg-transparent text-[12.5px] text-white outline-none"
+        className="min-w-0 flex-1 bg-transparent text-[13px] text-[#241913] outline-none"
       >
-        <option value="" className="bg-[#1a100c] text-white">
+        <option value="" className="bg-[#fff4e2] text-[#241913]">
           {label}
         </option>
-        <option value="male" className="bg-[#1a100c] text-white">
+        <option value="male" className="bg-[#fff4e2] text-[#241913]">
           {male}
         </option>
-        <option value="female" className="bg-[#1a100c] text-white">
+        <option value="female" className="bg-[#fff4e2] text-[#241913]">
           {female}
         </option>
       </select>
@@ -816,14 +816,14 @@ function PhoneInput({
   placeholder,
 }: PhoneInputProps) {
   return (
-    <label className="flex h-11 items-center gap-2 rounded-full border border-white/14 bg-white/9 px-3 backdrop-blur-md">
-      <Phone className="h-4 w-4 shrink-0 text-[#e7a15e]" />
+    <label className="flex h-11 items-center gap-2 rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/78 px-3 backdrop-blur-md">
+      <Phone className="h-4 w-4 shrink-0 text-[#b88a3d]" />
 
       <select
         value={phoneCode}
         onChange={(event) => onCodeChange(event.target.value)}
         aria-label="Country phone code"
-        className="h-8 max-w-[94px] shrink-0 rounded-full border border-white/10 bg-[#1a100c] px-2 text-[11px] font-semibold text-white outline-none"
+        className="h-8 max-w-[94px] shrink-0 rounded-[10px] border border-[#d2b98f] bg-[#fff4e2] px-2 text-[11px] font-semibold text-[#241913] outline-none"
       >
         {PHONE_CODES.map((item) => (
           <option key={`${item.code}-${item.name}`} value={item.code}>
@@ -841,7 +841,7 @@ function PhoneInput({
         autoComplete="tel-national"
         placeholder={placeholder}
         aria-label={placeholder}
-        className="min-w-0 flex-1 bg-transparent text-[12.5px] text-white outline-none placeholder:text-white/38"
+        className="min-w-0 flex-1 bg-transparent text-[13px] text-[#241913] outline-none placeholder:text-[#8c765e]"
       />
     </label>
   );
@@ -857,8 +857,8 @@ function AuthInput({
   required = false,
 }: AuthInputProps) {
   return (
-    <label className="flex h-11 items-center gap-3 rounded-full border border-white/14 bg-white/9 px-4 backdrop-blur-md">
-      <span className="[&_svg]:h-4 [&_svg]:w-4 [&_svg]:text-[#e7a15e]">
+    <label className="flex h-11 items-center gap-3 rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/78 px-4 backdrop-blur-md">
+      <span className="[&_svg]:h-4 [&_svg]:w-4 [&_svg]:text-[#b88a3d]">
         {icon}
       </span>
       <input
@@ -869,7 +869,7 @@ function AuthInput({
         autoComplete={autoComplete}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="min-w-0 flex-1 bg-transparent text-[12.5px] text-white outline-none placeholder:text-white/38"
+        className="min-w-0 flex-1 bg-transparent text-[13px] text-[#241913] outline-none placeholder:text-[#8c765e]"
       />
     </label>
   );

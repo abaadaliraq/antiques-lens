@@ -191,29 +191,29 @@ export default function EvaluationComposer({
   return (
     <section className="w-full" dir={dir}>
       {error && (
-        <div className="mb-4 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+        <div className="mb-4 rounded-[14px] border border-[#8b3a2b]/30 bg-[#d9b59e]/70 px-4 py-3 text-sm text-[#6d241d]">
           {error}
         </div>
       )}
 
       <div
         className={[
-          "rounded-[28px] border p-4 shadow-[0_24px_90px_rgba(0,0,0,0.35)] backdrop-blur-2xl",
+          "rounded-[22px] border p-3.5 shadow-[0_16px_38px_rgba(62,39,22,0.12)] backdrop-blur-2xl",
           isLight
-            ? "border-black/10 bg-white/90 text-black"
+            ? "border-[#d2b98f] bg-[#fff4e2]/90 text-[#241913]"
             : "border-[rgba(34,211,238,0.18)] bg-[#07111F]/88 text-[#F8FAFC]",
         ].join(" ")}
       >
-        <label className="group relative flex min-h-[172px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[24px] border border-dashed border-[rgba(34,211,238,0.22)] bg-black/45 px-5 py-6 text-center transition hover:border-[#22D3EE]/55 hover:bg-[#0B1220]">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.12),transparent_52%)] opacity-80" />
-          <div className="relative grid h-16 w-16 place-items-center rounded-3xl bg-[#2563EB]/18 text-[#22D3EE] ring-1 ring-[#22D3EE]/20">
-            <Camera className="h-8 w-8" />
+        <label className="group relative flex min-h-[150px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[20px] border border-dashed border-[#d2b98f] bg-[#fff4e2]/72 px-5 py-5 text-center transition hover:border-[#b88a3d] hover:bg-[#f8edda]">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(184,138,61,0.15),transparent_52%)] opacity-80" />
+          <div className="relative grid h-14 w-14 place-items-center rounded-[16px] bg-[#e8d1ad] text-[#8b3a2b] ring-1 ring-[#b88a3d]/25">
+            <Camera className="h-7 w-7" />
           </div>
-          <p className="relative mt-4 text-lg font-semibold text-[#F8FAFC]">
+          <p className="relative mt-3 text-base font-semibold text-[#241913]">
             {t.uploadBox}
           </p>
           {previews.length > 0 ? (
-            <p className="relative mt-1 text-sm text-[#94A3B8]">{t.ready}</p>
+            <p className="relative mt-1 text-xs text-[#735f4b]">{t.ready}</p>
           ) : null}
           <input
             type="file"
@@ -225,15 +225,15 @@ export default function EvaluationComposer({
         </label>
 
         {previews.length > 0 && (
-          <div className="mt-4 rounded-3xl border border-white/10 bg-black/25 p-2">
+          <div className="mt-3 rounded-[18px] border border-[#d2b98f] bg-[#efe3cf]/70 p-2">
             <div className="mb-2 flex items-center justify-between px-1">
-              <p className="text-xs text-[#94A3B8]">
+              <p className="text-xs text-[#735f4b]">
                 {previews.length} {labels.imageReady}
               </p>
               <button
                 type="button"
                 onClick={removeImage}
-                className="rounded-full px-3 py-1 text-xs text-[#94A3B8] transition hover:bg-white/10 hover:text-white"
+                className="rounded-[10px] px-3 py-1 text-xs text-[#735f4b] transition hover:bg-[#d9b59e]/55 hover:text-[#6d241d]"
               >
                 {t.clear}
               </button>
@@ -243,7 +243,7 @@ export default function EvaluationComposer({
               {previews.map((preview, index) => (
                 <div
                   key={`${preview}-${index}`}
-                  className="group relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black"
+                  className="group relative aspect-square overflow-hidden rounded-[14px] border border-[#d2b98f] bg-[#d9b59e]"
                 >
                   <img
                     src={preview}
@@ -251,14 +251,14 @@ export default function EvaluationComposer({
                     className="h-full w-full object-cover"
                   />
                   {index === 0 && (
-                    <span className="absolute bottom-1.5 right-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] text-white">
+                    <span className="absolute bottom-1.5 right-1.5 rounded-[8px] bg-[#241913]/70 px-2 py-0.5 text-[10px] text-[#fff4e2]">
                       {t.main}
                     </span>
                   )}
                   <button
                     type="button"
                     onClick={() => handleRemoveAt(index)}
-                    className="absolute left-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-black/70 text-white backdrop-blur-md transition hover:bg-red-500"
+                    className="absolute left-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-[9px] bg-[#241913]/70 text-[#fff4e2] backdrop-blur-md transition hover:bg-[#6d241d]"
                     aria-label="Remove image"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -277,7 +277,7 @@ export default function EvaluationComposer({
           aria-label={labels.placeholder}
           placeholder={t.optional}
           className={[
-            "mt-4 min-h-[76px] w-full resize-none rounded-3xl border border-white/10 bg-black/30 px-4 py-3 text-sm leading-6 text-[#F8FAFC] outline-none transition placeholder:text-[#64748B] focus:border-[#22D3EE]/45",
+            "mt-3 min-h-[68px] w-full resize-none rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/78 px-4 py-3 text-sm leading-6 text-[#241913] outline-none transition placeholder:text-[#8c765e] focus:border-[#b88a3d] focus:ring-2 focus:ring-[#b88a3d]/18",
             dir === "rtl" ? "text-right" : "text-left",
           ].join(" ")}
         />
@@ -294,7 +294,7 @@ export default function EvaluationComposer({
           type="button"
           onClick={handleSmartAnalyze}
           disabled={isAnalyzing || !canAnalyze}
-          className="mt-4 flex h-[52px] w-full items-center justify-center gap-2 rounded-3xl bg-gradient-to-r from-[#2563EB] to-[#22D3EE] px-5 text-sm font-semibold text-white shadow-[0_18px_46px_rgba(37,99,235,0.28)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-40"
+          className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-[#b88a3d] px-5 text-sm font-semibold text-[#fff4e2] shadow-[0_12px_28px_rgba(62,39,22,0.14)] transition hover:bg-[#986f2e] disabled:cursor-not-allowed disabled:opacity-45"
         >
           {isAnalyzing ? (
             <>

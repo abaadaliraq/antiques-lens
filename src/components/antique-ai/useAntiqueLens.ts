@@ -1,14 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { useFollowUpEvaluation } from "./useFollowUpEvaluation";
 
-import { content, HISTORY_KEY, normalizeResult } from "./antiqueContent";
+import {
+  addArchiveItem,
+  clearArchiveItems,
+  createArchiveImagePreviews,
+  deleteArchiveItem,
+  fileToDataUrl,
+  loadArchiveItems,
+  type ArchiveItem,
+} from "./archiveStore";
+import { content, normalizeResult } from "./antiqueContent";
 import { createShareImage } from "./createShareImage";
 import type {
   AnalysisResult,
-  HistoryItem,
   Locale,
   ThemeMode,
   SimilarImageResult,
@@ -27,20 +35,27 @@ const SUPPORTED_LOCALES: Locale[] = [
   "ru",
   "ku",
 ];
-type HistoryItemWithImages = HistoryItem & {
-  imagePreviews?: string[];
-};
 
-function createId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
+type AppScreen = "home" | "result" | "archive-result" | "follow-up";
 
-  return String(Date.now());
+function pushAppHistoryState(screen: AppScreen) {
+  if (typeof window === "undefined") return;
+
+  window.history.pushState(
+    { kishibScreen: screen },
+    "",
+    window.location.href,
+  );
 }
 
-function createHistoryTitle(data: AnalysisResult) {
-  return data.title || data.lookup || data.itemType || "تقييم قطعة قديمة";
+function replaceAppHistoryState(screen: AppScreen) {
+  if (typeof window === "undefined") return;
+
+  window.history.replaceState(
+    { kishibScreen: screen },
+    "",
+    window.location.href,
+  );
 }
 
 function revokePreviewUrl(url: string | null) {
@@ -94,99 +109,6 @@ async function copyFallbackSummary(result: AnalysisResult) {
   await navigator.clipboard.writeText(text);
 }
 
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        resolve(reader.result);
-        return;
-      }
-
-      reject(new Error("Failed to read image"));
-    };
-
-    reader.onerror = () => reject(new Error("Failed to read image"));
-    reader.readAsDataURL(file);
-  });
-}
-
-async function createHistoryThumbnail(
-  file: File,
-  maxSize = 260,
-): Promise<string> {
-  const dataUrl = await fileToDataUrl(file);
-
-  return new Promise((resolve) => {
-    const image = new Image();
-
-    image.onload = () => {
-      const ratio = image.width / image.height;
-
-      let width = maxSize;
-      let height = maxSize;
-
-      if (ratio > 1) {
-        height = maxSize / ratio;
-      } else {
-        width = maxSize * ratio;
-      }
-
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(width));
-      canvas.height = Math.max(1, Math.round(height));
-
-      const ctx = canvas.getContext("2d");
-
-      if (!ctx) {
-        resolve(dataUrl);
-        return;
-      }
-
-      ctx.fillStyle = "#111111";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-
-      resolve(canvas.toDataURL("image/jpeg", 0.72));
-    };
-
-    image.onerror = () => resolve(dataUrl);
-    image.src = dataUrl;
-  });
-}
-
-function cleanHistoryItems(items: HistoryItem[]) {
-  return items.map((item) => {
-    const current = item as HistoryItemWithImages;
-
-    const cleanImagePreview =
-      current.imagePreview && !current.imagePreview.startsWith("blob:")
-        ? current.imagePreview
-        : null;
-
-    const cleanImagePreviews =
-      current.imagePreviews?.filter((src) => src && !src.startsWith("blob:")) ||
-      [];
-
-    return {
-      ...current,
-      imagePreview: cleanImagePreview,
-      imagePreviews: cleanImagePreviews,
-      result: normalizeResult(current.result || {}),
-    };
-  });
-}
-
-async function createHistoryThumbnails(files: File[]) {
-  if (!files.length) return [];
-
-  try {
-    return await Promise.all(files.map((file) => createHistoryThumbnail(file)));
-  } catch {
-    return [];
-  }
-}
 async function resizeImageForAnalysis(
   file: File,
   maxWidth = 1400,
@@ -429,17 +351,37 @@ function mergeSimilarImages(
     .slice(0, 16);
 }
 
+function getSimilarItems(result: Partial<AnalysisResult> | null | undefined) {
+  return (
+    result?.similarItems ||
+    result?.similarPhotos ||
+    result?.similarImages ||
+    result?.imageMatches ||
+    result?.visualMatches ||
+    result?.storeMatches ||
+    result?.matches ||
+    result?.similar ||
+    result?.similarPieces ||
+    []
+  );
+}
+
 export function useAntiqueLens() {
   const [locale, setLocale] = useState<Locale>("en");
-  const theme: ThemeMode = "dark";
+  const theme: ThemeMode = "light";
 const [similarImages, setSimilarImages] = useState<SimilarImageResult[]>([]);
 const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const [historyImagePreviews, setHistoryImagePreviews] = useState<string[]>(
+  const [archiveImagePreviews, setArchiveImagePreviews] = useState<string[]>(
     [],
   );
+  const [currentScreen, setCurrentScreen] = useState<AppScreen>("home");
+  const currentScreenRef = useRef<AppScreen>("home");
+  const lastBackPressRef = useRef(0);
+  const historyReadyRef = useRef(false);
+  const goBackInsideAppRef = useRef<() => boolean>(() => false);
 
   const [result, setResult] = useState<AnalysisResult | null>(null);
   
@@ -463,9 +405,53 @@ const followUp = useFollowUpEvaluation({
 });
 
 const [historyOpen, setHistoryOpen] = useState(false);
-const [history, setHistory] = useState<HistoryItemWithImages[]>([]);
+const [history, setHistory] = useState<ArchiveItem[]>([]);
+const [selectedArchiveItemId, setSelectedArchiveItemId] = useState<string | null>(null);
 
   const t = useMemo(() => content[locale], [locale]);
+
+  function setAppScreen(screen: AppScreen) {
+    currentScreenRef.current = screen;
+    setCurrentScreen(screen);
+  }
+
+  function goHome(options: { replaceHistory?: boolean } = {}) {
+    revokePreviewUrls(imagePreviews);
+setSimilarImages([]);
+setIsLoadingSimilar(false);
+    setPrompt("");
+    setSelectedFiles([]);
+    setImagePreviews([]);
+    setArchiveImagePreviews([]);
+    setResult(null);
+    setSelectedArchiveItemId(null);
+    setError("");
+    followUp.resetFollowUp();
+    setAppScreen("home");
+
+    if (options.replaceHistory) {
+      replaceAppHistoryState("home");
+    }
+  }
+
+  function goBackInsideApp() {
+    const screen = currentScreenRef.current;
+
+    if (screen === "follow-up") {
+      followUp.setFollowUpOpen(false);
+      setAppScreen("result");
+      return true;
+    }
+
+    if (screen === "result" || screen === "archive-result") {
+      goHome();
+      return true;
+    }
+
+    return false;
+  }
+
+  goBackInsideAppRef.current = goBackInsideApp;
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -477,25 +463,44 @@ const [history, setHistory] = useState<HistoryItemWithImages[]>([]);
         setLocale(savedLocale);
       }
 
-      try {
-        const savedHistory = window.localStorage.getItem(HISTORY_KEY);
-
-        if (!savedHistory) return;
-
-        const parsed = JSON.parse(savedHistory) as HistoryItem[];
-
-        if (Array.isArray(parsed)) {
-          const cleaned = cleanHistoryItems(parsed).slice(0, 20);
-
-          setHistory(cleaned);
-          window.localStorage.setItem(HISTORY_KEY, JSON.stringify(cleaned));
-        }
-      } catch {
-        window.localStorage.removeItem(HISTORY_KEY);
-      }
+      setHistory(loadArchiveItems());
     }, 0);
 
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (historyReadyRef.current) return;
+
+    replaceAppHistoryState("home");
+    pushAppHistoryState("home");
+    historyReadyRef.current = true;
+
+    function handlePopState() {
+      if (goBackInsideAppRef.current()) {
+        replaceAppHistoryState(currentScreenRef.current);
+        if (currentScreenRef.current === "home") {
+          pushAppHistoryState("home");
+        }
+        return;
+      }
+
+      const now = Date.now();
+
+      if (now - lastBackPressRef.current > 2000) {
+        lastBackPressRef.current = now;
+        pushAppHistoryState("home");
+        return;
+      }
+
+      window.history.back();
+    }
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
   }, []);
 
   useEffect(() => {
@@ -503,6 +508,13 @@ const [history, setHistory] = useState<HistoryItemWithImages[]>([]);
       revokePreviewUrls(imagePreviews);
     };
   }, [imagePreviews]);
+
+  useEffect(() => {
+    if (currentScreen !== "follow-up" || followUp.followUpOpen) return;
+
+    setAppScreen("result");
+    replaceAppHistoryState("result");
+  }, [currentScreen, followUp.followUpOpen]);
 
 async function translateCurrentResult(
   currentResult: AnalysisResult,
@@ -566,16 +578,33 @@ async function changeLocale(nextLocale: Locale) {
 }
 
   function resetEvaluation() {
-    revokePreviewUrls(imagePreviews);
-setSimilarImages([]);
-setIsLoadingSimilar(false);
-    setPrompt("");
-    setSelectedFiles([]);
-    setImagePreviews([]);
-    setHistoryImagePreviews([]);
-    setResult(null);
-    setError("");
-    
+    goHome({ replaceHistory: true });
+  }
+
+  function setFollowUpOpenInside(value: boolean) {
+    followUp.setFollowUpOpen(value);
+
+    if (value) {
+      setAppScreen("follow-up");
+      pushAppHistoryState("follow-up");
+      return;
+    }
+
+    if (currentScreenRef.current === "follow-up") {
+      setAppScreen("result");
+      replaceAppHistoryState("result");
+    }
+  }
+
+  function handleAddInfoInside() {
+    if (!result || followUp.followUpUsed) {
+      followUp.handleAddInfo();
+      return;
+    }
+
+    followUp.handleAddInfo();
+    setAppScreen("follow-up");
+    pushAppHistoryState("follow-up");
   }
 
   async function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
@@ -617,11 +646,11 @@ setIsLoadingSimilar(false);
 
     setSelectedFiles(mergedFiles);
     setImagePreviews(nextPreviews);
-    setHistoryImagePreviews([]);
+    setArchiveImagePreviews([]);
     setResult(null);
 
-    const thumbnails = await createHistoryThumbnails(mergedFiles);
-    setHistoryImagePreviews(thumbnails);
+    const previews = await createArchiveImagePreviews(mergedFiles);
+    setArchiveImagePreviews(previews);
 
     event.target.value = "";
   }
@@ -631,7 +660,7 @@ setIsLoadingSimilar(false);
 
     setSelectedFiles([]);
     setImagePreviews([]);
-    setHistoryImagePreviews([]);
+    setArchiveImagePreviews([]);
     setResult(null);
     setError("");
   }
@@ -649,88 +678,66 @@ setIsLoadingSimilar(false);
       (_, previewIndex) => previewIndex !== index,
     );
 
-    const nextHistoryPreviews = historyImagePreviews.filter(
+    const nextArchivePreviews = archiveImagePreviews.filter(
       (_, previewIndex) => previewIndex !== index,
     );
 
     setSelectedFiles(nextFiles);
     setImagePreviews(nextPreviews);
-    setHistoryImagePreviews(nextHistoryPreviews);
+    setArchiveImagePreviews(nextArchivePreviews);
     setResult(null);
     setError("");
 
-    if (nextFiles.length && nextHistoryPreviews.length !== nextFiles.length) {
-      const thumbnails = await createHistoryThumbnails(nextFiles);
-      setHistoryImagePreviews(thumbnails);
+    if (nextFiles.length && nextArchivePreviews.length !== nextFiles.length) {
+      const previews = await createArchiveImagePreviews(nextFiles);
+      setArchiveImagePreviews(previews);
     }
   }
 
-  function saveHistory(item: HistoryItemWithImages) {
-    setHistory((current) => {
-      const next = [item, ...current].slice(0, 20);
-
-      try {
-        window.localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
-        return next;
-      } catch {
-        /*
-          localStorage محدود. إذا امتلأ، نحفظ النتائج بدون الصور بدل ما نخرب التاريخ كله.
-        */
-        const lighter = next.map((entry) => ({
-          ...entry,
-          imagePreview: null,
-          imagePreviews: [],
-        }));
-
-        window.localStorage.setItem(HISTORY_KEY, JSON.stringify(lighter));
-        return lighter;
-      }
-    });
+  function saveHistory(item: ArchiveItem) {
+    const updatedArchive = addArchiveItem(item);
+    setHistory(updatedArchive);
   }
 
-  function openHistoryItem(item: HistoryItemWithImages) {
+  function openHistoryItem(item: ArchiveItem) {
     revokePreviewUrls(imagePreviews);
 
-    const cleanImages =
-      item.imagePreviews?.filter((src) => src && !src.startsWith("blob:")) ||
-      [];
-
-    const fallbackImage =
+    const finalImages =
       item.imagePreview && !item.imagePreview.startsWith("blob:")
-        ? item.imagePreview
-        : null;
-
-    const finalImages = cleanImages.length
-      ? cleanImages
-      : fallbackImage
-        ? [fallbackImage]
+        ? [item.imagePreview]
         : [];
 
    const savedResult = normalizeResult(item.result);
+const restoredSimilarImages = getSimilarItems(savedResult);
 
-setPrompt(item.prompt);
+setPrompt(item.prompt || "");
 setResult(savedResult);
+setSelectedArchiveItemId(item.id);
+setSimilarImages(restoredSimilarImages);
 setTranslatedResults({
   [locale]: savedResult,
 });
 setSelectedFiles([]);
     setImagePreviews(finalImages);
-    setHistoryImagePreviews(finalImages);
+    setArchiveImagePreviews(finalImages);
     setError("");
     setHistoryOpen(false);
+    setAppScreen("archive-result");
+    pushAppHistoryState("archive-result");
   }
 
   function clearHistory() {
     setHistory([]);
-    window.localStorage.removeItem(HISTORY_KEY);
+    clearArchiveItems();
   }
 
   function deleteHistoryItem(id: string) {
-    setHistory((current) => {
-      const next = current.filter((item) => item.id !== id);
-      window.localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
-      return next;
-    });
+    const updatedArchive = deleteArchiveItem(id);
+    setHistory(updatedArchive);
+
+    if (selectedArchiveItemId === id) {
+      goHome({ replaceHistory: true });
+    }
   }
 async function fetchSimilarImagesByImage(imageUrl: string) {
   if (!imageUrl.trim()) return;
@@ -1038,23 +1045,50 @@ if (locale !== "ar") {
   }
 }
 
+const finalSimilarImages = getSimilarItems(finalResult).length
+  ? getSimilarItems(finalResult)
+  : googleLensItems;
+
+if (finalSimilarImages.length > 0) {
+  finalResult = normalizeResult({
+    ...finalResult,
+    similarImages: finalSimilarImages,
+    similarItems: finalSimilarImages,
+    visualMatches: finalSimilarImages,
+  });
+}
+
+setSimilarImages(finalSimilarImages);
 setResult(finalResult);
+setSelectedArchiveItemId(null);
+setAppScreen("result");
+pushAppHistoryState("result");
 setTranslatedResults({
   [locale]: finalResult,
 });
 
-const savedThumbnails = historyImagePreviews.length
-  ? historyImagePreviews
-  : await createHistoryThumbnails(selectedFiles);
-saveHistory({
-  id: createId(),
-  title: createHistoryTitle(finalResult),
-  prompt,
+const archivePreviews = archiveImagePreviews.length
+  ? archiveImagePreviews
+  : await createArchiveImagePreviews(selectedFiles);
+const imagePreview = archivePreviews[0] || undefined;
+const analyzedArchiveResult = finalResult as AnalysisResult & {
+  itemName?: string;
+  objectName?: string;
+};
+const archiveItem: ArchiveItem = {
+  id: crypto.randomUUID(),
+  title:
+    analyzedArchiveResult?.title ||
+    analyzedArchiveResult?.itemName ||
+    analyzedArchiveResult?.objectName ||
+    "Untitled item",
+  prompt: prompt || "",
+  imagePreview,
   createdAt: new Date().toISOString(),
-  imagePreview: savedThumbnails[0] || null,
-  imagePreviews: savedThumbnails,
   result: finalResult,
-});
+};
+
+saveHistory(archiveItem);
 
 
   } catch (err) {
@@ -1145,6 +1179,7 @@ return {
 isAnalyzing,
 isTranslatingResult,
 error,
+  currentScreen,
   historyOpen,
   setHistoryOpen,
   history,
@@ -1160,7 +1195,11 @@ error,
   openHistoryItem,
   clearHistory,
   deleteHistoryItem,
-    ...followUp,
+  goHome,
+  goBackInsideApp,
+  ...followUp,
+  setFollowUpOpen: setFollowUpOpenInside,
+  handleAddInfo: handleAddInfoInside,
 
 };
 }

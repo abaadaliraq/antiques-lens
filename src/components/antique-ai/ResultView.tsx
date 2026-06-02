@@ -43,6 +43,7 @@ type Props = {
   imagePreviews?: string[];
   similarImages?: SimilarImageResult[];
   isLoadingSimilar?: boolean;
+  userNote?: string;
   followUpPanel?: React.ReactNode;
   onShare: () => void;
   onAddInfo?: () => void;
@@ -68,6 +69,17 @@ function getAddInfoText(locale: Locale) {
   if (locale === "tr") return "Bilgi ekle";
   if (locale === "ru") return "Добавить информацию";
   return "أضف معلومات";
+}
+
+function getUserNoteLabel(locale: Locale) {
+  if (locale === "en") return "Your note about the item";
+  if (locale === "fr") return "Votre note sur l'objet";
+  if (locale === "tr") return "Parca hakkindaki notunuz";
+  if (locale === "ru") return "Your note about the item";
+  if (locale === "fa") return "یادداشت شما درباره شیء";
+  if (locale === "ku") return "تێبینییەکەت دەربارەی پارچەکە";
+  if (locale === "hi") return "Your note about the item";
+  return "ملاحظتك عن القطعة";
 }
 
 function getReportLabels(locale: Locale) {
@@ -125,6 +137,21 @@ function getSimilarSourceLabel(locale: Locale) {
   return "مصادر مشابهة";
 }
 
+function getSimilarItems(result: AnalysisResult | null): SimilarImageResult[] {
+  return (
+    result?.similarItems ||
+    result?.similarPhotos ||
+    result?.similarImages ||
+    result?.imageMatches ||
+    result?.visualMatches ||
+    result?.storeMatches ||
+    result?.matches ||
+    result?.similar ||
+    result?.similarPieces ||
+    []
+  );
+}
+
 function getItemTypeLabel(locale: Locale) {
   if (locale === "en") return "Object type";
   if (locale === "fr") return "Type d’objet";
@@ -158,6 +185,62 @@ function getSilverScenarioLabels(locale: Locale) {
   };
 }
 
+const preciousMetalKeywords = [
+  "silver",
+  "sterling",
+  "925",
+  "فضة",
+  "ذهب",
+  "gold",
+];
+
+const excludedMaterialKeywords = [
+  "wood",
+  "خشب",
+  "wooden",
+  "furniture",
+  "chair",
+  "كرسي",
+  "أثاث",
+  "ceramic",
+  "خزف",
+  "pottery",
+  "فخار",
+  "rug",
+  "carpet",
+  "سجاد",
+  "textile",
+  "painting",
+  "glass",
+  "crystal",
+  "bronze",
+  "copper",
+  "brass",
+];
+
+function isPreciousMetalItem(result: AnalysisResult) {
+  const text = [
+    result.material,
+    result.itemType,
+    result.title,
+    result.description,
+    result.lookup,
+    result.history,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const hasPreciousMetal = preciousMetalKeywords.some((word) =>
+    text.includes(word.toLowerCase()),
+  );
+  const hasExcludedMaterial = excludedMaterialKeywords.some((word) =>
+    text.includes(word.toLowerCase()),
+  );
+
+  return hasPreciousMetal && !hasExcludedMaterial;
+}
+
 function buildReportId() {
   const now = new Date();
   const year = now.getFullYear();
@@ -173,6 +256,7 @@ export default function ResultView({
   imagePreviews = [],
   similarImages = [],
   isLoadingSimilar = false,
+  userNote = "",
   followUpPanel,
   onShare,
   onAddInfo,
@@ -234,6 +318,13 @@ export default function ResultView({
 
   if (!result) return null;
 
+  const resolvedSimilarImages =
+    similarImages.length > 0 ? similarImages : getSimilarItems(result);
+  const cleanUserNote = userNote.trim();
+  const metalScenarios = result.metalValue?.scenarios || [];
+  const shouldShowMetalValue =
+    isPreciousMetalItem(result) && metalScenarios.length > 0;
+
   function handleAddInfoClick() {
     setHasOpenedFollowUp(true);
     onAddInfo?.();
@@ -264,45 +355,44 @@ export default function ResultView({
   const canShowAddInfoButton = Boolean(onAddInfo && !followUpPanel && !hasOpenedFollowUp);
 
   return (
-    <article className="relative pb-12 text-white">
-      <div className="mx-auto w-full max-w-6xl px-3 pt-4 sm:px-5 md:pt-7">
-        <header className="overflow-hidden rounded-[2rem] border border-[#22D3EE]/12 bg-[#07111F]/70 shadow-[0_28px_90px_rgba(0,0,0,0.34)] backdrop-blur-2xl">
+    <article className="relative pb-12 text-[#241913]">
+      <div className="mx-auto w-full max-w-6xl px-3 pt-2 sm:px-5 md:pt-5">
+        <header className="kishib-primary-result-card">
           {mainImage ? (
-            <div className="relative min-h-[520px] overflow-hidden bg-[#0b0705] sm:min-h-[610px] md:min-h-[680px]">
+            <div className="relative min-h-[420px] overflow-hidden sm:min-h-[540px] md:min-h-[620px]">
               <div className="absolute inset-0">
                 <img
                   src={mainImage}
                   alt=""
                   aria-hidden="true"
-                  className="h-full w-full scale-110 object-cover opacity-30 blur-3xl"
+                  className="h-full w-full scale-110 object-cover opacity-10 blur-3xl"
                 />
-                <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.35),rgba(8,4,2,0.72)_62%,rgba(19,12,8,0.98))]" />
               </div>
 
               <button
                 type="button"
                 onClick={() => openImage(0)}
-                className="relative z-10 flex h-[420px] w-full items-center justify-center p-3 transition hover:bg-white/[0.02] sm:h-[500px] md:h-[560px]"
+                className="relative z-10 flex h-[320px] w-full items-center justify-center p-3 transition hover:bg-[#fff4e2]/8 sm:h-[430px] md:h-[500px]"
                 aria-label="Open image"
               >
                 <img
                   src={mainImage}
                   alt={result.title || labels.result}
-                  className="max-h-full max-w-full rounded-[1.15rem] object-contain shadow-[0_30px_90px_rgba(0,0,0,0.55)]"
+                  className="max-h-full max-w-full rounded-[16px] border border-[#d6b576]/35 object-contain shadow-lg"
                 />
               </button>
 
               <button
                 type="button"
                 onClick={onShare}
-                className="absolute end-4 top-4 z-20 grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-black/35 text-white/70 backdrop-blur-xl transition hover:bg-black/55 hover:text-white"
+                className="absolute end-4 top-4 z-20 grid h-10 w-10 place-items-center rounded-[12px] border border-[#d6b576]/45 bg-[#fff4e2]/12 text-[#fff4e2] backdrop-blur transition hover:bg-[#fff4e2]/20"
                 aria-label="Share"
               >
                 <Share2 className="h-4 w-4" />
               </button>
 
               {galleryImages.length > 1 && (
-                <div className="relative z-20 border-y border-[#22D3EE]/10 bg-[#07111F]/70 px-3 py-3 backdrop-blur-xl">
+                <div className="relative z-20 border-y border-[#d6b576]/25 bg-[#230c08]/18 px-3 py-2 backdrop-blur">
                   <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
                     {galleryImages.map((src, index) => (
                       <button
@@ -310,10 +400,10 @@ export default function ResultView({
                         key={`${src}-${index}`}
                         onClick={() => openImage(index)}
                         className={[
-                          "relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border bg-white/[0.04] transition sm:h-28 sm:w-28",
+                          "relative h-20 w-20 shrink-0 overflow-hidden rounded-[12px] border bg-[#fff4e2]/10 transition sm:h-24 sm:w-24",
                           index === 0
-                            ? "border-[#22D3EE]/55"
-                            : "border-white/10 hover:border-[#22D3EE]/45",
+                            ? "border-[#d6b576]/70"
+                            : "border-[#d6b576]/30 hover:border-[#d6b576]/60",
                         ].join(" ")}
                         aria-label={`Open image ${index + 1}`}
                       >
@@ -332,12 +422,12 @@ export default function ResultView({
                 </div>
               )}
 
-              <div className="relative z-10 px-5 py-7 sm:px-8 md:px-10">
-                <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.3em] text-[#22D3EE]/75">
+              <div className="relative z-10 px-5 py-5 sm:px-7 md:px-8">
+                <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.3em] text-[#d6b576]">
                   {labels.result}
                 </p>
 
-                <h1 className="max-w-4xl text-[27px] font-medium leading-[1.22] tracking-[-0.035em] text-white/94 sm:text-[34px] md:text-[46px]">
+                <h1 className="max-w-4xl text-[25px] font-medium leading-[1.22] tracking-[-0.035em] text-[#fff4e2] sm:text-[32px] md:text-[42px]">
                   {result.title || labels.result}
                 </h1>
 
@@ -345,7 +435,7 @@ export default function ResultView({
                   <button
                     type="button"
                     onClick={handleAddInfoClick}
-                    className="mt-5 inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#22D3EE]/22 bg-[#2563EB]/10 px-3.5 text-[11.5px] font-medium text-[#BAE6FD] transition hover:bg-[#2563EB]/16 hover:text-white"
+                    className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-[12px] border border-[#d6b576]/55 bg-[#fff4e2]/12 px-4 py-2 text-sm font-semibold text-[#fff4e2] backdrop-blur transition hover:bg-[#fff4e2]/20"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     {labels.addInfo || getAddInfoText(locale)}
@@ -354,12 +444,12 @@ export default function ResultView({
               </div>
             </div>
           ) : (
-            <div className="px-5 py-8 sm:px-8 md:px-10">
-              <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.3em] text-[#22D3EE]/75">
+            <div className="px-5 py-6 sm:px-8 md:px-10">
+              <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.3em] text-[#d6b576]">
                 {labels.result}
               </p>
 
-              <h1 className="max-w-4xl text-[27px] font-medium leading-[1.22] tracking-[-0.035em] text-white/94 sm:text-[34px] md:text-[46px]">
+              <h1 className="max-w-4xl text-[25px] font-medium leading-[1.22] tracking-[-0.035em] text-[#fff4e2] sm:text-[32px] md:text-[42px]">
                 {result.title || labels.result}
               </h1>
 
@@ -367,7 +457,7 @@ export default function ResultView({
                 <button
                   type="button"
                   onClick={handleAddInfoClick}
-                  className="mt-5 inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#22D3EE]/22 bg-[#2563EB]/10 px-3.5 text-[11.5px] font-medium text-[#BAE6FD] transition hover:bg-[#2563EB]/16 hover:text-white"
+                  className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-[12px] border border-[#d6b576]/55 bg-[#fff4e2]/12 px-4 py-2 text-sm font-semibold text-[#fff4e2] backdrop-blur transition hover:bg-[#fff4e2]/20"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   {labels.addInfo || getAddInfoText(locale)}
@@ -377,13 +467,24 @@ export default function ResultView({
           )}
         </header>
 
+        {cleanUserNote ? (
+          <section className="mt-3 rounded-[18px] border border-[#d2b98f] bg-[#fff4e2]/82 p-4">
+            <p className="mb-2 text-xs font-semibold text-[#986f2e]">
+              {getUserNoteLabel(locale)}
+            </p>
+            <p className="whitespace-pre-line text-sm leading-7 text-[#735f4b]">
+              {cleanUserNote}
+            </p>
+          </section>
+        ) : null}
+
         {followUpPanel ? (
-          <section className="mt-4 border-y border-[#22D3EE]/10 bg-[#07111F]/35 px-3 py-4 backdrop-blur-xl sm:px-5">
+          <section className="mt-3 border-y border-[#d2b98f] bg-[#fff4e2]/55 px-3 py-3 backdrop-blur-xl sm:px-5">
             <div className="compact-followup-panel">{followUpPanel}</div>
           </section>
         ) : null}
 
-        <section className="mt-7 grid grid-cols-2 gap-x-4 gap-y-6 border-y border-white/10 py-6 md:grid-cols-5">
+        <section className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5 border-y border-[#c7b99e] py-5 md:grid-cols-5">
           <MetricBlock
             label={itemTypeLabel}
             value={result.itemType}
@@ -412,43 +513,43 @@ export default function ResultView({
           />
         </section>
 
-        {result.metalValue?.scenarios?.length ? (
-          <section className="mt-7 rounded-[1.5rem] border border-[#22D3EE]/15 bg-[#07111F]/80 p-4">
-            <p className="text-xs font-semibold text-[#67E8F9]">
+        {shouldShowMetalValue ? (
+          <section className="mt-5 rounded-[20px] border border-[#c7b99e] bg-[#fff4e2]/90 p-4">
+            <p className="text-xs font-semibold text-[#986f2e]">
               {silverScenarioLabels.title}
             </p>
 
-            <p className="mt-2 text-xs leading-5 text-[#94A3B8]">
+            <p className="mt-2 text-xs leading-5 text-[#735f4b]">
               {silverScenarioLabels.note}
             </p>
 
             <div className="mt-4 grid gap-3 md:grid-cols-3">
-              {result.metalValue.scenarios.map((scenario) => (
+              {metalScenarios.map((scenario) => (
                 <div
                   key={scenario.label}
-                  className="rounded-2xl border border-white/10 bg-black/25 p-3"
+                  className="rounded-[16px] border border-[#d2b98f] bg-[#efe3cf]/75 p-3"
                 >
-                  <p className="text-sm font-bold text-white">
+                  <p className="text-sm font-bold text-[#233f32]">
                     {locale === "en" ? scenario.label : scenario.labelAr}
                   </p>
 
-                  <p className="mt-2 text-xs text-[#94A3B8]">
+                  <p className="mt-2 text-xs text-[#735f4b]">
                     {silverScenarioLabels.weight}: {scenario.weightGrams}g
                   </p>
 
-                  <p className="mt-2 text-xs text-[#94A3B8]">
+                  <p className="mt-2 text-xs text-[#735f4b]">
                     {silverScenarioLabels.melt}
                   </p>
 
-                  <p className="text-sm font-bold text-[#A5F3FC]">
+                  <p className="text-sm font-bold text-[#8a642f]">
                     ${scenario.meltValueUsdMid}
                   </p>
 
-                  <p className="mt-2 text-xs text-[#94A3B8]">
+                  <p className="mt-2 text-xs text-[#735f4b]">
                     {silverScenarioLabels.antique}
                   </p>
 
-                  <p className="text-sm font-bold text-white">
+                  <p className="text-sm font-bold text-[#233f32]">
                     ${scenario.antiqueEstimateUsdLow} - $
                     {scenario.antiqueEstimateUsdHigh}
                   </p>
@@ -472,22 +573,22 @@ export default function ResultView({
           <TextSection title={labels.priceReason} body={result.priceReasoning} compact />
         </div>
 
-        <section className="mt-8 grid grid-cols-1 gap-6 border-y border-white/10 py-7 md:grid-cols-2">
+        <section className="mt-8 grid grid-cols-1 gap-6 border-y border-[#c7b99e] py-7 md:grid-cols-2">
           <SoftList title={labels.valueDrivers} items={result.valueDrivers} />
           <SoftList title={labels.valueReducers} items={result.valueReducers} />
         </section>
 
-        {(isLoadingSimilar || similarImages.length > 0) && (
+        {(isLoadingSimilar || resolvedSimilarImages.length > 0) && (
           <section className="mt-8">
             <div className="mb-5 flex items-end justify-between gap-4">
               <div>
-                <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#22D3EE]/70">
+                <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#986f2e]">
                   {similarSourceLabel}
                 </p>
-                <h2 className="text-[24px] font-medium leading-8 tracking-[-0.035em] text-white/92">
+                <h2 className="text-[24px] font-medium leading-8 tracking-[-0.035em] text-[#233f32]">
                   {labels.similar}
                 </h2>
-                <p className="mt-2 max-w-2xl text-[13px] font-normal leading-6 text-white/52">
+                <p className="mt-2 max-w-2xl text-[13px] font-normal leading-6 text-[#735f4b]">
                   {labels.similarHint}
                 </p>
               </div>
@@ -498,21 +599,21 @@ export default function ResultView({
                 {Array.from({ length: 8 }).map((_, index) => (
                   <div
                     key={index}
-                    className="aspect-[3/4] animate-pulse rounded-2xl bg-white/[0.06]"
+                    className="aspect-[3/4] animate-pulse rounded-[16px] bg-[#fff4e2]/70"
                   />
                 ))}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                {similarImages.map((item, index) => (
+                {resolvedSimilarImages.map((item, index) => (
                   <a
                     key={`${item.imageUrl}-${index}`}
                     href={item.link || item.imageUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="group overflow-hidden border border-white/10 bg-[#07111F]/55 transition hover:border-[#22D3EE]/35"
+                    className="group overflow-hidden rounded-[16px] border border-[#d2b98f] bg-[#fff4e2]/88 transition hover:border-[#b88a3d]/55"
                   >
-                    <div className="aspect-[3/4] overflow-hidden bg-black/50">
+                    <div className="aspect-[3/4] overflow-hidden bg-[#d9b59e]">
                       <img
                         src={item.imageUrl}
                         alt={item.title || "Similar result"}
@@ -521,15 +622,15 @@ export default function ResultView({
                     </div>
 
                     <div className="p-3">
-                      <p className="text-[12px] font-normal leading-5 text-white/70">
+                      <p className="text-[12px] font-normal leading-5 text-[#241913]">
                         {item.title || "Similar result"}
                       </p>
                       {item.price ? (
-                        <p className="mt-2 text-[10.5px] font-medium text-white/55">
+                        <p className="mt-2 text-[10.5px] font-medium text-[#735f4b]">
                           {item.price}
                         </p>
                       ) : null}
-                      <p className="mt-2 text-[10.5px] font-medium text-[#22D3EE]/75">
+                      <p className="mt-2 text-[10.5px] font-medium text-[#986f2e]">
                         {item.source || "Google Lens"}
                       </p>
                     </div>
@@ -543,35 +644,35 @@ export default function ResultView({
         <CompactNeededPhotos title={labels.neededPhotos} items={result.neededPhotos} />
 
         {result.followUpQuestion && (
-          <section className="mt-8 border-t border-white/10 pt-6">
-            <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#22D3EE]/70">
+          <section className="mt-8 border-t border-[#c7b99e] pt-6">
+            <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#986f2e]">
               {labels.followUp}
             </p>
 
-            <p className="max-w-4xl text-[18px] font-normal leading-9 tracking-[-0.02em] text-white/74">
+            <p className="max-w-4xl text-[18px] font-normal leading-9 tracking-[-0.02em] text-[#735f4b]">
               {result.followUpQuestion}
             </p>
           </section>
         )}
 
-        <section className="mt-8 border-t border-white/10 pt-5">
-          <p className="text-[12px] font-normal leading-6 text-white/42">
+        <section className="mt-8 border-t border-[#c7b99e] pt-5">
+          <p className="text-[12px] font-normal leading-6 text-[#735f4b]">
             {result.disclaimer || labels.notice}
           </p>
         </section>
 
-        <section className="mt-9 border-y border-[#22D3EE]/12 py-6">
+        <section className="mt-9 border-y border-[#c7b99e] py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#22D3EE]/70">
+              <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#986f2e]">
                 {reportLabels.eyebrow}
               </p>
 
-              <h2 className="text-[24px] font-medium leading-8 tracking-[-0.035em] text-white/92">
+              <h2 className="text-[24px] font-medium leading-8 tracking-[-0.035em] text-[#233f32]">
                 {reportLabels.title}
               </h2>
 
-              <p className="mt-2 max-w-xl text-[13px] font-normal leading-6 text-white/48">
+              <p className="mt-2 max-w-xl text-[13px] font-normal leading-6 text-[#735f4b]">
                 {reportLabels.hint}
               </p>
             </div>
@@ -579,7 +680,7 @@ export default function ResultView({
             <button
               type="button"
               onClick={() => setIsReportOpen(true)}
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#22D3EE]/22 bg-[#2563EB]/10 px-4 text-[12px] font-medium text-[#BAE6FD] transition hover:bg-[#2563EB]/16 hover:text-white"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/80 px-4 text-[12px] font-medium text-[#735f4b] transition hover:bg-[#fff4e2] hover:text-[#233f32]"
             >
               <FileText className="h-4 w-4" />
               {reportLabels.open}
@@ -893,14 +994,14 @@ function MetricBlock({
 }) {
   return (
     <div className="min-w-0">
-      <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-[#22D3EE]/58">
+      <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-[#986f2e]">
         {label}
       </p>
 
       <p
         className={[
           "text-[14px] font-normal leading-7 tracking-[-0.015em]",
-          gold ? "text-[#e3b36d]" : "text-white/76",
+          gold ? "text-[#986f2e]" : "text-[#735f4b]",
         ].join(" ")}
       >
         {value && value.trim() ? value : fallback}
@@ -923,10 +1024,10 @@ function TextSection({
   if (!body || !body.trim()) return null;
 
   return (
-    <section className={compact ? "" : "mt-8 border-t border-white/10 pt-6"}>
+    <section className={compact ? "" : "mt-8 border-t border-[#c7b99e] pt-6"}>
       <h2
         className={[
-          "mb-3 font-medium leading-7 tracking-[-0.03em] text-white/92",
+          "mb-3 font-medium leading-7 tracking-[-0.03em] text-[#233f32]",
           large ? "text-[24px] md:text-[30px]" : "text-[19px] md:text-[22px]",
         ].join(" ")}
       >
@@ -935,7 +1036,7 @@ function TextSection({
 
       <p
         className={[
-          "whitespace-pre-line font-normal tracking-[-0.015em] text-white/70",
+          "whitespace-pre-line font-normal tracking-[-0.015em] text-[#735f4b]",
           large ? "text-[16px] leading-9 md:text-[17px]" : "text-[14.5px] leading-8",
         ].join(" ")}
       >
@@ -952,7 +1053,7 @@ function SoftList({ title, items }: { title: string; items?: string[] }) {
 
   return (
     <section>
-      <h2 className="mb-4 text-[20px] font-medium leading-7 tracking-[-0.03em] text-white/92">
+      <h2 className="mb-4 text-[20px] font-medium leading-7 tracking-[-0.03em] text-[#233f32]">
         {title}
       </h2>
 
@@ -960,9 +1061,9 @@ function SoftList({ title, items }: { title: string; items?: string[] }) {
         {cleanItems.map((item, index) => (
           <span
             key={`${item}-${index}`}
-            className="inline-flex min-w-0 items-start gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-[12.5px] font-normal leading-6 text-white/68"
+            className="inline-flex min-w-0 items-start gap-2 rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/70 px-3 py-2 text-[12.5px] font-normal leading-6 text-[#735f4b]"
           >
-            <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#22D3EE]/80" />
+            <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#b88a3d]" />
             <span className="whitespace-normal">{item}</span>
           </span>
         ))}
@@ -983,9 +1084,9 @@ function CompactNeededPhotos({
   if (cleanItems.length === 0) return null;
 
   return (
-    <section className="mt-8 border-t border-white/10 pt-5">
+    <section className="mt-8 border-t border-[#c7b99e] pt-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
-        <p className="shrink-0 text-[13px] font-medium text-white/82">
+        <p className="shrink-0 text-[13px] font-medium text-[#233f32]">
           {title}
         </p>
 
@@ -993,9 +1094,9 @@ function CompactNeededPhotos({
           {cleanItems.map((item, index) => (
             <span
               key={`${item}-${index}`}
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2 text-[12px] font-normal leading-5 text-white/62"
+              className="inline-flex shrink-0 items-center gap-2 rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/70 px-3 py-2 text-[12px] font-normal leading-5 text-[#735f4b]"
             >
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#22D3EE]/80" />
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#b88a3d]" />
               {item}
             </span>
           ))}

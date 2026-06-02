@@ -10,8 +10,10 @@ import ResultView from "@/components/antique-ai/ResultView";
 import ThinkingMotion from "@/components/antique-ai/ThinkingMotion";
 import UserMenu from "@/components/antique-ai/UserMenu";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
+import { Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { HistoryItem, Locale } from "./types";
+import { formatArchiveDate, type ArchiveItem } from "./archiveStore";
+import type { Locale, SimilarImageResult } from "./types";
 import { useAntiqueLens } from "./useAntiqueLens";
 
 const SUPPORTED_AUTH_LOCALES: Locale[] = [
@@ -68,30 +70,38 @@ function cacheAuthSession(active: boolean) {
 }
 
 function getSafeSimilarImages(lens: ReturnType<typeof useAntiqueLens>) {
-  const result = lens.result as Record<string, unknown> | null;
+  const result = lens.result as
+    | (Record<string, unknown> & {
+        similar?: SimilarImageResult[];
+        similarItems?: SimilarImageResult[];
+        similarPhotos?: SimilarImageResult[];
+        similarImages?: SimilarImageResult[];
+        similarPieces?: SimilarImageResult[];
+        imageMatches?: SimilarImageResult[];
+        visualMatches?: SimilarImageResult[];
+        storeMatches?: SimilarImageResult[];
+        matches?: SimilarImageResult[];
+      })
+    | null;
 
   if (Array.isArray(lens.similarImages) && lens.similarImages.length > 0) {
     return lens.similarImages;
   }
 
-  if (Array.isArray(result?.similarImages) && result.similarImages.length > 0) {
-    return result.similarImages;
-  }
+  const restoredSimilarImages =
+    result?.similarItems ||
+    result?.similarPhotos ||
+    result?.similarImages ||
+    result?.imageMatches ||
+    result?.visualMatches ||
+    result?.storeMatches ||
+    result?.matches ||
+    result?.similar ||
+    result?.similarPieces ||
+    [];
 
-  if (Array.isArray(result?.similarPhotos) && result.similarPhotos.length > 0) {
-    return result.similarPhotos;
-  }
-
-  if (Array.isArray(result?.similarItems) && result.similarItems.length > 0) {
-    return result.similarItems;
-  }
-
-  if (Array.isArray(result?.similar) && result.similar.length > 0) {
-    return result.similar;
-  }
-
-  if (Array.isArray(result?.similarPieces) && result.similarPieces.length > 0) {
-    return result.similarPieces;
+  if (Array.isArray(restoredSimilarImages) && restoredSimilarImages.length > 0) {
+    return restoredSimilarImages;
   }
 
   return [];
@@ -254,7 +264,7 @@ export default function AntiqueLensShell() {
   }
 
   if (!authReady) {
-    return <main className="min-h-dvh bg-black" />;
+    return <main className="min-h-dvh kishib-bg-auth" />;
   }
 
   if (!hasSession) {
@@ -278,7 +288,19 @@ export default function AntiqueLensShell() {
     lens.result && !lens.followUpOpen && !lens.followUpUsed,
   );
   const copy = homeCopy(lens.locale);
-  const latestItems = lens.history.slice(0, 4);
+  const latestItems = lens.history;
+
+  function handleDeleteArchiveItem(id: string) {
+    const confirmed = window.confirm(
+      lens.locale === "en"
+        ? "Delete this item from your collection?"
+        : "هل تريد حذف هذه القطعة من الأرشيف؟",
+    );
+
+    if (!confirmed) return;
+
+    lens.deleteHistoryItem(id);
+  }
 
   const followUpPanel =
     lens.followUpOpen && !lens.followUpUsed ? (
@@ -299,19 +321,22 @@ export default function AntiqueLensShell() {
   return (
     <main
       dir={lens.t.dir}
-      data-theme={lens.theme ?? "dark"}
-      className="relative min-h-dvh overflow-x-hidden bg-black text-[#F8FAFC]"
+      data-theme={lens.theme ?? "light"}
+      className={[
+        "relative min-h-dvh overflow-x-hidden text-[#241913]",
+        lens.result ? "kishib-bg-result" : "kishib-bg-home",
+      ].join(" ")}
     >
-      <AntiqueBackground />
+      {!lens.result ? <AntiqueBackground /> : null}
 
       <div className="relative z-10 min-h-dvh">
-        <div className="fixed right-4 top-4 z-40">
+        <div className="fixed right-4 top-4 z-40 lg:right-8 lg:top-8">
           <UserMenu locale={lens.locale} setLocale={lens.changeLocale} />
         </div>
 
         {lens.isTranslatingResult && (
-          <div className="fixed inset-x-0 top-20 z-50 mx-auto flex w-fit items-center gap-3 rounded-full border border-[#22D3EE]/20 bg-[#07111F]/90 px-5 py-3 text-[12px] font-medium text-[#BAE6FD] shadow-2xl shadow-black/30 backdrop-blur-2xl">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-[#22D3EE]" />
+          <div className="fixed inset-x-0 top-20 z-50 mx-auto flex w-fit items-center gap-3 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/92 px-5 py-3 text-[12px] font-medium text-[#735f4b] shadow-[0_16px_38px_rgba(62,39,22,0.12)] backdrop-blur-2xl">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-[#b88a3d]" />
             <span>
               {activeLocale === "en"
                 ? "Translating report..."
@@ -324,59 +349,63 @@ export default function AntiqueLensShell() {
           </div>
         )}
 
-        <section className="relative z-10 mx-auto min-h-dvh w-full max-w-5xl px-4 pb-28 pt-24 md:px-8">
+        <section className="relative z-10 mx-auto min-h-dvh w-full max-w-md px-4 pb-24 pt-10 sm:max-w-xl md:px-8 lg:max-w-7xl lg:px-10 lg:pb-28 lg:pt-12 xl:px-14">
           {!lens.result && !lens.isAnalyzing && (
-            <div className="mx-auto flex w-full max-w-[560px] flex-col gap-7">
-              <div className="pt-4 text-center">
-                <h1 className="text-4xl font-semibold leading-tight tracking-[0.08em] text-white sm:text-5xl">
-                  {copy.title}
-                </h1>
-                <p className="mx-auto mt-2 text-[10px] font-semibold uppercase tracking-[0.32em] text-[#67E8F9]/72">
-                  {copy.slogan}
-                </p>
-              </div>
+            <div className="mx-auto flex w-full max-w-[520px] flex-col gap-5 lg:mx-0 lg:grid lg:max-w-none lg:grid-cols-[440px_minmax(0,1fr)] lg:items-start lg:gap-10 xl:grid-cols-[480px_minmax(0,1fr)] xl:gap-14">
+              <section className="lg:sticky lg:top-12">
+                <div className="mb-5 text-center lg:text-start">
+                  <h1 className="text-3xl font-semibold leading-tight tracking-[0.08em] text-[#fff4e2] sm:text-4xl lg:text-5xl">
+                    {copy.title}
+                  </h1>
+                  <p className="mx-auto mt-1.5 text-[10px] font-semibold uppercase tracking-[0.3em] text-[#dcc18a] lg:mx-0 lg:text-[11px]">
+                    {copy.slogan}
+                  </p>
+                </div>
 
-              <div id="kishib-evaluation-card">
-                <EvaluationComposer
-                  theme={lens.theme}
-                  labels={lens.t}
-                  prompt={lens.prompt}
-                  setPrompt={lens.setPrompt}
-                  selectedFiles={lens.selectedFiles}
-                  imagePreviews={lens.imagePreviews}
-                  selectedFile={lens.selectedFile}
-                  imagePreview={lens.imagePreview}
-                  error={lens.error}
-                  locale={lens.locale}
-                  handleImageChange={lens.handleImageChange}
-                  removeImage={lens.removeImage}
-                  removeImageAt={lens.removeImageAt}
-                  handleAnalyze={lens.handleAnalyze}
-                  isAnalyzing={lens.isAnalyzing}
-                />
-              </div>
+                <div id="kishib-evaluation-card">
+                  <EvaluationComposer
+                    theme={lens.theme}
+                    labels={lens.t}
+                    prompt={lens.prompt}
+                    setPrompt={lens.setPrompt}
+                    selectedFiles={lens.selectedFiles}
+                    imagePreviews={lens.imagePreviews}
+                    selectedFile={lens.selectedFile}
+                    imagePreview={lens.imagePreview}
+                    error={lens.error}
+                    locale={lens.locale}
+                    handleImageChange={lens.handleImageChange}
+                    removeImage={lens.removeImage}
+                    removeImageAt={lens.removeImageAt}
+                    handleAnalyze={lens.handleAnalyze}
+                    isAnalyzing={lens.isAnalyzing}
+                  />
+                </div>
+              </section>
 
               <LatestCollection
                 title={copy.collection}
                 subtitle={copy.latest}
                 empty={copy.empty}
                 items={latestItems}
+                locale={lens.locale}
                 onOpenItem={lens.openHistoryItem}
+                onDeleteItem={handleDeleteArchiveItem}
               />
             </div>
           )}
 
           {lens.isAnalyzing && (
             <div className="flex min-h-[calc(100dvh-8rem)] items-center justify-center">
-             <ThinkingMotion
-  locale={lens.locale}
-  imagePreview={lens.imagePreview ?? null}
-/>
+              <ThinkingMotion
+                locale={lens.locale}
+                imagePreview={lens.imagePreview ?? null}
+              />
             </div>
           )}
 
           {lens.result && !lens.isAnalyzing && (
-            <div className="mx-auto w-full max-w-[980px] pt-2">
+            <div className="mx-auto w-full max-w-md pt-2 sm:max-w-xl lg:max-w-5xl xl:max-w-6xl">
               <ResultView
                 locale={lens.locale}
                 labels={{
@@ -406,6 +435,7 @@ export default function AntiqueLensShell() {
                 imagePreviews={lens.imagePreviews}
                 similarImages={safeSimilarImages}
                 isLoadingSimilar={isSimilarLoading}
+                userNote={lens.prompt}
                 onShare={lens.handleShare}
                 onAddInfo={canUseFollowUp ? lens.handleAddInfo : undefined}
                 followUpPanel={followUpPanel}
@@ -424,6 +454,7 @@ export default function AntiqueLensShell() {
           onNew={lens.resetEvaluation}
           onShare={lens.handleShare}
         />
+
         <CookieBar />
       </div>
     </main>
@@ -435,53 +466,81 @@ function LatestCollection({
   subtitle,
   empty,
   items,
+  locale,
   onOpenItem,
+  onDeleteItem,
 }: {
   title: string;
   subtitle: string;
   empty: string;
-  items: HistoryItem[];
-  onOpenItem: (item: HistoryItem) => void;
+  items: ArchiveItem[];
+  locale: Locale;
+  onOpenItem: (item: ArchiveItem) => void;
+  onDeleteItem: (id: string) => void;
 }) {
   return (
-    <section className="pb-4">
-      <div className="mb-3 flex items-end justify-between">
+    <section className="pb-4 lg:min-w-0 lg:pb-0 lg:pt-14">
+      <div className="mb-3 flex items-end justify-between lg:mb-4">
         <div>
-          <h2 className="text-base font-semibold text-white">{title}</h2>
-          <p className="mt-1 text-xs text-[#94A3B8]">{subtitle}</p>
+          <h2 className="text-base font-semibold text-[#fff4e2] lg:text-xl">
+            {title}
+          </h2>
+          <p className="mt-1 text-xs text-[#dcc18a] lg:text-sm">{subtitle}</p>
         </div>
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-3xl border border-[rgba(34,211,238,0.18)] bg-[#07111F]/70 px-4 py-5 text-sm text-[#94A3B8]">
+        <div className="rounded-[18px] border border-[#d2b98f] bg-[#fff4e2]/80 px-4 py-5 text-sm text-[#735f4b] lg:max-w-md">
           {empty}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid max-h-[520px] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:grid-cols-4 lg:max-h-[calc(100dvh-190px)] lg:grid-cols-3 lg:gap-4 lg:pr-2 xl:grid-cols-4 2xl:grid-cols-5">
           {items.map((item) => (
-            <button
+            <div
               key={item.id}
-              type="button"
-              onClick={() => onOpenItem(item)}
-              className="group overflow-hidden rounded-3xl border border-white/10 bg-[#0B1220] text-start transition hover:border-[#22D3EE]/45"
+              className="group relative overflow-hidden rounded-[18px] border border-[#d2b98f] bg-[#fff4e2]/88 text-[#241913] shadow-[0_12px_28px_rgba(62,39,22,0.1)] transition hover:border-[#b88a3d]/60 lg:rounded-[20px]"
             >
-              <div className="aspect-square bg-black">
-                {item.imagePreview ? (
-                  <img
-                    src={item.imagePreview}
-                    alt={item.title}
-                    className="h-full w-full object-cover opacity-90 transition group-hover:scale-105"
-                  />
-                ) : (
-                  <div className="grid h-full w-full place-items-center text-xs text-[#64748B]">
-                    KISHIB
-                  </div>
-                )}
-              </div>
-              <p className="truncate px-3 py-3 text-xs font-medium text-[#E2E8F0]">
-                {item.title}
-              </p>
-            </button>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDeleteItem(item.id);
+                }}
+                className="absolute end-2 top-2 z-10 rounded-[10px] bg-[#fff4e2]/82 p-1.5 text-[#735f4b] backdrop-blur transition hover:bg-[#6d241d] hover:text-[#fff4e2]"
+                aria-label="Delete archive item"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onOpenItem(item)}
+                className="block w-full text-start"
+              >
+                <div className="aspect-square bg-[#d9b59e]">
+                  {item.imagePreview ? (
+                    <img
+                      src={item.imagePreview}
+                      alt={item.title}
+                      className="h-full w-full object-cover opacity-90 transition duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_center,rgba(184,138,61,0.2),rgba(255,244,226,0.92))] text-xs font-semibold tracking-[0.24em] text-[#735f4b]">
+                      KISHIB
+                    </div>
+                  )}
+                </div>
+
+                <div className="px-3 py-3 lg:px-4">
+                  <p className="truncate text-xs font-medium text-[#241913] lg:text-sm">
+                    {item.title}
+                  </p>
+                  <p className="mt-1 truncate text-[10px] text-[#735f4b] lg:text-[11px]">
+                    {formatArchiveDate(item.createdAt, locale)}
+                  </p>
+                </div>
+              </button>
+            </div>
           ))}
         </div>
       )}

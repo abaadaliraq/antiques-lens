@@ -30,9 +30,9 @@ export default function BottomBar({
     <nav className="fixed inset-x-0 bottom-4 z-50 px-4">
       <div
         className={[
-          "mx-auto flex h-14 w-fit items-center gap-1 rounded-full border px-2 shadow-[0_20px_70px_rgba(0,0,0,0.42)] backdrop-blur-2xl",
+          "mx-auto flex h-14 w-fit items-center gap-1 rounded-full border px-2 shadow-[0_18px_50px_rgba(55,35,20,0.16)] backdrop-blur-2xl",
           isLight
-            ? "border-black/10 bg-white/80 text-black"
+            ? "border-[#d2b98f] bg-[#fff4e2]/90 text-[#241913]"
             : "border-[rgba(34,211,238,0.18)] bg-[#020617]/88 text-[#E2E8F0]",
         ].join(" ")}
       >
@@ -41,7 +41,7 @@ export default function BottomBar({
           onClick={onNew}
           title={labels.new}
           aria-label={labels.new}
-          className="grid h-10 w-10 place-items-center rounded-full text-[#94A3B8] transition hover:bg-white/10 hover:text-white"
+          className="grid h-10 w-10 place-items-center rounded-[12px] text-[#735f4b] transition hover:bg-[#d9b59e]/55 hover:text-[#241913]"
         >
           <Home className="h-4 w-4" />
         </button>
@@ -51,7 +51,7 @@ export default function BottomBar({
           onClick={onShare}
           title={labels.share}
           aria-label={labels.share}
-          className="grid h-10 w-10 place-items-center rounded-full text-[#94A3B8] transition hover:bg-white/10 hover:text-white"
+          className="grid h-10 w-10 place-items-center rounded-[12px] text-[#735f4b] transition hover:bg-[#d9b59e]/55 hover:text-[#241913]"
         >
           <Share2 className="h-4 w-4" />
         </button>
@@ -61,7 +61,7 @@ export default function BottomBar({
           onClick={onNew}
           title={labels.new}
           aria-label={labels.new}
-          className="grid h-10 w-10 place-items-center rounded-full bg-[#2563EB] text-white transition hover:bg-[#1D4ED8]"
+          className="grid h-10 w-10 place-items-center rounded-[12px] bg-[#b88a3d] text-[#fff4e2] transition hover:bg-[#986f2e]"
         >
           <Plus className="h-4 w-4" />
         </button>

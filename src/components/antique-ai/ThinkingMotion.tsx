@@ -22,89 +22,89 @@ type ThinkingCopy = {
 const THINKING_COPY: Record<Locale, ThinkingCopy> = {
   ar: {
     eyebrow: "KISHIB",
-    fallbackTitle: "جاري الفحص",
+    fallbackTitle: "جاري تكوين الصورة",
     steps: [
-      { title: "فحص الصورة" },
-      { title: "قراءة المؤشرات" },
-      { title: "تقدير القيمة" },
-      { title: "إعداد التقرير" },
+      { title: "تجميع ملامح الصورة" },
+      { title: "قراءة العلامات" },
+      { title: "مطابقة المؤشرات" },
+      { title: "إعداد التقييم" },
     ],
   },
 
   en: {
     eyebrow: "KISHIB",
-    fallbackTitle: "Scanning",
+    fallbackTitle: "Revealing image",
     steps: [
-      { title: "Scanning image" },
-      { title: "Reading signals" },
-      { title: "Valuing item" },
-      { title: "Preparing report" },
+      { title: "Revealing image" },
+      { title: "Reading details" },
+      { title: "Matching signals" },
+      { title: "Preparing value" },
     ],
   },
 
   fr: {
     eyebrow: "KISHIB",
-    fallbackTitle: "Analyse",
+    fallbackTitle: "Révélation",
     steps: [
-      { title: "Analyse de l’image" },
-      { title: "Lecture des indices" },
+      { title: "Révélation" },
+      { title: "Lecture des détails" },
+      { title: "Correspondances" },
       { title: "Estimation" },
-      { title: "Rapport" },
     ],
   },
 
   hi: {
     eyebrow: "KISHIB",
-    fallbackTitle: "स्कैन हो रहा है",
+    fallbackTitle: "छवि बन रही है",
     steps: [
-      { title: "तस्वीर स्कैन" },
-      { title: "संकेत पढ़ना" },
-      { title: "मूल्य अनुमान" },
-      { title: "रिपोर्ट तैयार" },
+      { title: "छवि बन रही है" },
+      { title: "विवरण पढ़ना" },
+      { title: "संकेत मिलाना" },
+      { title: "मूल्यांकन" },
     ],
   },
 
   fa: {
     eyebrow: "KISHIB",
-    fallbackTitle: "در حال اسکن",
+    fallbackTitle: "نمایان‌سازی تصویر",
     steps: [
-      { title: "اسکن تصویر" },
-      { title: "خواندن نشانه‌ها" },
-      { title: "برآورد ارزش" },
-      { title: "آماده‌سازی گزارش" },
+      { title: "نمایان‌سازی تصویر" },
+      { title: "خواندن جزئیات" },
+      { title: "تطبیق نشانه‌ها" },
+      { title: "آماده‌سازی ارزیابی" },
     ],
   },
 
   tr: {
     eyebrow: "KISHIB",
-    fallbackTitle: "Taranıyor",
+    fallbackTitle: "Görsel oluşuyor",
     steps: [
-      { title: "Görsel tarama" },
-      { title: "Sinyalleri okuma" },
+      { title: "Görsel oluşuyor" },
+      { title: "Detaylar okunuyor" },
+      { title: "İşaretler eşleşiyor" },
       { title: "Değerleme" },
-      { title: "Rapor" },
     ],
   },
 
   ru: {
     eyebrow: "KISHIB",
-    fallbackTitle: "Сканирование",
+    fallbackTitle: "Проявление",
     steps: [
-      { title: "Сканирование" },
-      { title: "Признаки" },
+      { title: "Проявление" },
+      { title: "Детали" },
+      { title: "Сопоставление" },
       { title: "Оценка" },
-      { title: "Отчёт" },
     ],
   },
 
   ku: {
     eyebrow: "KISHIB",
-    fallbackTitle: "پشکنین",
+    fallbackTitle: "وێنەکە دەردەکەوێت",
     steps: [
-      { title: "پشکنینی وێنە" },
-      { title: "خوێندنەوەی نیشانەکان" },
-      { title: "خەملاندنی نرخ" },
-      { title: "ئامادەکردنی ڕاپۆرت" },
+      { title: "دەرخستنی وێنە" },
+      { title: "خوێندنەوەی وردەکاری" },
+      { title: "بەراوردکردنی نیشانەکان" },
+      { title: "ئامادەکردنی نرخاندن" },
     ],
   },
 };
@@ -174,78 +174,47 @@ export default function ThinkingMotion({
   return (
     <div
       dir={dir}
-     className="flex min-h-[calc(100dvh-5rem)] w-full items-start justify-center px-4 pb-3 pt-2"
+      className="flex min-h-[calc(100dvh-5rem)] w-full items-start justify-center px-4 pb-4 pt-3"
     >
       <div
-       className={[
-  "relative mt-1 w-full max-w-[390px] overflow-hidden rounded-[1.7rem]",
-          "border border-cyan-300/15 bg-[#030712]/95",
-          "p-4 shadow-[0_24px_80px_rgba(0,0,0,0.72)] backdrop-blur-2xl",
+        className={[
+          "relative mt-1 w-full max-w-[390px] overflow-hidden rounded-[24px]",
+          "border border-[#b88a3d]/25 bg-[#f6ead5]/90",
+          "p-4 text-[#241913] shadow-[0_18px_50px_rgba(58,36,20,0.18)]",
         ].join(" ")}
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.14),transparent_36%),radial-gradient(circle_at_50%_100%,rgba(37,99,235,0.12),transparent_44%)]" />
-        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/55 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(184,138,61,0.16),transparent_36%)]" />
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-[#b88a3d]/55 to-transparent" />
 
         <div className="relative">
           <div className="mb-3 text-center">
-            <p className="text-[10px] font-bold tracking-[0.48em] text-cyan-300">
+            <p className="text-[10px] font-bold tracking-[0.48em] text-[#986f2e]">
               {copy.eyebrow}
             </p>
           </div>
 
           <div
             className={[
-              "relative mx-auto overflow-hidden rounded-[1.35rem]",
-              "border border-cyan-300/18 bg-black",
-              "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.035),0_18px_55px_rgba(0,0,0,0.5)]",
+              "relative mx-auto overflow-hidden rounded-[22px]",
+              "border border-[#d2b98f] bg-[#fff4e2]",
+              "shadow-[inset_0_0_0_1px_rgba(255,248,236,0.35),0_16px_42px_rgba(55,35,20,0.16)]",
             ].join(" ")}
           >
-            <div className="relative flex h-[330px] items-center justify-center bg-black p-2">
+            <div className="relative flex h-[330px] items-center justify-center bg-[#f3eadc] p-2">
               {imagePreview ? (
-                <img
-                  src={imagePreview}
-                  alt=""
-                  className="max-h-[306px] w-full select-none rounded-[1rem] object-contain"
-                  draggable={false}
-                />
+                <ParticleReveal imagePreview={imagePreview} />
               ) : (
-                <div className="grid h-full w-full place-items-center rounded-[1rem] border border-cyan-300/10 bg-[#07111F]">
+                <div className="grid h-full w-full place-items-center rounded-[18px] border border-[#d2b98f] bg-[#fff4e2]">
                   <div className="text-center">
-                    <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-cyan-300/25 bg-cyan-300/10 text-cyan-300">
+                    <div className="mx-auto grid h-14 w-14 place-items-center rounded-[16px] border border-[#b88a3d]/25 bg-[#ead2c2] text-[#8b3a2b]">
                       <Camera className="h-6 w-6" />
                     </div>
-                    <p className="mt-3 text-sm font-bold text-white">
+                    <p className="mt-3 text-sm font-bold text-[#241913]">
                       {copy.fallbackTitle}
                     </p>
                   </div>
                 </div>
               )}
-
-              <div className="pointer-events-none absolute inset-2 rounded-[1rem] bg-[linear-gradient(rgba(34,211,238,0.045)_1px,transparent_1px)] bg-[length:100%_16px] opacity-45" />
-
-              <div className="pointer-events-none absolute inset-2 rounded-[1rem] bg-gradient-to-b from-cyan-300/10 via-transparent to-blue-500/10" />
-
-              <motion.div
-                className="pointer-events-none absolute left-2 right-2 top-2 z-20"
-                animate={{
-                  y: ["0%", "calc(100% - 8px)", "0%"],
-                }}
-                transition={{
-                  duration: 2.65,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                style={{
-                  height: "calc(100% - 16px)",
-                }}
-              >
-                <div className="relative h-[3px] w-full rounded-full bg-cyan-300 shadow-[0_0_28px_rgba(34,211,238,0.95)]">
-                  <div className="absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-200 shadow-[0_0_28px_rgba(34,211,238,1)]" />
-                  <div className="absolute inset-x-0 -top-6 h-12 bg-gradient-to-b from-cyan-300/20 via-cyan-300/8 to-transparent blur-sm" />
-                </div>
-              </motion.div>
-
-              <ScanCorners />
             </div>
           </div>
 
@@ -257,7 +226,7 @@ export default function ThinkingMotion({
                 animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                 exit={{ opacity: 0, y: -8, filter: "blur(6px)" }}
                 transition={{ duration: 0.35, ease: "easeOut" }}
-                className="text-center text-[15px] font-bold text-white"
+                className="text-center text-[15px] font-bold text-[#241913]"
               >
                 {currentStep.title}
               </motion.p>
@@ -272,22 +241,22 @@ export default function ThinkingMotion({
                   <div
                     key={`${step.title}-${index}`}
                     className={[
-                      "flex min-h-[58px] flex-col items-center justify-center rounded-2xl border px-1.5 py-2 text-center transition duration-300",
+                      "flex min-h-[58px] flex-col items-center justify-center rounded-[16px] border px-1.5 py-2 text-center transition duration-300",
                       isActive
-                        ? "border-cyan-300/45 bg-cyan-300/[0.09]"
+                        ? "border-[#b88a3d]/45 bg-[#fff4e2]/80"
                         : isDone
-                          ? "border-blue-400/22 bg-blue-500/[0.06]"
-                          : "border-white/6 bg-white/[0.025]",
+                          ? "border-[#233f32]/25 bg-[#dfe6d8]/70"
+                          : "border-[#d2b98f] bg-[#fff4e2]/50",
                     ].join(" ")}
                   >
                     <div
                       className={[
                         "mb-1.5 grid h-6 w-6 place-items-center rounded-full border transition duration-300",
                         isDone
-                          ? "border-cyan-300 bg-cyan-300 text-black"
+                          ? "border-[#b88a3d] bg-[#b88a3d] text-[#fff4e2]"
                           : isActive
-                            ? "border-cyan-300/70 bg-cyan-300/15 text-cyan-200"
-                            : "border-white/10 bg-white/[0.03] text-slate-500",
+                            ? "border-[#b88a3d]/70 bg-[#ead2c2] text-[#6d2e1d]"
+                            : "border-[#d2b98f] bg-[#fff4e2] text-[#735f4b]",
                       ].join(" ")}
                     >
                       {isDone ? (
@@ -303,10 +272,10 @@ export default function ThinkingMotion({
                       className={[
                         "line-clamp-2 text-[9px] font-bold leading-3",
                         isActive
-                          ? "text-cyan-100"
+                          ? "text-[#241913]"
                           : isDone
-                            ? "text-slate-200"
-                            : "text-slate-500",
+                            ? "text-[#233f32]"
+                            : "text-[#735f4b]",
                       ].join(" ")}
                     >
                       {step.title}
@@ -316,11 +285,11 @@ export default function ThinkingMotion({
               })}
             </div>
 
-            <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-white/7">
+            <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-[#d2b98f]/35">
               <motion.div
                 animate={{ width: progressWidth }}
                 transition={{ duration: 0.75, ease: "easeOut" }}
-                className="h-full rounded-full bg-gradient-to-r from-blue-600 via-cyan-300 to-blue-500 shadow-[0_0_22px_rgba(34,211,238,0.45)]"
+                className="h-full rounded-full bg-gradient-to-r from-[#6d2e1d] via-[#b88a3d] to-[#233f32] shadow-[0_0_16px_rgba(184,138,61,0.35)]"
               />
             </div>
           </div>
@@ -330,13 +299,110 @@ export default function ThinkingMotion({
   );
 }
 
-function ScanCorners() {
+function ParticleReveal({ imagePreview }: { imagePreview: string }) {
+  const particles = useMemo(() => {
+    return Array.from({ length: 96 }, (_, index) => {
+      const row = Math.floor(index / 12);
+      const col = index % 12;
+
+      return {
+        id: index,
+        left: `${col * 8.33 + 4}%`,
+        top: `${row * 12.5 + 6}%`,
+        delay: (row + col) * 0.035,
+        size: 3 + ((index * 7) % 10),
+      };
+    });
+  }, []);
+
   return (
-    <div className="pointer-events-none absolute inset-2 z-30 rounded-[1rem]">
-      <span className="absolute left-0 top-0 h-9 w-9 rounded-tl-[1rem] border-l-2 border-t-2 border-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.55)]" />
-      <span className="absolute right-0 top-0 h-9 w-9 rounded-tr-[1rem] border-r-2 border-t-2 border-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.55)]" />
-      <span className="absolute bottom-0 left-0 h-9 w-9 rounded-bl-[1rem] border-b-2 border-l-2 border-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.55)]" />
-      <span className="absolute bottom-0 right-0 h-9 w-9 rounded-br-[1rem] border-b-2 border-r-2 border-cyan-300 shadow-[0_0_18px_rgba(34,211,238,0.55)]" />
+    <div className="relative h-full w-full overflow-hidden rounded-[18px] bg-[#0d181e]">
+      <motion.img
+        src={imagePreview}
+        alt=""
+        draggable={false}
+        className="absolute inset-0 h-full w-full select-none rounded-[18px] object-contain"
+        initial={{
+          opacity: 0.18,
+          filter: "blur(18px) contrast(0.82) saturate(0.65)",
+          scale: 0.98,
+        }}
+        animate={{
+          opacity: [0.18, 0.42, 0.78, 1],
+          filter: [
+            "blur(18px) contrast(0.82) saturate(0.65)",
+            "blur(10px) contrast(0.9) saturate(0.8)",
+            "blur(4px) contrast(1) saturate(0.95)",
+            "blur(0px) contrast(1.03) saturate(1)",
+          ],
+          scale: [0.98, 1.01, 1],
+        }}
+        transition={{
+          duration: 3.2,
+          repeat: Infinity,
+          repeatType: "mirror",
+          ease: "easeInOut",
+        }}
+      />
+
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(255,248,194,0.1),transparent_42%),linear-gradient(to_bottom,rgba(13,24,30,0.38),rgba(13,24,30,0.08),rgba(13,24,30,0.42))]" />
+
+      {particles.map((particle) => (
+        <motion.span
+          key={particle.id}
+          className="pointer-events-none absolute rounded-full"
+          style={{
+            left: particle.left,
+            top: particle.top,
+            width: particle.size,
+            height: particle.size,
+            background:
+              particle.id % 3 === 0
+                ? "#fff8c2"
+                : particle.id % 3 === 1
+                  ? "#ffc271"
+                  : "#99782e",
+            boxShadow: "0 0 16px rgba(255, 194, 113, 0.48)",
+          }}
+          initial={{
+            opacity: 0,
+            scale: 0,
+            x: 0,
+            y: 0,
+          }}
+          animate={{
+            opacity: [0, 1, 0.8, 0],
+            scale: [0.2, 1.15, 0.75, 0.05],
+            x: [0, ((particle.id % 5) - 2) * 8, 0],
+            y: [0, ((particle.id % 7) - 3) * 6, 0],
+          }}
+          transition={{
+            duration: 3.1,
+            delay: particle.delay,
+            repeat: Infinity,
+            repeatType: "loop",
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+
+      <motion.div
+        className="pointer-events-none absolute inset-0 rounded-[18px]"
+        initial={{ opacity: 0.65 }}
+        animate={{ opacity: [0.65, 0.25, 0.08, 0.28] }}
+        transition={{
+          duration: 3.2,
+          repeat: Infinity,
+          repeatType: "mirror",
+          ease: "easeInOut",
+        }}
+        style={{
+          background:
+            "radial-gradient(circle at center, transparent 26%, rgba(13,24,30,0.62) 72%)",
+        }}
+      />
+
+      <div className="pointer-events-none absolute inset-0 rounded-[18px] border border-[#b88a3d]/30" />
     </div>
   );
 }

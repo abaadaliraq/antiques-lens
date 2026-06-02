@@ -1,7 +1,5 @@
 import type { AnalysisResult } from "./types";
 
-export const HISTORY_KEY = "antiques-lens:history-v2";
-
 export const content = {
   ar: {
     dir: "rtl",
@@ -375,6 +373,16 @@ export function normalizeResult(data: Partial<AnalysisResult>): AnalysisResult {
     priceRange: data.priceRange,
     period: data.period,
     keywords: data.keywords,
+    similar: data.similar,
+    similarItems: data.similarItems,
+    similarPhotos: data.similarPhotos,
+    similarImages: data.similarImages,
+    similarPieces: data.similarPieces,
+    imageMatches: data.imageMatches,
+    visualMatches: data.visualMatches,
+    storeMatches: data.storeMatches,
+    matches: data.matches,
     houseOfAntiques: data.houseOfAntiques,
+    metalValue: data.metalValue,
   };
 }

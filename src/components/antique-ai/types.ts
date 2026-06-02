@@ -36,6 +36,15 @@ export type AnalysisResult = {
   priceRange?: string;
   period?: string;
   keywords?: string[];
+  similar?: SimilarImageResult[];
+  similarItems?: SimilarImageResult[];
+  similarPhotos?: SimilarImageResult[];
+  similarImages?: SimilarImageResult[];
+  similarPieces?: SimilarImageResult[];
+  imageMatches?: SimilarImageResult[];
+  visualMatches?: SimilarImageResult[];
+  storeMatches?: SimilarImageResult[];
+  matches?: SimilarImageResult[];
   houseOfAntiques?: HouseOfAntiquesContext;
   metalValue?: {
     metal: "silver" | "gold" | "unknown";
