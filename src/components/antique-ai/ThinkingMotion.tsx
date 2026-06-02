@@ -200,9 +200,9 @@ export default function ThinkingMotion({
               "shadow-[inset_0_0_0_1px_rgba(255,248,236,0.35),0_16px_42px_rgba(55,35,20,0.16)]",
             ].join(" ")}
           >
-            <div className="relative flex h-[330px] items-center justify-center bg-[#f3eadc] p-2 lg:h-[430px]">
+            <div className="relative flex h-[330px] items-center justify-center bg-[#0d181e] p-2 lg:h-[430px]">
               {imagePreview ? (
-                <ParticleReveal imagePreview={imagePreview} />
+                <ProfessionalDissolveImage imagePreview={imagePreview} />
               ) : (
                 <div className="grid h-full w-full place-items-center rounded-[18px] border border-[#d2b98f] bg-[#fff4e2]">
                   <div className="text-center">
@@ -299,110 +299,102 @@ export default function ThinkingMotion({
   );
 }
 
-function ParticleReveal({ imagePreview }: { imagePreview: string }) {
-  const particles = useMemo(() => {
-    return Array.from({ length: 96 }, (_, index) => {
-      const row = Math.floor(index / 12);
-      const col = index % 12;
-
-      return {
-        id: index,
-        left: `${col * 8.33 + 4}%`,
-        top: `${row * 12.5 + 6}%`,
-        delay: (row + col) * 0.035,
-        size: 3 + ((index * 7) % 10),
-      };
-    });
-  }, []);
-
+function ProfessionalDissolveImage({ imagePreview }: { imagePreview: string }) {
   return (
     <div className="relative h-full w-full overflow-hidden rounded-[18px] bg-[#0d181e]">
       <motion.img
         src={imagePreview}
         alt=""
         draggable={false}
-        className="absolute inset-0 h-full w-full select-none rounded-[18px] object-contain"
+        className="absolute inset-0 h-full w-full select-none object-contain"
         initial={{
-          opacity: 0.18,
-          filter: "blur(18px) contrast(0.82) saturate(0.65)",
-          scale: 0.98,
+          opacity: 0.95,
+          filter: "blur(0px) contrast(1.03) saturate(1)",
+          scale: 1,
         }}
         animate={{
-          opacity: [0.18, 0.42, 0.78, 1],
+          opacity: [0.95, 0.48, 0.25, 0.48, 0.95],
           filter: [
-            "blur(18px) contrast(0.82) saturate(0.65)",
-            "blur(10px) contrast(0.9) saturate(0.8)",
-            "blur(4px) contrast(1) saturate(0.95)",
+            "blur(0px) contrast(1.03) saturate(1)",
+            "blur(5px) contrast(0.92) saturate(0.82)",
+            "blur(16px) contrast(0.7) saturate(0.58)",
+            "blur(5px) contrast(0.92) saturate(0.82)",
             "blur(0px) contrast(1.03) saturate(1)",
           ],
-          scale: [0.98, 1.01, 1],
+          scale: [1, 1.012, 1.028, 1.012, 1],
         }}
         transition={{
-          duration: 3.2,
+          duration: 4.6,
           repeat: Infinity,
-          repeatType: "mirror",
           ease: "easeInOut",
         }}
       />
 
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(255,248,194,0.1),transparent_42%),linear-gradient(to_bottom,rgba(13,24,30,0.38),rgba(13,24,30,0.08),rgba(13,24,30,0.42))]" />
-
-      {particles.map((particle) => (
-        <motion.span
-          key={particle.id}
-          className="pointer-events-none absolute rounded-full"
-          style={{
-            left: particle.left,
-            top: particle.top,
-            width: particle.size,
-            height: particle.size,
-            background:
-              particle.id % 3 === 0
-                ? "#fff8c2"
-                : particle.id % 3 === 1
-                  ? "#ffc271"
-                  : "#99782e",
-            boxShadow: "0 0 16px rgba(255, 194, 113, 0.48)",
-          }}
-          initial={{
-            opacity: 0,
-            scale: 0,
-            x: 0,
-            y: 0,
-          }}
-          animate={{
-            opacity: [0, 1, 0.8, 0],
-            scale: [0.2, 1.15, 0.75, 0.05],
-            x: [0, ((particle.id % 5) - 2) * 8, 0],
-            y: [0, ((particle.id % 7) - 3) * 6, 0],
-          }}
-          transition={{
-            duration: 3.1,
-            delay: particle.delay,
-            repeat: Infinity,
-            repeatType: "loop",
-            ease: "easeInOut",
-          }}
-        />
-      ))}
+      <motion.img
+        src={imagePreview}
+        alt=""
+        draggable={false}
+        className="absolute inset-0 h-full w-full select-none object-contain"
+        initial={{
+          opacity: 0,
+          filter: "blur(24px) contrast(0.55) saturate(0.45)",
+          scale: 1.04,
+        }}
+        animate={{
+          opacity: [0, 0.18, 0.56, 0.18, 0],
+          filter: [
+            "blur(24px) contrast(0.55) saturate(0.45)",
+            "blur(18px) contrast(0.62) saturate(0.52)",
+            "blur(8px) contrast(0.82) saturate(0.7)",
+            "blur(18px) contrast(0.62) saturate(0.52)",
+            "blur(24px) contrast(0.55) saturate(0.45)",
+          ],
+          scale: [1.04, 1.03, 1.015, 1.03, 1.04],
+        }}
+        transition={{
+          duration: 4.6,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      />
 
       <motion.div
-        className="pointer-events-none absolute inset-0 rounded-[18px]"
-        initial={{ opacity: 0.65 }}
-        animate={{ opacity: [0.65, 0.25, 0.08, 0.28] }}
+        className="pointer-events-none absolute inset-0"
+        initial={{ opacity: 0.08 }}
+        animate={{
+          opacity: [0.08, 0.34, 0.68, 0.34, 0.08],
+        }}
         transition={{
-          duration: 3.2,
+          duration: 4.6,
           repeat: Infinity,
-          repeatType: "mirror",
+          ease: "easeInOut",
+        }}
+        style={{
+          mixBlendMode: "screen",
+          backgroundImage:
+            "radial-gradient(circle, rgba(255,244,226,0.4) 0 0.34px, transparent 0.78px), radial-gradient(circle, rgba(184,138,61,0.16) 0 0.24px, transparent 0.68px)",
+          backgroundPosition: "0 0, 1px 2px",
+          backgroundSize: "3px 3px, 5px 5px",
+        }}
+      />
+
+      <motion.div
+        className="pointer-events-none absolute inset-0"
+        animate={{
+          opacity: [0.12, 0.28, 0.46, 0.28, 0.12],
+        }}
+        transition={{
+          duration: 4.6,
+          repeat: Infinity,
           ease: "easeInOut",
         }}
         style={{
           background:
-            "radial-gradient(circle at center, transparent 26%, rgba(13,24,30,0.62) 72%)",
+            "radial-gradient(circle at 36% 42%, rgba(255,244,226,0.1), transparent 34%), radial-gradient(circle at center, transparent 42%, rgba(13,24,30,0.58) 100%)",
         }}
       />
 
-      <div className="pointer-events-none absolute inset-0 rounded-[18px] border border-[#b88a3d]/30" />
+      <div className="pointer-events-none absolute inset-0 rounded-[18px] border border-[#b88a3d]/24" />
     </div>
   );
 }
