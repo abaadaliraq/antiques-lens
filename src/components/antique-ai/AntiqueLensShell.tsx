@@ -349,20 +349,20 @@ export default function AntiqueLensShell() {
           </div>
         )}
 
-        <section className="relative z-10 mx-auto min-h-dvh w-full max-w-md px-4 pb-24 pt-10 sm:max-w-xl md:px-8 lg:max-w-7xl lg:px-10 lg:pb-28 lg:pt-12 xl:px-14">
+        <section className="relative z-10 mx-auto min-h-dvh w-full max-w-md px-4 pb-24 pt-10 sm:max-w-xl md:px-8 lg:max-w-6xl lg:px-10 lg:pb-28 lg:pt-10 xl:px-14">
           {!lens.result && !lens.isAnalyzing && (
-            <div className="mx-auto flex w-full max-w-[520px] flex-col gap-5 lg:mx-0 lg:grid lg:max-w-none lg:grid-cols-[440px_minmax(0,1fr)] lg:items-start lg:gap-10 xl:grid-cols-[480px_minmax(0,1fr)] xl:gap-14">
-              <section className="lg:sticky lg:top-12">
-                <div className="mb-5 text-center lg:text-start">
+            <div className="mx-auto flex w-full max-w-[520px] flex-col gap-5 lg:max-w-6xl lg:gap-10">
+              <section className="mx-auto w-full lg:max-w-[720px]">
+                <div className="mb-5 text-center lg:text-center">
                   <h1 className="text-3xl font-semibold leading-tight tracking-[0.08em] text-[#fff4e2] sm:text-4xl lg:text-5xl">
                     {copy.title}
                   </h1>
-                  <p className="mx-auto mt-1.5 text-[10px] font-semibold uppercase tracking-[0.3em] text-[#dcc18a] lg:mx-0 lg:text-[11px]">
+                  <p className="mx-auto mt-1.5 text-[10px] font-semibold uppercase tracking-[0.3em] text-[#dcc18a] lg:mx-auto lg:text-[11px]">
                     {copy.slogan}
                   </p>
                 </div>
 
-                <div id="kishib-evaluation-card">
+                <div id="kishib-evaluation-card" className="mx-auto w-full lg:max-w-[720px]">
                   <EvaluationComposer
                     theme={lens.theme}
                     labels={lens.t}
@@ -479,7 +479,7 @@ function LatestCollection({
   onDeleteItem: (id: string) => void;
 }) {
   return (
-    <section className="pb-4 lg:min-w-0 lg:pb-0 lg:pt-14">
+    <section className="mx-auto w-full pb-4 lg:max-w-6xl lg:pb-0">
       <div className="mb-3 flex items-end justify-between lg:mb-4">
         <div>
           <h2 className="text-base font-semibold text-[#fff4e2] lg:text-xl">
@@ -494,7 +494,7 @@ function LatestCollection({
           {empty}
         </div>
       ) : (
-        <div className="grid max-h-[520px] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:grid-cols-4 lg:max-h-[calc(100dvh-190px)] lg:grid-cols-3 lg:gap-4 lg:pr-2 xl:grid-cols-4 2xl:grid-cols-5">
+        <div className="grid max-h-[520px] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:grid-cols-4 lg:max-h-[calc(100dvh-430px)] lg:grid-cols-5 lg:gap-4 lg:pr-2 xl:grid-cols-6 2xl:grid-cols-7">
           {items.map((item) => (
             <div
               key={item.id}

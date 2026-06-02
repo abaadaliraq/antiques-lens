@@ -702,13 +702,16 @@ async function changeLocale(nextLocale: Locale) {
   function openHistoryItem(item: ArchiveItem) {
     revokePreviewUrls(imagePreviews);
 
-    const finalImages =
-      item.imagePreview && !item.imagePreview.startsWith("blob:")
-        ? [item.imagePreview]
-        : [];
+    const restoredImagePreviews =
+      item.imagePreviews?.length
+        ? item.imagePreviews.filter((preview) => !preview.startsWith("blob:"))
+        : item.imagePreview && !item.imagePreview.startsWith("blob:")
+          ? [item.imagePreview]
+          : [];
 
    const savedResult = normalizeResult(item.result);
-const restoredSimilarImages = getSimilarItems(savedResult);
+const restoredSimilarImages =
+  item.similarImages?.length ? item.similarImages : getSimilarItems(savedResult);
 
 setPrompt(item.prompt || "");
 setResult(savedResult);
@@ -718,8 +721,8 @@ setTranslatedResults({
   [locale]: savedResult,
 });
 setSelectedFiles([]);
-    setImagePreviews(finalImages);
-    setArchiveImagePreviews(finalImages);
+    setImagePreviews(restoredImagePreviews);
+    setArchiveImagePreviews(restoredImagePreviews);
     setError("");
     setHistoryOpen(false);
     setAppScreen("archive-result");
@@ -1084,8 +1087,25 @@ const archiveItem: ArchiveItem = {
     "Untitled item",
   prompt: prompt || "",
   imagePreview,
+  imagePreviews: archivePreviews.length
+    ? archivePreviews
+    : imagePreview
+      ? [imagePreview]
+      : [],
   createdAt: new Date().toISOString(),
-  result: finalResult,
+  result: {
+    ...finalResult,
+    imagePreview,
+    imagePreviews: archivePreviews.length
+      ? archivePreviews
+      : imagePreview
+        ? [imagePreview]
+        : [],
+    similarImages: finalSimilarImages,
+    similarItems: finalSimilarImages,
+    visualMatches: finalSimilarImages,
+  },
+  similarImages: finalSimilarImages,
 };
 
 saveHistory(archiveItem);

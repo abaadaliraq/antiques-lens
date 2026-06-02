@@ -272,8 +272,30 @@ export default function ResultView({
   const itemTypeLabel = getItemTypeLabel(locale);
   const silverScenarioLabels = getSilverScenarioLabels(locale);
 
+  const resultWithArchiveImages = result as AnalysisResult & {
+    imagePreview?: string;
+    imagePreviews?: string[];
+  };
+  const resultImagePreviews = Array.isArray(resultWithArchiveImages.imagePreviews)
+    ? resultWithArchiveImages.imagePreviews.filter(
+        (preview) => typeof preview === "string",
+      )
+    : [];
+  const resultImagePreview =
+    typeof resultWithArchiveImages.imagePreview === "string"
+      ? resultWithArchiveImages.imagePreview
+      : null;
+
   const galleryImages =
-    imagePreviews.length > 0 ? imagePreviews : imagePreview ? [imagePreview] : [];
+    imagePreviews.length > 0
+      ? imagePreviews
+      : imagePreview
+        ? [imagePreview]
+        : resultImagePreviews.length > 0
+          ? resultImagePreviews
+          : resultImagePreview
+            ? [resultImagePreview]
+            : [];
 
   const mainImage = galleryImages[0] || null;
   const openedImage =
@@ -359,8 +381,8 @@ export default function ResultView({
       <div className="mx-auto w-full max-w-6xl px-3 pt-2 sm:px-5 md:pt-5">
         <header className="kishib-primary-result-card">
           {mainImage ? (
-            <div className="relative min-h-[420px] overflow-hidden sm:min-h-[540px] md:min-h-[620px]">
-              <div className="absolute inset-0">
+            <div className="relative min-h-[380px] overflow-hidden sm:min-h-[470px] md:min-h-[520px]">
+              <div className="absolute inset-0 hidden">
                 <img
                   src={mainImage}
                   alt=""
@@ -372,13 +394,13 @@ export default function ResultView({
               <button
                 type="button"
                 onClick={() => openImage(0)}
-                className="relative z-10 flex h-[320px] w-full items-center justify-center p-3 transition hover:bg-[#fff4e2]/8 sm:h-[430px] md:h-[500px]"
+                className="relative z-10 flex h-[275px] w-full items-center justify-center p-4 pb-2 transition hover:bg-[#fff4e2]/8 sm:h-[350px] md:h-[390px]"
                 aria-label="Open image"
               >
                 <img
                   src={mainImage}
                   alt={result.title || labels.result}
-                  className="max-h-full max-w-full rounded-[16px] border border-[#d6b576]/35 object-contain shadow-lg"
+                  className="h-full w-full rounded-[16px] border border-[#d6b576]/35 object-contain shadow-lg"
                 />
               </button>
 
@@ -422,7 +444,7 @@ export default function ResultView({
                 </div>
               )}
 
-              <div className="relative z-10 px-5 py-5 sm:px-7 md:px-8">
+              <div className="relative z-10 px-5 pb-5 pt-3 sm:px-7 md:px-8">
                 <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.3em] text-[#d6b576]">
                   {labels.result}
                 </p>

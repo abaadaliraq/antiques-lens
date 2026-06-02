@@ -6,6 +6,7 @@ export type ArchiveItem = {
   imagePreviews?: string[];
   createdAt: string;
   result: any;
+  similarImages?: any[];
 };
 
 export const ARCHIVE_STORAGE_KEY = "antiques-lens:history-v2";
@@ -27,6 +28,16 @@ function cleanArchiveItem(item: ArchiveItem): ArchiveItem {
       ? item.imagePreview
       : imagePreviews[0];
 
+  const similarImages = Array.isArray(item.similarImages)
+    ? item.similarImages
+    : Array.isArray(item.result?.similarImages)
+      ? item.result.similarImages
+      : Array.isArray(item.result?.similarItems)
+        ? item.result.similarItems
+        : Array.isArray(item.result?.visualMatches)
+          ? item.result.visualMatches
+          : [];
+
   return {
     id: item.id || createArchiveId(),
     title: item.title || "Untitled item",
@@ -39,6 +50,7 @@ function cleanArchiveItem(item: ArchiveItem): ArchiveItem {
         : [],
     createdAt: item.createdAt || new Date().toISOString(),
     result: item.result || {},
+    similarImages,
   };
 }
 
@@ -129,7 +141,7 @@ export function formatArchiveDate(createdAt: string, locale = "en"): string {
   }
 }
 
-async function createArchiveImagePreview(file: File, maxSize = 260): Promise<string> {
+async function createArchiveImagePreview(file: File, maxSize = 1600): Promise<string> {
   const dataUrl = await fileToDataUrl(file);
 
   return new Promise((resolve) => {
@@ -162,7 +174,7 @@ async function createArchiveImagePreview(file: File, maxSize = 260): Promise<str
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-      resolve(canvas.toDataURL("image/jpeg", 0.72));
+      resolve(canvas.toDataURL("image/jpeg", 0.92));
     };
 
     image.onerror = () => resolve(dataUrl);

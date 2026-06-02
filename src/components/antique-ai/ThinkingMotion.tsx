@@ -174,13 +174,13 @@ export default function ThinkingMotion({
   return (
     <div
       dir={dir}
-      className="flex min-h-[calc(100dvh-5rem)] w-full items-start justify-center px-4 pb-4 pt-3"
+      className="flex min-h-[calc(100dvh-5rem)] w-full items-start justify-center px-4 pb-4 pt-3 lg:items-center lg:pt-0"
     >
       <div
         className={[
-          "relative mt-1 w-full max-w-[390px] overflow-hidden rounded-[24px]",
+          "relative mt-1 w-full max-w-[390px] overflow-hidden rounded-[24px] lg:max-w-[560px]",
           "border border-[#b88a3d]/25 bg-[#f6ead5]/90",
-          "p-4 text-[#241913] shadow-[0_18px_50px_rgba(58,36,20,0.18)]",
+          "p-4 text-[#241913] shadow-[0_18px_50px_rgba(58,36,20,0.18)] lg:p-5",
         ].join(" ")}
       >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(184,138,61,0.16),transparent_36%)]" />
@@ -200,7 +200,7 @@ export default function ThinkingMotion({
               "shadow-[inset_0_0_0_1px_rgba(255,248,236,0.35),0_16px_42px_rgba(55,35,20,0.16)]",
             ].join(" ")}
           >
-            <div className="relative flex h-[330px] items-center justify-center bg-[#f3eadc] p-2">
+            <div className="relative flex h-[330px] items-center justify-center bg-[#f3eadc] p-2 lg:h-[430px]">
               {imagePreview ? (
                 <ParticleReveal imagePreview={imagePreview} />
               ) : (
