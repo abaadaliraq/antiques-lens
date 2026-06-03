@@ -10,7 +10,8 @@ import ResultView from "@/components/antique-ai/ResultView";
 import ThinkingMotion from "@/components/antique-ai/ThinkingMotion";
 import UserMenu from "@/components/antique-ai/UserMenu";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
-import { Trash2 } from "lucide-react";
+import { ShoppingBag, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatArchiveDate, type ArchiveItem } from "./archiveStore";
 import type { Locale, SimilarImageResult } from "./types";
@@ -333,6 +334,14 @@ export default function AntiqueLensShell() {
         <div className="fixed right-4 top-4 z-40 lg:right-8 lg:top-8">
           <UserMenu locale={lens.locale} setLocale={lens.changeLocale} />
         </div>
+
+        <Link
+          href="/marketplace"
+          className="fixed left-4 top-4 z-40 inline-flex h-10 items-center gap-2 rounded-full border border-[#d2b98f]/42 bg-[#11100f]/58 px-3 text-sm font-semibold text-[#fff4e2] shadow-[0_18px_45px_rgba(0,0,0,0.18)] backdrop-blur-2xl transition hover:bg-[#b88a3d] lg:left-8 lg:top-8"
+        >
+          <ShoppingBag className="h-4 w-4" />
+          سوق
+        </Link>
 
         {lens.isTranslatingResult && (
           <div className="fixed inset-x-0 top-20 z-50 mx-auto flex w-fit items-center gap-3 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/92 px-5 py-3 text-[12px] font-medium text-[#735f4b] shadow-[0_16px_38px_rgba(62,39,22,0.12)] backdrop-blur-2xl">
