@@ -154,17 +154,20 @@ export function useFollowUpEvaluation({
 Previous evaluation result:
 ${JSON.stringify(result)}
 
-User added extra information:
+User-provided follow-up claim:
 ${followUpText || "No extra text."}
 
 Instruction:
 Update the evaluation using the previous result plus the new images/information.
+Treat the user-provided follow-up claim as a user claim, not as visual proof from the image.
+Phrase conclusions as "according to the information added by the user" unless the new image visibly confirms the claim.
 Do not restart from zero unless the new evidence clearly changes the identification.
 Mention if the new photos increased or reduced confidence.
 Keep the same JSON shape.
 `;
 
       formData.append("notes", combinedNotes);
+      formData.append("followUpClaim", followUpText.trim());
       formData.append("locale", locale);
       formData.append("itemType", "");
       formData.append("material", "");

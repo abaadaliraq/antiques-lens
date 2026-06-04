@@ -13,13 +13,18 @@ import {
 import {
   getMarketplaceCategoryLabel,
   getMarketplaceConditionLabel,
-  getMarketplaceCountryLabel,
   marketplaceCategoryValues,
   marketplaceConditionValues,
   marketplaceCopy,
-  marketplaceCountries,
   useMarketplaceLocale,
 } from "@/lib/marketplaceI18n";
+import {
+  getMarketplaceCityLabel,
+  getMarketplaceCountryLabelWithFlag,
+  getMarketplaceLocation,
+  marketplaceLocations,
+  OTHER_CITY_VALUE,
+} from "@/lib/marketplaceLocations";
 import type {
   CreateMarketplaceItemInput,
   MarketplaceCategory,
@@ -39,8 +44,20 @@ const initialForm = {
   price: "250000",
   country: "Iraq",
   city: "",
+  customCity: "",
   deliveryMethod: "",
 };
+
+function normalizePriceInput(value: string) {
+  const normalized = value
+    .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660))
+    .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - 0x06f0))
+    .replace(/[,\u066c\u060c\s]/g, "")
+    .trim();
+  const price = Number(normalized);
+
+  return Number.isFinite(price) && price > 0 ? price : NaN;
+}
 
 export default function NewMarketplaceItemPage() {
   const locale = useMarketplaceLocale();
@@ -52,8 +69,12 @@ export default function NewMarketplaceItemPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const price = Number(form.price) || 0;
+  const normalizedPrice = normalizePriceInput(form.price);
+  const price = Number.isFinite(normalizedPrice) ? normalizedPrice : 0;
   const amounts = calculateMarketplaceAmounts(price);
+  const cityOptions = getMarketplaceLocation(form.country)?.cities ?? [];
+  const resolvedCity =
+    form.city === OTHER_CITY_VALUE ? form.customCity.trim() : form.city;
   const previewItem: MarketplaceItem = useMemo(
     () => ({
       id: "preview",
@@ -68,7 +89,7 @@ export default function NewMarketplaceItemPage() {
       price,
       currency: "IQD",
       country: form.country,
-      city: form.city,
+      city: resolvedCity,
       deliveryMethod: form.deliveryMethod || t.deliveryMethod,
       images: [],
       hasKishibEvaluation: false,
@@ -78,7 +99,7 @@ export default function NewMarketplaceItemPage() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }),
-    [form, price, t],
+    [form, price, resolvedCity, t],
   );
 
   function updateField<Field extends keyof typeof form>(
@@ -105,25 +126,45 @@ export default function NewMarketplaceItemPage() {
     setSubmitted(false);
     setIsSubmitting(true);
 
+    const title = form.title.trim();
+    const description = form.description.trim();
+    const country = form.country;
+    const submitPrice = normalizePriceInput(form.price);
+    const city = form.city === OTHER_CITY_VALUE ? form.customCity.trim() : form.city.trim();
+
+    if (process.env.NODE_ENV !== "production") {
+      console.log({
+        title,
+        description,
+      price: form.price,
+      normalizedPrice: submitPrice,
+      country,
+      });
+    }
+
     const input: CreateMarketplaceItemInput = {
-      title: form.title.trim(),
-      description: form.description.trim(),
+      title,
+      description,
       category: form.category,
       material: form.material.trim(),
       origin: form.origin.trim(),
       estimatedAge: form.estimatedAge.trim(),
       condition: form.condition,
-      price,
+      price: submitPrice,
       currency: "IQD",
-      country: form.country,
-      city: form.city.trim() || undefined,
+      country,
+      city: city || undefined,
       deliveryMethod: form.deliveryMethod.trim(),
       images: files,
     };
 
     try {
-      if (!input.title || !input.description || !input.price || !input.country) {
+      if (!input.title || !input.description || !input.country) {
         throw new Error(t.validationRequired);
+      }
+
+      if (!Number.isFinite(input.price) || input.price <= 0) {
+        throw new Error("يرجى إدخال سعر صحيح");
       }
 
       if (input.images.length === 0) {
@@ -226,15 +267,32 @@ export default function NewMarketplaceItemPage() {
               <Select
                 label={t.country}
                 value={form.country}
-                options={marketplaceCountries}
-                getLabel={(value) => getMarketplaceCountryLabel(value, locale)}
-                onChange={(value) => updateField("country", value)}
+                options={marketplaceLocations.map((location) => location.value)}
+                getLabel={(value) => getMarketplaceCountryLabelWithFlag(value, locale)}
+                onChange={(value) => {
+                  updateField("country", value);
+                  updateField("city", "");
+                  updateField("customCity", "");
+                }}
               />
-              <Field
+              <Select
                 label={t.city}
                 value={form.city}
+                options={["", ...cityOptions.map((city) => city.value), OTHER_CITY_VALUE]}
+                getLabel={(value) => {
+                  if (!value) return t.allCities;
+                  if (value === OTHER_CITY_VALUE) return t.otherCity;
+                  return getMarketplaceCityLabel(form.country, value, locale);
+                }}
                 onChange={(value) => updateField("city", value)}
               />
+              {form.city === OTHER_CITY_VALUE ? (
+                <Field
+                  label={t.cityName}
+                  value={form.customCity}
+                  onChange={(value) => updateField("customCity", value)}
+                />
+              ) : null}
               <Field
                 label={t.deliveryMethod}
                 value={form.deliveryMethod}

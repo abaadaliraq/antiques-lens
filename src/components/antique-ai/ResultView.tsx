@@ -663,6 +663,46 @@ export default function ResultView({
           </section>
         )}
 
+        {result.brandAssessment ? (
+          <section className="mt-8 border-t border-[#c7b99e] pt-6">
+            <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#986f2e]">
+              {locale === "ar" ? "تقييم البراند" : "Brand assessment"}
+            </p>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/70 p-4">
+                <p className="text-[13px] font-medium text-[#233f32]">
+                  {result.brandAssessment.possibleBrand}
+                </p>
+                <p className="mt-2 text-[12px] leading-6 text-[#735f4b]">
+                  {result.brandAssessment.category} · {result.brandAssessment.confidence}
+                </p>
+                <p className="mt-3 text-[12px] leading-6 text-[#735f4b]">
+                  {result.brandAssessment.authenticityStatus}
+                </p>
+              </div>
+
+              <div className="rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/70 p-4">
+                <p className="text-[12px] font-medium text-[#233f32]">
+                  {locale === "ar" ? "سيناريو السعر المشروط" : "Conditional price scenario"}
+                </p>
+                <p className="mt-2 text-[12px] leading-6 text-[#735f4b]">
+                  {result.brandAssessment.priceScenario}
+                </p>
+              </div>
+            </div>
+
+            {result.brandAssessment.requiredPhotos.length > 0 ? (
+              <div className="mt-4">
+                <CompactNeededPhotos
+                  title={locale === "ar" ? "صور مطلوبة لتأكيد البراند" : "Required brand photos"}
+                  items={result.brandAssessment.requiredPhotos}
+                />
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
         <CompactNeededPhotos title={labels.neededPhotos} items={result.neededPhotos} />
 
         {result.followUpQuestion && (

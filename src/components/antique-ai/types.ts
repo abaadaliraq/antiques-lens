@@ -46,8 +46,17 @@ export type AnalysisResult = {
   storeMatches?: SimilarImageResult[];
   matches?: SimilarImageResult[];
   houseOfAntiques?: HouseOfAntiquesContext;
+  brandAssessment?: {
+    possibleBrand: string;
+    category: string;
+    confidence: "high" | "medium" | "low";
+    authenticityStatus: string;
+    missingEvidence: string[];
+    requiredPhotos: string[];
+    priceScenario: string;
+  };
   metalValue?: {
-    metal: "silver" | "gold" | "unknown";
+    metal: "silver" | "gold" | "platinum" | "palladium" | "unknown";
     weightGrams?: number;
     purityAssumption?: string;
     spotPricePerGramUsd?: number;
@@ -55,6 +64,7 @@ export type AnalysisResult = {
     meltValueUsdMid?: number;
     meltValueUsdHigh?: number;
     note?: string;
+    warning?: string;
     scenarios?: {
       label: "light" | "medium" | "heavy";
       labelAr: string;

@@ -8,6 +8,10 @@ import type {
   MarketplaceItemStatus,
   MarketplaceOrderStatus,
 } from "@/types/marketplace";
+import {
+  getMarketplaceCountryLabelWithFlag,
+  marketplaceLocations,
+} from "@/lib/marketplaceLocations";
 
 export type MarketplaceCountry =
   | "Iraq"
@@ -41,21 +45,21 @@ export const marketplaceLocales: Locale[] = [
 export const marketplaceRtlLocales: Locale[] = ["ar", "ku", "fa"];
 
 export const marketplaceCountries: MarketplaceCountry[] = [
-  "Iraq",
-  "United Arab Emirates",
-  "Saudi Arabia",
-  "Kuwait",
-  "Qatar",
   "Bahrain",
-  "Oman",
-  "Turkey",
-  "Iran",
-  "India",
   "France",
+  "Germany",
+  "India",
+  "Iran",
+  "Iraq",
+  "Kuwait",
+  "Oman",
+  "Qatar",
+  "Russia",
+  "Saudi Arabia",
+  "Turkey",
+  "United Arab Emirates",
   "United Kingdom",
   "United States",
-  "Germany",
-  "Russia",
   "Other",
 ];
 
@@ -96,6 +100,18 @@ const text = {
     allCities: "كل المدن",
     allConditions: "كل الحالات",
     maxPrice: "السعر الأعلى",
+    minPrice: "السعر الأدنى",
+    priceRange: "نطاق السعر",
+    sort: "الترتيب",
+    newest: "الأحدث",
+    priceLowHigh: "السعر: من الأقل للأعلى",
+    priceHighLow: "السعر: من الأعلى للأقل",
+    mostViewed: "الأكثر مشاهدة",
+    resetFilters: "إعادة ضبط الفلاتر",
+    applyFilters: "تطبيق الفلاتر",
+    chooseCountryFirst: "اختر الدولة أولا",
+    otherCity: "مدينة أخرى",
+    cityName: "اسم المدينة",
     loadingMarket: "جار تحميل سوق كيشب...",
     noItems: "لا توجد قطع منشورة مطابقة حاليا.",
     details: "عرض التفاصيل",
@@ -203,6 +219,18 @@ const text = {
     allCities: "All cities",
     allConditions: "All conditions",
     maxPrice: "Max price",
+    minPrice: "Min price",
+    priceRange: "Price range",
+    sort: "Sort",
+    newest: "Newest",
+    priceLowHigh: "Price: Low to High",
+    priceHighLow: "Price: High to Low",
+    mostViewed: "Most viewed",
+    resetFilters: "Reset filters",
+    applyFilters: "Apply filters",
+    chooseCountryFirst: "Choose country first",
+    otherCity: "Other city",
+    cityName: "City name",
     loadingMarket: "Loading KISHIB Market...",
     noItems: "No matching published items right now.",
     details: "View details",
@@ -465,12 +493,9 @@ export function getMarketplaceConditionLabel(value: string, locale: Locale) {
 }
 
 export function getMarketplaceCountryLabel(value: string | null | undefined, locale: Locale) {
-  const group = labelGroup(locale);
-  const country = marketplaceCountries.includes(value as MarketplaceCountry)
-    ? (value as MarketplaceCountry)
-    : "Other";
-
-  return value ? countryLabels[group][country] : marketplaceCopy(locale).unknown;
+  return value
+    ? getMarketplaceCountryLabelWithFlag(value, locale) || value
+    : marketplaceCopy(locale).unknown;
 }
 
 export function getMarketplaceStatusLabel(
@@ -479,4 +504,38 @@ export function getMarketplaceStatusLabel(
 ) {
   const group = labelGroup(locale);
   return statusLabels[group][status] ?? status;
+}
+
+export function getMarketplaceNavLabel(locale: Locale) {
+  const labels: Record<Locale, string> = {
+    ar: "السوق",
+    en: "Market",
+    ku: "بازاڕ",
+    fa: "بازار",
+    tr: "Pazar",
+    hi: "बाज़ार",
+    ru: "Маркет",
+    fr: "Marché",
+  };
+
+  return labels[locale] ?? labels.en;
+}
+
+export function getMarketplaceSellItemLabel(locale: Locale) {
+  const labels: Record<Locale, string> = {
+    ar: "اعرض قطعة للبيع",
+    en: "Sell an Item",
+    ku: "شتێک بۆ فرۆشتن دابنێ",
+    fa: "فروش یک قطعه",
+    tr: "Bir Parça Sat",
+    hi: "वस्तु बेचें",
+    ru: "Продать предмет",
+    fr: "Vendre un objet",
+  };
+
+  return labels[locale] ?? labels.en;
+}
+
+export function getMarketplaceLocationCountries() {
+  return marketplaceLocations;
 }

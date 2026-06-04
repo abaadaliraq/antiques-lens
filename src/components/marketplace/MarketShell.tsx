@@ -6,6 +6,8 @@ import { Gem, LayoutDashboard, Plus, ScrollText, ShoppingBag, Archive } from "lu
 import { collectionCopy } from "@/lib/collectionI18n";
 import {
   getMarketplaceDirection,
+  getMarketplaceNavLabel,
+  getMarketplaceSellItemLabel,
   marketplaceCopy,
   useMarketplaceLocale,
 } from "@/lib/marketplaceI18n";
@@ -25,9 +27,9 @@ export default function MarketShell({
   const t = marketplaceCopy(locale);
   const collectionT = collectionCopy(locale);
   const links = [
-    { href: "/marketplace", label: t.marketNav, icon: ShoppingBag },
+    { href: "/marketplace", label: getMarketplaceNavLabel(locale), icon: ShoppingBag },
     { href: "/collection", label: collectionT.myCollection, icon: Archive },
-    { href: "/marketplace/new", label: t.sellNav, icon: Plus },
+    { href: "/marketplace/new", label: getMarketplaceSellItemLabel(locale), icon: Plus },
     { href: "/marketplace/seller", label: t.sellerNav, icon: LayoutDashboard },
     { href: "/marketplace/orders", label: t.ordersNav, icon: ScrollText },
   ];

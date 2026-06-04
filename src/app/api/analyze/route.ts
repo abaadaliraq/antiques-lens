@@ -4,15 +4,16 @@ import { buildKnowledgeContext } from "../../../lib/antiqueKnowledge";
 export const runtime = "nodejs";
 import {
   calculateSilverMeltValue,
-  calculateSilverScenarioValues,
   detectSilver,
   detectSilverPurity,
-  getSilverWeightScenarios,
   normalizeWeightToGrams,
-  TROY_OUNCE_GRAMS,
-  type SilverMeltValue,
   type SilverScenario,
 } from "@/lib/metalValue";
+import { getMetalSpotPrices, type MetalSpotPrices } from "@/lib/metalPrices";
+import {
+  detectPossibleBrand,
+  type BrandDetectionResult,
+} from "@/lib/brandEvaluation";
 import {
   
   searchMarketReferences,
@@ -42,8 +43,17 @@ type AnalysisResult = {
   confidence: number;
   confidenceNote: string;
   disclaimer: string;
+  brandAssessment?: {
+    possibleBrand: string;
+    category: string;
+    confidence: "high" | "medium" | "low";
+    authenticityStatus: string;
+    missingEvidence: string[];
+    requiredPhotos: string[];
+    priceScenario: string;
+  };
     metalValue?: {
-    metal: "silver" | "gold" | "unknown";
+    metal: "silver" | "gold" | "platinum" | "palladium" | "unknown";
     weightGrams?: number;
     purityAssumption?: string;
     spotPricePerGramUsd?: number;
@@ -52,7 +62,27 @@ type AnalysisResult = {
     meltValueUsdHigh?: number;
     note?: string;
     scenarios?: SilverScenario[];
+    warning?: string;
   };
+};
+
+type PreciousMetal = "gold" | "silver" | "platinum" | "palladium";
+type PreciousMetalConfidenceLevel =
+  | "confirmed"
+  | "possible"
+  | "likely_plated"
+  | "none";
+
+type PreciousMetalValue = NonNullable<AnalysisResult["metalValue"]> & {
+  metal: PreciousMetal;
+};
+
+type PreciousMetalConfidence = {
+  metal: PreciousMetal | null;
+  confidenceLevel: PreciousMetalConfidenceLevel;
+  canUseSpotPrice: boolean;
+  requiredEvidence: string[];
+  purityFactor?: number;
 };
 
 function normalizeLocale(locale: string): Locale {
@@ -151,13 +181,37 @@ Do not use English, Kurdish, or French except for necessary antique terms.
   }
 }
 
+function buildBrandEvaluationContext(brand: BrandDetectionResult | null) {
+  if (!brand) return "";
+
+  return `
+LUXURY & BRAND EVALUATION LAYER:
+- Possible brand: ${brand.brandName}
+- Category: ${brand.category}
+- Detection confidence: ${brand.confidence}
+- Matched signals: ${brand.matchedSignals.join("; ") || "brand name only"}
+- Authenticity risk: ${brand.authenticityRisk}
+- Missing evidence: ${brand.missingEvidence.join("; ") || "none listed"}
+- Required photos: ${brand.requiredPhotos.join("; ")}
+
+Rules for luxury brand evaluation:
+- Never state that the item is 100% authentic from photos only.
+- Use careful authenticity wording only: محتملة الأصالة, تحتاج تحقق, مرجّحة التقليد, or لا يمكن الجزم من الصور فقط.
+- If locale is Arabic, all user-facing output must be Arabic. Do not mix English except unavoidable brand names.
+- Provide a conditional price scenario:
+  1. If authentic and documented.
+  2. If inspired/replica/costume.
+  3. If vintage and desirable.
+  4. If excellent condition versus damaged.
+- Include this warning in the result naturally in the selected language:
+  "لا يمكن تأكيد أصالة القطع الفاخرة من الصور فقط. يلزم فحص العلامات، الرقم التسلسلي، الختم، الفاتورة، أو فحص خبير."
+- Set brandAssessment in the JSON result with possibleBrand, category, confidence, authenticityStatus, missingEvidence, requiredPhotos, and priceScenario.
+`;
+}
+
 
 function safeString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
-}
-function toPositiveNumber(value: unknown) {
-  const numberValue = Number(value);
-  return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : null;
 }
 
 function normalizeWeightFromNotes(input?: string | null) {
@@ -178,49 +232,387 @@ function normalizeWeightFromNotes(input?: string | null) {
   return normalizeWeightToGrams(value);
 }
 
-async function fetchSilverPricePerGramUsd() {
-  const fallback = toPositiveNumber(process.env.SILVER_PRICE_PER_GRAM_USD);
-  const apiKey = process.env.METALS_API_KEY;
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100;
+}
 
-  try {
-    if (!apiKey) {
-      throw new Error("Missing METALS_API_KEY");
+function detectPreciousMetal(text: string): PreciousMetal | null {
+  const value = text.toLowerCase();
+
+  if (
+    value.includes("platinum") ||
+    value.includes("xpt") ||
+    value.includes("بلاتين")
+  ) {
+    return "platinum";
+  }
+
+  if (
+    value.includes("palladium") ||
+    value.includes("xpd") ||
+    value.includes("بلاديوم")
+  ) {
+    return "palladium";
+  }
+
+  if (
+    value.includes("gold") ||
+    value.includes("xau") ||
+    value.includes("ذهب") ||
+    value.includes("ذهبي") ||
+    value.includes("عيار") ||
+    value.includes("karat") ||
+    value.includes("carat") ||
+    value.includes("24k") ||
+    value.includes("22k") ||
+    value.includes("21k") ||
+    value.includes("18k") ||
+    value.includes("14k") ||
+    value.includes("ذهب") ||
+    value.includes("ذهبي") ||
+    value.includes("عيار")
+  ) {
+    return "gold";
+  }
+
+  if (detectSilver(value) || value.includes("فضي") || value.includes("xag")) {
+    return "silver";
+  }
+
+  return null;
+}
+
+function detectMetalPurity(metal: PreciousMetal, text: string) {
+  const value = text.toLowerCase();
+
+  if (metal === "silver") {
+    return detectSilverPurity(value);
+  }
+
+  if (metal === "gold") {
+    const karatMatch =
+      value.match(/\b(24|22|21|18|14)\s*k\b/) ||
+      value.match(/\b(24|22|21|18|14)\s*(karat|carat)\b/) ||
+      value.match(/عيار\s*(24|22|21|18|14)/) ||
+      value.match(/(24|22|21|18|14)\s*عيار/);
+    const karat = karatMatch ? Number(karatMatch[1]) : null;
+
+    if (value.includes("999")) return 1;
+    if (value.includes("916")) return 0.916;
+    if (value.includes("875")) return 0.875;
+    if (value.includes("750")) return 0.75;
+    if (value.includes("585")) return 0.585;
+
+    const arabicKaratMatch =
+      value.match(/عيار\s*(24|22|21|18|14)/) ||
+      value.match(/(24|22|21|18|14)\s*عيار/);
+    const arabicKarat = arabicKaratMatch ? Number(arabicKaratMatch[1]) : null;
+
+    if (!karat && arabicKarat) {
+      switch (arabicKarat) {
+        case 24:
+          return 1;
+        case 22:
+          return 0.916;
+        case 21:
+          return 0.875;
+        case 18:
+          return 0.75;
+        case 14:
+          return 0.585;
+      }
     }
 
-    const url = new URL("https://metals-api.com/api/latest");
-    url.searchParams.set("access_key", apiKey);
-    url.searchParams.set("base", "USD");
-    url.searchParams.set("symbols", "XAG");
-
-    const response = await fetch(url.toString(), {
-      next: { revalidate: 60 * 60 },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Metals API failed: ${response.status}`);
+    switch (karat) {
+      case 24:
+        return 1;
+      case 22:
+        return 0.916;
+      case 21:
+        return 0.875;
+      case 18:
+        return 0.75;
+      case 14:
+        return 0.585;
+      default:
+        return null;
     }
+  }
 
-    const data = await response.json();
-    const rates = data?.rates ?? {};
-
-    const directUsdXag = toPositiveNumber(rates.USDXAG);
-    const invertedXag = toPositiveNumber(rates.XAG);
-
-    const pricePerOz =
-      directUsdXag ?? (invertedXag ? 1 / invertedXag : null);
-
-    if (!pricePerOz) {
-      throw new Error("Missing silver XAG price");
-    }
-
-    return pricePerOz / TROY_OUNCE_GRAMS;
-  } catch (error) {
-    console.warn("Silver price fallback used:", error);
-
-    if (fallback) return fallback;
-
+  if (metal === "platinum" || metal === "palladium") {
+    if (value.includes("999")) return 0.999;
+    if (value.includes("950")) return 0.95;
+    if (value.includes("900")) return 0.9;
     return null;
   }
+
+  return null;
+}
+
+function hasExplicitPreciousMetalEvidence(text: string) {
+  const value = text.toLowerCase();
+
+  return (
+    /\b(24|22|21|18|14)\s*k\b/.test(value) ||
+    /\b(24|22|21|18|14)\s*(karat|carat)\b/.test(value) ||
+    /عيار\s*(24|22|21|18|14)/.test(value) ||
+    /(24|22|21|18|14)\s*عيار/.test(value) ||
+    /\b(999|916|875|750|585|925|950|900|800)\b/.test(value) ||
+    value.includes("sterling") ||
+    value.includes("assayed") ||
+    value.includes("xrf") ||
+    value.includes("tested by jeweler") ||
+    value.includes("tested by a jeweler") ||
+    value.includes("checked by jeweler") ||
+    value.includes("jeweler confirmed") ||
+    value.includes("فحص صائغ") ||
+    value.includes("مفحوص عند صائغ") ||
+    value.includes("تم فحصها عند صائغ") ||
+    value.includes("مختومة")
+  );
+}
+
+function hasPlatedOrCostumeEvidence(text: string) {
+  const value = text.toLowerCase();
+
+  return (
+    value.includes("gold-tone") ||
+    value.includes("gold tone") ||
+    value.includes("gold colored") ||
+    value.includes("gold-coloured") ||
+    value.includes("gold coloured") ||
+    value.includes("gold plated") ||
+    value.includes("gilded") ||
+    value.includes("silver plated") ||
+    value.includes("costume jewelry") ||
+    value.includes("costume jewellery") ||
+    value.includes("alloy") ||
+    value.includes("brass") ||
+    value.includes("لون ذهبي") ||
+    value.includes("ذهبي اللون") ||
+    value.includes("لون فضي") ||
+    value.includes("فضي اللون") ||
+    value.includes("مطلي") ||
+    value.includes("مطلية") ||
+    value.includes("إكسسوار") ||
+    value.includes("اكسسوار") ||
+    value.includes("سبيكة")
+  );
+}
+
+function classifyPreciousMetalConfidence(input: {
+  text: string;
+  weightGrams?: number | null;
+}): PreciousMetalConfidence {
+  const normalizedText = input.text.toLowerCase();
+  const metal =
+    detectPreciousMetal(input.text) ??
+    (normalizedText.includes("ذهب") ||
+    normalizedText.includes("ذهبي") ||
+    normalizedText.includes("عيار")
+      ? "gold"
+      : normalizedText.includes("فضة") || normalizedText.includes("فضي")
+        ? "silver"
+        : null);
+  const requiredEvidence = [
+    "close-up photo of hallmark / صورة قريبة للختم",
+    "weight in grams / الوزن بالغرام",
+    "karat or purity mark / العيار أو رقم النقاء",
+    "jeweler or XRF test / فحص صائغ أو XRF",
+  ];
+
+  if (!metal) {
+    return {
+      metal: null,
+      confidenceLevel: "none",
+      canUseSpotPrice: false,
+      requiredEvidence,
+    };
+  }
+
+  if (hasPlatedOrCostumeEvidence(input.text)) {
+    return {
+      metal,
+      confidenceLevel: "likely_plated",
+      canUseSpotPrice: false,
+      requiredEvidence,
+    };
+  }
+
+  const purityFactor = detectMetalPurity(metal, input.text);
+  const hasEvidence = hasExplicitPreciousMetalEvidence(input.text);
+
+  if (hasEvidence && input.weightGrams && purityFactor) {
+    return {
+      metal,
+      confidenceLevel: "confirmed",
+      canUseSpotPrice: true,
+      requiredEvidence: [],
+      purityFactor,
+    };
+  }
+
+  return {
+    metal,
+    confidenceLevel: "possible",
+    canUseSpotPrice: false,
+    requiredEvidence,
+    purityFactor: purityFactor ?? undefined,
+  };
+}
+
+function getMetalGramPrice(prices: MetalSpotPrices, metal: PreciousMetal) {
+  switch (metal) {
+    case "gold":
+      return prices.goldGramUSD;
+    case "silver":
+      return prices.silverGramUSD;
+    case "platinum":
+      return prices.platinumGramUSD;
+    case "palladium":
+      return prices.palladiumGramUSD;
+  }
+}
+
+function getMetalOuncePrice(prices: MetalSpotPrices, metal: PreciousMetal) {
+  switch (metal) {
+    case "gold":
+      return prices.goldOunceUSD;
+    case "silver":
+      return prices.silverOunceUSD;
+    case "platinum":
+      return prices.platinumOunceUSD;
+    case "palladium":
+      return prices.palladiumOunceUSD;
+  }
+}
+
+function getMetalLabel(metal: PreciousMetal) {
+  switch (metal) {
+    case "gold":
+      return "gold / ذهب";
+    case "silver":
+      return "silver / فضة";
+    case "platinum":
+      return "platinum / بلاتين";
+    case "palladium":
+      return "palladium / بلاديوم";
+  }
+}
+
+function getPurityAssumption(metal: PreciousMetal, purity: number | null) {
+  if (purity) {
+    return `${Math.round(purity * 1000)}/1000`;
+  }
+
+  if (metal === "gold") {
+    return "unknown karat; cautious range: 14k / 18k / 21k";
+  }
+
+  if (metal === "silver") {
+    return "unknown purity; cautious range: 800 / 925 / 999";
+  }
+
+  return "unknown purity; cautious range: 900 / 950 / 999";
+}
+
+function getPurityRange(metal: PreciousMetal, purity: number | null) {
+  if (purity) {
+    return {
+      low: purity,
+      mid: purity,
+      high: purity,
+    };
+  }
+
+  if (metal === "gold") {
+    return {
+      low: 0.585,
+      mid: 0.75,
+      high: 0.875,
+    };
+  }
+
+  if (metal === "silver") {
+    return {
+      low: 0.8,
+      mid: 0.925,
+      high: 0.999,
+    };
+  }
+
+  return {
+    low: 0.9,
+    mid: 0.95,
+    high: 0.999,
+  };
+}
+
+function calculatePreciousMetalValue(input: {
+  metal: PreciousMetal;
+  weightGrams: number;
+  purity: number | null;
+  pricePerGramUsd: number;
+  warning?: string;
+}): PreciousMetalValue {
+  const purity = getPurityRange(input.metal, input.purity);
+  const low = input.weightGrams * purity.low * input.pricePerGramUsd;
+  const mid = input.weightGrams * purity.mid * input.pricePerGramUsd;
+  const high = input.weightGrams * purity.high * input.pricePerGramUsd;
+
+  return {
+    metal: input.metal,
+    weightGrams: roundMoney(input.weightGrams),
+    purityAssumption: getPurityAssumption(input.metal, input.purity),
+    spotPricePerGramUsd: roundMoney(input.pricePerGramUsd),
+    meltValueUsdLow: roundMoney(low),
+    meltValueUsdMid: roundMoney(mid),
+    meltValueUsdHigh: roundMoney(high),
+    note:
+      "Live spot metal value is only the raw material component. Antique, artistic, historical, condition, provenance, and market demand factors may raise or lower the final appraisal.",
+    warning: input.warning,
+  };
+}
+
+function buildGenericMetalScenarios(input: {
+  metal: PreciousMetal;
+  scenarioWeights: number[];
+  purity: number | null;
+  pricePerGramUsd: number;
+}): SilverScenario[] {
+  const purity = getPurityRange(input.metal, input.purity);
+  const labels: Array<{
+    label: "light" | "medium" | "heavy";
+    labelAr: string;
+    premiumLow: number;
+    premiumHigh: number;
+  }> = [
+    { label: "light", labelAr: "خفيف", premiumLow: 1.08, premiumHigh: 1.6 },
+    { label: "medium", labelAr: "متوسط", premiumLow: 1.06, premiumHigh: 1.9 },
+    { label: "heavy", labelAr: "ثقيل", premiumLow: 1.04, premiumHigh: 2.2 },
+  ];
+
+  return input.scenarioWeights.map((weightGrams, index) => {
+    const meta = labels[index] ?? labels[1];
+    const low = weightGrams * purity.low * input.pricePerGramUsd;
+    const mid = weightGrams * purity.mid * input.pricePerGramUsd;
+    const high = weightGrams * purity.high * input.pricePerGramUsd;
+
+    return {
+      label: meta.label,
+      labelAr: meta.labelAr,
+      weightGrams: roundMoney(weightGrams),
+      purityAssumption: getPurityAssumption(input.metal, input.purity),
+      spotPricePerGramUsd: roundMoney(input.pricePerGramUsd),
+      meltValueUsdLow: roundMoney(low),
+      meltValueUsdMid: roundMoney(mid),
+      meltValueUsdHigh: roundMoney(high),
+      antiqueEstimateUsdLow: roundMoney(mid * meta.premiumLow),
+      antiqueEstimateUsdHigh: roundMoney(high * meta.premiumHigh),
+      note:
+        "Estimated scenario because no exact weight was provided. Final valuation requires weighing the item and confirming purity.",
+    };
+  });
 }
 function hasHouseOfAntiquesContext(marketContext?: string) {
   const text = (marketContext || "").toLowerCase();
@@ -438,6 +830,7 @@ If only knowledge/museum sources are available, do not present them as pricing e
 function buildPrompt(fields: {
   locale: Locale;
   notes?: string;
+  followUpClaim?: string;
   itemType?: string;
   material?: string;
   dimensions?: string;
@@ -446,7 +839,8 @@ function buildPrompt(fields: {
   hasImage: boolean;
   marketContext?: string;
   marketReferencesText?: string;
-  silverMarketContext?: string;
+  preciousMetalMarketContext?: string;
+  brandContext?: string;
 }) {
 
   const language = getLanguageName(fields.locale);
@@ -488,6 +882,7 @@ ${languageInstruction}
 
 User provided:
 - Notes: ${fields.notes || "Not provided"}
+- User-provided follow-up claim: ${fields.followUpClaim || "Not provided"}
 - Item type: ${fields.itemType || "Not provided"}
 - Material: ${fields.material || "Not provided"}
 - Dimensions: ${fields.dimensions || "Not provided"}
@@ -505,6 +900,10 @@ If the user provides a local name, cultural use, family history, market term, ra
 Do not ignore it and replace it with a generic label.
 If the visual evidence and the user's notes disagree, explain the disagreement carefully and lower confidence.
 If the user says the item is heavy, rare, handmade, old, regional, or used in a traditional craft, this must affect the valuation logic.
+If a User-provided follow-up claim is present, treat it as a claim added by the user after the first analysis, not as visual evidence.
+When using a follow-up claim, explicitly say "according to the information added by the user" in the selected language.
+For Arabic locale, use this phrasing naturally: "حسب المعلومة التي أضافها المستخدم".
+Do not write English user-facing output when locale is Arabic.
 
 Relevant internal antique knowledge base:
 ${knowledgeContext}
@@ -543,16 +942,24 @@ Identification rules:
 Market comparison context from Google Lens, visual search, and internal House of Antiques store:
 ${fields.marketContext || "No market comparison context was provided."}
 
-SILVER MARKET FLOOR CONTEXT:
-${fields.silverMarketContext || "No silver floor value context was provided."}
+PRECIOUS METAL SPOT PRICE CONTEXT:
+${fields.preciousMetalMarketContext || "No live precious metal value context was provided."}
 
-SILVER VALUATION RULE:
-If silver floor value context is provided, you must treat it as deterministic calculation, not opinion.
-Do not estimate a silver item below its raw metal floor value unless weight or purity is uncertain.
-For antique, handmade, engraved, or collectible silver, the valuation should be the metal floor value plus craftsmanship, age, rarity, condition, provenance, and market premium.
-Mention raw silver value separately inside priceReasoning.
-If weight is missing, ask for weight and purity marks such as 800, 925, sterling, or 999.
-If silver scenarios are provided, do not provide a single confident valuation. Present the valuation as light, medium, and heavy weight scenarios. Explain that the final value depends on actual weight and purity. Never ignore the silver floor value.
+${fields.brandContext || "No luxury brand context was provided."}
+
+PRECIOUS METAL VALUATION RULE:
+Never decide that an item is solid gold, solid silver, platinum, or palladium from image color alone.
+If confirmed_precious_metal context is provided, treat the raw metal calculation as deterministic math based on the supplied spot price, weight, and purity assumptions.
+If possible_precious_metal context is provided, do not use spot price as the direct estimated value. Give two separate valuation tracks: accessory/plated/decorative value, and a conditional scenario only if hallmark, weight, and purity are later confirmed.
+If likely_plated_or_costume context is provided, value it as plated/costume/alloy/decorative unless later testing proves otherwise.
+Do not let raw metal value replace antique, artistic, historical, condition, provenance, craftsmanship, rarity, documentation, or market-demand value.
+Mention raw metal value separately inside priceReasoning.
+State that the live spot price was taken as USD per troy ounce and converted to USD per gram.
+If weight is missing or purity is unclear, do not give one exact metal value. Present cautious weight/purity scenarios and ask for exact weight and hallmark/karat/purity details.
+For gold with unknown karat, do not assume 24k; use a cautious range and ask for karat.
+For silver with 925 or sterling, use 0.925 purity. If purity is missing, use a cautious range.
+If the item is only possible gold, say: "لا يمكن تأكيد أن القطعة ذهب صلب من الصورة فقط. نحتاج صورة قريبة للختم أو الوزن والعيار."
+Add this note for gold, silver, platinum, or palladium results: "تم استخدام سعر المعدن المباشر بالدولار للأونصة وتحويله إلى سعر الغرام. التقييم يبقى تقديرياً وقد يختلف حسب العيار والوزن والحالة."
 
 INTERNAL KISHIB MARKET REFERENCES FROM SUPABASE:
 ${internalMarketReferences}
@@ -753,10 +1160,11 @@ Required JSON shape:
   "confidence": 1,
   "confidenceNote": "why confidence is low, medium, or high",
     "metalValue": null,
+    "brandAssessment": null,
 
-If a silver floor value was provided, set "metalValue" as an object:
+If a precious metal value was provided, set "metalValue" as an object:
 {
-  "metal": "silver",
+  "metal": "silver | gold | platinum | palladium",
   "weightGrams": number,
   "purityAssumption": string,
   "spotPricePerGramUsd": number,
@@ -781,8 +1189,22 @@ If a silver floor value was provided, set "metalValue" as an object:
   ]
 }
 
-If no silver floor value was provided, use:
+If no precious metal value was provided, use:
 "metalValue": null
+
+If luxury brand context was provided, set "brandAssessment" as an object:
+{
+  "possibleBrand": string,
+  "category": string,
+  "confidence": "high | medium | low",
+  "authenticityStatus": string,
+  "missingEvidence": [string],
+  "requiredPhotos": [string],
+  "priceScenario": string
+}
+
+If no luxury brand context was provided, use:
+"brandAssessment": null
 
 
   "disclaimer": "preliminary visual estimate, not an authenticity certificate or formal appraisal"
@@ -986,6 +1408,28 @@ function normalizeArray(value: unknown, fallback: string[]) {
   return clean.length ? clean : fallback;
 }
 
+function normalizeBrandAssessment(value: unknown) {
+  if (!value || typeof value !== "object") return undefined;
+
+  const data = value as Partial<NonNullable<AnalysisResult["brandAssessment"]>>;
+  const confidence =
+    data.confidence === "high" ||
+    data.confidence === "medium" ||
+    data.confidence === "low"
+      ? data.confidence
+      : "low";
+
+  return {
+    possibleBrand: normalizeString(data.possibleBrand, ""),
+    category: normalizeString(data.category, ""),
+    confidence,
+    authenticityStatus: normalizeString(data.authenticityStatus, ""),
+    missingEvidence: normalizeArray(data.missingEvidence, []),
+    requiredPhotos: normalizeArray(data.requiredPhotos, []),
+    priceScenario: normalizeString(data.priceScenario, ""),
+  };
+}
+
 function normalizeResult(
   parsed: Partial<AnalysisResult>,
   fallback: AnalysisResult
@@ -1023,6 +1467,7 @@ function normalizeResult(
     confidenceNote: normalizeString(parsed.confidenceNote, fallback.confidenceNote),
     disclaimer: normalizeString(parsed.disclaimer, fallback.disclaimer),
         metalValue: parsed.metalValue,
+    brandAssessment: normalizeBrandAssessment(parsed.brandAssessment),
   };
 }
 
@@ -1052,6 +1497,7 @@ const formData = await request.formData();
 
 const image = formData.get("image");
 const notes = safeString(formData.get("notes"));
+const followUpClaim = safeString(formData.get("followUpClaim"));
 const locale = normalizeLocale(safeString(formData.get("locale")));
 const marketContext = safeString(formData.get("marketContext"));
 
@@ -1071,8 +1517,8 @@ const dimensions = safeString(formData.get("dimensions"));
 const weight = safeString(formData.get("weight"));
 const hasMark = safeString(formData.get("hasMark"));
 
-const silverContextText = [
-  notes,
+const preciousMetalContextText = [
+  followUpClaim || notes,
   itemType,
   material,
   dimensions,
@@ -1083,93 +1529,153 @@ const silverContextText = [
   .filter(Boolean)
   .join(" ");
 
-let silverMarketContext = "";
-let silverMetalValue: (SilverMeltValue & { scenarios?: SilverScenario[] }) | null = null;
+const brandAssessment = detectPossibleBrand(
+  [
+    followUpClaim,
+    notes,
+    itemType,
+    material,
+    dimensions,
+    hasMark,
+    marketContext,
+  ]
+    .filter(Boolean)
+    .join(" "),
+);
+const brandContext = buildBrandEvaluationContext(brandAssessment);
 
-if (detectSilver(silverContextText)) {
-  const weightGrams =
-    normalizeWeightToGrams(weight) ?? normalizeWeightFromNotes(notes);
-  const purity = detectSilverPurity(silverContextText);
-  const pricePerGramUsd = await fetchSilverPricePerGramUsd();
+let preciousMetalMarketContext = "";
+let preciousMetalValue: PreciousMetalValue | null = null;
+const preliminaryWeightGrams =
+  normalizeWeightToGrams(weight) ??
+  normalizeWeightFromNotes(followUpClaim) ??
+  normalizeWeightFromNotes(notes);
+const metalClassification = classifyPreciousMetalConfidence({
+  text: followUpClaim || preciousMetalContextText,
+  weightGrams: preliminaryWeightGrams,
+});
+const hasFollowUpClaim = Boolean(followUpClaim);
 
-  if (weightGrams && pricePerGramUsd) {
-    silverMetalValue = calculateSilverMeltValue({
-      weightGrams,
-      purity,
-      pricePerGramUsd,
-    });
+if (metalClassification.metal) {
+  const detectedMetal = metalClassification.metal;
+  const weightGrams = preliminaryWeightGrams;
+  const purity =
+    metalClassification.purityFactor ??
+    detectMetalPurity(detectedMetal, preciousMetalContextText);
+  const spotPrices = await getMetalSpotPrices();
+  const ouncePriceUsd = getMetalOuncePrice(spotPrices, detectedMetal);
+  const pricePerGramUsd = getMetalGramPrice(spotPrices, detectedMetal);
+  const metalLabel = getMetalLabel(detectedMetal);
 
-    silverMarketContext = `
-The item appears to be silver.
+  if (metalClassification.canUseSpotPrice && weightGrams) {
+    preciousMetalValue =
+      detectedMetal === "silver"
+        ? {
+            ...calculateSilverMeltValue({
+              weightGrams,
+              purity,
+              pricePerGramUsd,
+            }),
+            warning: spotPrices.warning,
+          }
+        : calculatePreciousMetalValue({
+            metal: detectedMetal,
+            weightGrams,
+            purity,
+            pricePerGramUsd,
+            warning: spotPrices.warning,
+          });
 
-Current silver spot price:
-- USD per gram: ${silverMetalValue.spotPricePerGramUsd}
+    preciousMetalMarketContext = `
+The item appears to contain ${metalLabel}.
+
+Precious metal confidence classification:
+- Classification category: confirmed_precious_metal
+- Can use spot price for direct valuation: yes
+- Evidence source: ${hasFollowUpClaim ? "user-provided follow-up claim, not image-only proof" : "provided fields and available evidence"}
+${hasFollowUpClaim ? `- User-provided claim: ${followUpClaim}` : ""}
+
+Live precious metal spot prices from Gold API:
+- Gold XAU USD/troy ounce: ${spotPrices.goldOunceUSD}
+- Gold XAU USD/gram: ${spotPrices.goldGramUSD}
+- Silver XAG USD/troy ounce: ${spotPrices.silverOunceUSD}
+- Silver XAG USD/gram: ${spotPrices.silverGramUSD}
+- Platinum XPT USD/troy ounce: ${spotPrices.platinumOunceUSD}
+- Platinum XPT USD/gram: ${spotPrices.platinumGramUSD}
+- Palladium XPD USD/troy ounce: ${spotPrices.palladiumOunceUSD}
+- Palladium XPD USD/gram: ${spotPrices.palladiumGramUSD}
+- Updated at: ${spotPrices.updatedAt}
+- Source: ${spotPrices.source}
+${spotPrices.warning ? `- Internal warning: ${spotPrices.warning}` : ""}
+
+Selected metal calculation:
+- Metal: ${metalLabel}
+- USD per troy ounce: ${ouncePriceUsd}
+- USD per gram: ${preciousMetalValue.spotPricePerGramUsd}
 
 Detected / user-provided weight:
-- ${silverMetalValue.weightGrams} grams
+- ${preciousMetalValue.weightGrams} grams
 
 Purity assumption:
-- ${silverMetalValue.purityAssumption}
+- ${preciousMetalValue.purityAssumption}
 
-Raw silver melt / floor value:
-- Low: $${silverMetalValue.meltValueUsdLow}
-- Mid: $${silverMetalValue.meltValueUsdMid}
-- High: $${silverMetalValue.meltValueUsdHigh}
+Raw metal value:
+- Low: $${preciousMetalValue.meltValueUsdLow}
+- Mid: $${preciousMetalValue.meltValueUsdMid}
+- High: $${preciousMetalValue.meltValueUsdHigh}
 
-This raw metal value is a hard valuation floor.
-Do not estimate the item below this raw silver value unless the weight or purity is uncertain.
-If the piece is antique, engraved, handmade, or collectible, add antique/craft premium above the metal value.
-`;
-  } else if (pricePerGramUsd) {
-    const scenarioWeights = getSilverWeightScenarios(silverContextText);
-    const scenarios = calculateSilverScenarioValues({
-      scenarioWeights,
-      purity,
-      pricePerGramUsd,
-    });
-
-    silverMetalValue = {
-      metal: "silver",
-      weightGrams: scenarios[1]?.weightGrams ?? scenarioWeights[1],
-      purityAssumption: purity
-        ? `${Math.round(purity * 1000)}/1000`
-        : "range: 800 / 925 / 999",
-      spotPricePerGramUsd: Math.round(pricePerGramUsd * 100) / 100,
-      meltValueUsdLow: scenarios[0]?.meltValueUsdMid ?? 0,
-      meltValueUsdMid: scenarios[1]?.meltValueUsdMid ?? 0,
-      meltValueUsdHigh: scenarios[2]?.meltValueUsdMid ?? 0,
-      note:
-        "Weight was not provided. These are scenario estimates based on likely object weight ranges. Final valuation requires weighing the item.",
-      scenarios,
-    };
-
-    silverMarketContext = `
-The item appears to be silver, but no usable weight was provided.
-
-Do NOT give one fixed valuation.
-Use these three weight scenarios:
-
-${scenarios
-  .map(
-    (scenario) => `
-${scenario.label.toUpperCase()} / ${scenario.labelAr}
-- Assumed weight: ${scenario.weightGrams}g
-- Silver floor value low/mid/high: $${scenario.meltValueUsdLow} / $${scenario.meltValueUsdMid} / $${scenario.meltValueUsdHigh}
-- Suggested antique estimate: $${scenario.antiqueEstimateUsdLow} - $${scenario.antiqueEstimateUsdHigh}
-`,
-  )
-  .join("\n")}
-
-Strict rule:
-Explain that weight is not confirmed from image alone.
-Present valuation as scenarios, not a single final number.
-Ask the user to weigh the item for a precise valuation.
-If the piece is handmade, engraved, antique, or rare, explain that value can exceed melt value.
+${hasFollowUpClaim ? "Important: Present this as according to the information added by the user, not as a fact proven by the image alone." : ""}
+This raw metal value is not the final antique appraisal.
+It must be separated from age, origin, rarity, craftsmanship, condition, documentation, and market demand.
+If the piece is antique, engraved, handmade, signed, rare, or collectible, explain the antique/craft premium or discount separately.
 `;
   } else {
-    silverMarketContext = `
-The item appears to be silver, but live silver price could not be fetched.
-Do not undervalue silver. Ask for weight and purity and explain that silver price must be checked.
+    preciousMetalMarketContext = `
+The item may contain ${metalLabel}, but it is not confirmed_precious_metal.
+
+Precious metal confidence classification:
+- Classification category: ${
+      metalClassification.confidenceLevel === "likely_plated"
+        ? "likely_plated_or_costume"
+        : "possible_precious_metal"
+    }
+- Confidence level: ${metalClassification.confidenceLevel}
+- Can use spot price for direct valuation: no
+- Required evidence: ${metalClassification.requiredEvidence.join("; ")}
+- Evidence source: ${hasFollowUpClaim ? "user-provided follow-up claim, not image-only proof" : "provided fields and available evidence"}
+${hasFollowUpClaim ? `- User-provided claim: ${followUpClaim}` : ""}
+
+Live precious metal spot prices from Gold API:
+- Gold XAU USD/troy ounce: ${spotPrices.goldOunceUSD}
+- Gold XAU USD/gram: ${spotPrices.goldGramUSD}
+- Silver XAG USD/troy ounce: ${spotPrices.silverOunceUSD}
+- Silver XAG USD/gram: ${spotPrices.silverGramUSD}
+- Platinum XPT USD/troy ounce: ${spotPrices.platinumOunceUSD}
+- Platinum XPT USD/gram: ${spotPrices.platinumGramUSD}
+- Palladium XPD USD/troy ounce: ${spotPrices.palladiumOunceUSD}
+- Palladium XPD USD/gram: ${spotPrices.palladiumGramUSD}
+- Updated at: ${spotPrices.updatedAt}
+- Source: ${spotPrices.source}
+${spotPrices.warning ? `- Internal warning: ${spotPrices.warning}` : ""}
+
+Selected metal calculation:
+- Metal: ${metalLabel}
+- USD per troy ounce: ${ouncePriceUsd}
+- USD per gram: ${roundMoney(pricePerGramUsd)}
+- Purity hint, if any: ${purity ? getPurityAssumption(detectedMetal, purity) : "not confirmed"}
+- Weight provided: ${weightGrams ? `${roundMoney(weightGrams)} grams` : "not confirmed"}
+
+Strict rule:
+Do NOT calculate the estimated value from ${metalLabel} spot price.
+Do NOT set the primary valuation to raw gold/silver/platinum/palladium value.
+If a karat/purity claim exists but weight is missing, state: "لا يمكن حساب قيمة الذهب بدقة بدون وزن القطعة بالغرام."
+Show the formula only: metal value = weight in grams × current metal gram price × purity factor.
+Give two tracks only:
+1. Value as accessory, plated, alloy, costume, or decorative object based on visible quality and market comparables.
+2. Conditional precious-metal scenario only if hallmark, exact gram weight, and purity/karat are later confirmed.
+Ask for close-up hallmark photos, gram weight, karat/purity, and jeweler/XRF testing.
+If this came from Add info, begin the conditional scenario with: "حسب المعلومة التي أضافها المستخدم".
+If locale is Arabic, write all of this naturally in Arabic.
 `;
   }
 }
@@ -1224,6 +1730,7 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
 text: buildPrompt({
   locale,
   notes,
+  followUpClaim,
   itemType,
   material,
   dimensions,
@@ -1232,7 +1739,8 @@ text: buildPrompt({
   hasImage,
   marketContext,
   marketReferencesText,
-  silverMarketContext,
+  preciousMetalMarketContext,
+  brandContext,
 }),
       },
     ];
@@ -1283,20 +1791,33 @@ text: buildPrompt({
     const fallback = buildFallbackResult(locale);
 const normalized = normalizeResult(parsed, fallback);
 
-if (silverMetalValue) {
-  normalized.metalValue = silverMetalValue;
+if (brandAssessment && !normalized.brandAssessment) {
+  normalized.brandAssessment = {
+    possibleBrand: brandAssessment.brandName,
+    category: brandAssessment.category,
+    confidence: brandAssessment.confidence,
+    authenticityStatus: "لا يمكن الجزم من الصور فقط",
+    missingEvidence: brandAssessment.missingEvidence,
+    requiredPhotos: brandAssessment.requiredPhotos,
+    priceScenario:
+      "السعر مشروط: يختلف إذا كانت القطعة أصلية وموثقة، أو مستوحاة/مقلدة، أو Vintage مرغوبة، وحسب الحالة والملحقات.",
+  };
+}
 
-  if (silverMetalValue.scenarios?.length) {
-    const firstScenario = silverMetalValue.scenarios[0];
+if (preciousMetalValue) {
+  normalized.metalValue = preciousMetalValue;
+
+  if (preciousMetalValue.scenarios?.length) {
+    const firstScenario = preciousMetalValue.scenarios[0];
     const lastScenario =
-      silverMetalValue.scenarios[silverMetalValue.scenarios.length - 1];
+      preciousMetalValue.scenarios[preciousMetalValue.scenarios.length - 1];
 
     const scenarioSuffix =
       locale === "ar" ? "حسب احتمالات الوزن" : "based on weight scenarios";
     normalized.estimatedValue = `$${firstScenario.antiqueEstimateUsdLow} - $${lastScenario.antiqueEstimateUsdHigh} ${scenarioSuffix}`;
-  } else if (silverMetalValue.meltValueUsdMid) {
-    const min = Math.round(silverMetalValue.meltValueUsdMid);
-    const max = Math.round(silverMetalValue.meltValueUsdHigh * 1.8);
+  } else if (preciousMetalValue.meltValueUsdMid) {
+    const min = Math.round(preciousMetalValue.meltValueUsdMid);
+    const max = Math.round((preciousMetalValue.meltValueUsdHigh ?? preciousMetalValue.meltValueUsdMid) * 1.8);
     normalized.estimatedValue = `$${min} - $${max}`;
   }
 }

@@ -35,6 +35,7 @@ const SUPPORTED_LOCALES: Locale[] = [
   "ru",
   "ku",
 ];
+const USER_LOCALE_STORAGE_KEY = "antiques-lens:locale";
 
 type AppScreen = "home" | "result" | "archive-result" | "follow-up";
 
@@ -367,7 +368,17 @@ function getSimilarItems(result: Partial<AnalysisResult> | null | undefined) {
 }
 
 export function useAntiqueLens() {
-  const [locale, setLocale] = useState<Locale>("en");
+  const [locale, setLocale] = useState<Locale>(() => {
+    if (typeof window === "undefined") return "ar";
+
+    const savedLocale = window.localStorage.getItem(
+      USER_LOCALE_STORAGE_KEY,
+    ) as Locale | null;
+
+    return savedLocale && SUPPORTED_LOCALES.includes(savedLocale)
+      ? savedLocale
+      : "ar";
+  });
   const theme: ThemeMode = "light";
 const [similarImages, setSimilarImages] = useState<SimilarImageResult[]>([]);
 const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
@@ -456,7 +467,7 @@ setIsLoadingSimilar(false);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const savedLocale = window.localStorage.getItem(
-        "antiques-lens:locale",
+        USER_LOCALE_STORAGE_KEY,
       ) as Locale | null;
 
       if (savedLocale && SUPPORTED_LOCALES.includes(savedLocale)) {
@@ -562,8 +573,13 @@ async function translateCurrentResult(
 }
 
 async function changeLocale(nextLocale: Locale) {
+  window.localStorage.setItem(USER_LOCALE_STORAGE_KEY, nextLocale);
+
+  if (nextLocale === locale) {
+    return;
+  }
+
   setLocale(nextLocale);
-  window.localStorage.setItem("antiques-lens:locale", nextLocale);
 
   if (!result) return;
 

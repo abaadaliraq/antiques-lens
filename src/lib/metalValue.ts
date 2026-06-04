@@ -1,4 +1,4 @@
-export const TROY_OUNCE_GRAMS = 31.1034768;
+export const TROY_OUNCE_GRAMS = 31.1035;
 
 export type SilverMeltValue = {
   metal: "silver";
@@ -29,10 +29,23 @@ function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
 }
 
+function normalizeNumerals(value: string) {
+  const arabic = "٠١٢٣٤٥٦٧٨٩";
+  const persian = "۰۱۲۳۴۵۶۷۸۹";
+
+  return value.replace(/[٠-٩۰-۹]/g, (digit) => {
+    const arabicIndex = arabic.indexOf(digit);
+    if (arabicIndex >= 0) return String(arabicIndex);
+
+    const persianIndex = persian.indexOf(digit);
+    return persianIndex >= 0 ? String(persianIndex) : digit;
+  });
+}
+
 export function normalizeWeightToGrams(input?: string | number | null) {
   if (input === null || input === undefined) return null;
 
-  const raw = String(input).toLowerCase().trim();
+  const raw = normalizeNumerals(String(input)).toLowerCase().trim();
   if (!raw) return null;
 
   const normalized = raw
@@ -41,14 +54,20 @@ export function normalizeWeightToGrams(input?: string | number | null) {
     .replace(/غرام|جرام|غم|g|grams/g, " g")
     .replace(/اونصة|أونصة|oz|ounce/g, " oz");
 
-  const match = normalized.match(/(\d+(?:\.\d+)?)/);
+  const normalizedWithArabicUnits = normalized
+    .replace(/[،٬]/g, ".")
+    .replace(/كيلوغرام|كيلو غرام|كيلو|كغم|كغ/g, " kg")
+    .replace(/غرام|جرام|غم|غ/g, " g")
+    .replace(/أونصة|اونصة|اوقية|أوقية/g, " oz");
+
+  const match = normalizedWithArabicUnits.match(/(\d+(?:\.\d+)?)/);
   if (!match) return null;
 
   const value = Number(match[1]);
   if (!Number.isFinite(value) || value <= 0) return null;
 
-  if (normalized.includes("kg")) return value * 1000;
-  if (normalized.includes("oz")) return value * TROY_OUNCE_GRAMS;
+  if (normalizedWithArabicUnits.includes("kg")) return value * 1000;
+  if (normalizedWithArabicUnits.includes("oz")) return value * TROY_OUNCE_GRAMS;
 
   return value;
 }

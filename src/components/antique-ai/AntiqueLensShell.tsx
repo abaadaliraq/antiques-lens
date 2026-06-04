@@ -9,6 +9,7 @@ import FollowUpEvaluationPanel from "@/components/antique-ai/FollowUpEvaluationP
 import ResultView from "@/components/antique-ai/ResultView";
 import ThinkingMotion from "@/components/antique-ai/ThinkingMotion";
 import UserMenu from "@/components/antique-ai/UserMenu";
+import { getMarketplaceNavLabel } from "@/lib/marketplaceI18n";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { ShoppingBag, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -29,6 +30,7 @@ const SUPPORTED_AUTH_LOCALES: Locale[] = [
 ];
 
 const PENDING_OAUTH_LOCALE_KEY = "kishib:pending-oauth-locale";
+const USER_LOCALE_STORAGE_KEY = "antiques-lens:locale";
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
 
 function getSessionLocale(session: unknown): Locale | null {
@@ -54,6 +56,15 @@ function getSessionLocale(session: unknown): Locale | null {
 
 function getPendingOAuthLocale(): Locale | null {
   const savedLocale = window.localStorage.getItem(PENDING_OAUTH_LOCALE_KEY);
+
+  return typeof savedLocale === "string" &&
+    SUPPORTED_AUTH_LOCALES.includes(savedLocale as Locale)
+    ? (savedLocale as Locale)
+    : null;
+}
+
+function getSavedUserLocale(): Locale | null {
+  const savedLocale = window.localStorage.getItem(USER_LOCALE_STORAGE_KEY);
 
   return typeof savedLocale === "string" &&
     SUPPORTED_AUTH_LOCALES.includes(savedLocale as Locale)
@@ -195,8 +206,9 @@ export default function AntiqueLensShell() {
         void supabase.auth.getSession().then(({ data }) => {
           if (!isMounted) return;
           const pendingLocale = getPendingOAuthLocale();
+          const savedUserLocale = getSavedUserLocale();
           const sessionLocale = getSessionLocale(data.session);
-          const preferredLocale = pendingLocale || sessionLocale;
+          const preferredLocale = pendingLocale || savedUserLocale || sessionLocale;
 
           if (preferredLocale) {
             void lens.changeLocale(preferredLocale);
@@ -219,8 +231,9 @@ export default function AntiqueLensShell() {
 
         const { data } = supabase.auth.onAuthStateChange((event, session) => {
           const pendingLocale = getPendingOAuthLocale();
+          const savedUserLocale = getSavedUserLocale();
           const sessionLocale = getSessionLocale(session);
-          const preferredLocale = pendingLocale || sessionLocale;
+          const preferredLocale = pendingLocale || savedUserLocale || sessionLocale;
 
           if (preferredLocale) {
             void lens.changeLocale(preferredLocale);
@@ -340,7 +353,7 @@ export default function AntiqueLensShell() {
           className="fixed left-4 top-4 z-40 inline-flex h-10 items-center gap-2 rounded-full border border-[#d2b98f]/42 bg-[#11100f]/58 px-3 text-sm font-semibold text-[#fff4e2] shadow-[0_18px_45px_rgba(0,0,0,0.18)] backdrop-blur-2xl transition hover:bg-[#b88a3d] lg:left-8 lg:top-8"
         >
           <ShoppingBag className="h-4 w-4" />
-          سوق
+          {getMarketplaceNavLabel(lens.locale)}
         </Link>
 
         {lens.isTranslatingResult && (
