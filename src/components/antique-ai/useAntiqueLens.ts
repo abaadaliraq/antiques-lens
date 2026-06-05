@@ -1,16 +1,20 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { useFollowUpEvaluation } from "./useFollowUpEvaluation";
 
 import {
-  addArchiveItem,
+  addArchiveItemWithStatus,
+  ARCHIVE_STORAGE_EVENT,
+  ARCHIVE_STORAGE_KEY,
   clearArchiveItems,
+  createArchiveImageAssets,
   createArchiveImagePreviews,
   deleteArchiveItem,
   fileToDataUrl,
   loadArchiveItems,
+  loadArchiveItemsWithImages,
   type ArchiveItem,
 } from "./archiveStore";
 import { content, normalizeResult } from "./antiqueContent";
@@ -182,9 +186,9 @@ function buildPinterestSearchQuery(result: AnalysisResult) {
     .toLowerCase();
 
   /*
-    أهم قاعدة:
-    نوع القطعة لازم يكون أول البحث.
-    إذا نوع القطعة غلط أو عام، Pinterest يجيب نتائج بعيدة.
+    Ø£Ù‡Ù… Ù‚Ø§Ø¹Ø¯Ø©:
+    Ù†ÙˆØ¹ Ø§Ù„Ù‚Ø·Ø¹Ø© Ù„Ø§Ø²Ù… ÙŠÙƒÙˆÙ† Ø£ÙˆÙ„ Ø§Ù„Ø¨Ø­Ø«.
+    Ø¥Ø°Ø§ Ù†ÙˆØ¹ Ø§Ù„Ù‚Ø·Ø¹Ø© ØºÙ„Ø· Ø£Ùˆ Ø¹Ø§Ù…ØŒ Pinterest ÙŠØ¬ÙŠØ¨ Ù†ØªØ§Ø¦Ø¬ Ø¨Ø¹ÙŠØ¯Ø©.
   */
 
   const itemTerms: string[] = [];
@@ -192,9 +196,9 @@ function buildPinterestSearchQuery(result: AnalysisResult) {
   const colorTerms: string[] = [];
   const styleTerms: string[] = [];
 
-  // شيشة / أركيلة / نركيلة
+  // Ø´ÙŠØ´Ø© / Ø£Ø±ÙƒÙŠÙ„Ø© / Ù†Ø±ÙƒÙŠÙ„Ø©
   if (
-    /شيشة|أركيلة|اركيلة|نركيلة|نرجيلة|نارجيلة|hookah|shisha|narghile|nargile|water pipe|waterpipe/.test(
+    /Ø´ÙŠØ´Ø©|Ø£Ø±ÙƒÙŠÙ„Ø©|Ø§Ø±ÙƒÙŠÙ„Ø©|Ù†Ø±ÙƒÙŠÙ„Ø©|Ù†Ø±Ø¬ÙŠÙ„Ø©|Ù†Ø§Ø±Ø¬ÙŠÙ„Ø©|hookah|shisha|narghile|nargile|water pipe|waterpipe/.test(
       rawText,
     )
   ) {
@@ -207,8 +211,8 @@ function buildPinterestSearchQuery(result: AnalysisResult) {
     );
   }
 
-  // إبريق / دلة / جك
-  else if (/إبريق|ابريق|دلة|دله|ewer|pitcher|jug|decanter|coffee pot/.test(rawText)) {
+  // Ø¥Ø¨Ø±ÙŠÙ‚ / Ø¯Ù„Ø© / Ø¬Ùƒ
+  else if (/Ø¥Ø¨Ø±ÙŠÙ‚|Ø§Ø¨Ø±ÙŠÙ‚|Ø¯Ù„Ø©|Ø¯Ù„Ù‡|ewer|pitcher|jug|decanter|coffee pot/.test(rawText)) {
     itemTerms.push(
       "antique ewer",
       "decorative pitcher",
@@ -216,27 +220,27 @@ function buildPinterestSearchQuery(result: AnalysisResult) {
     );
   }
 
-  // مزهرية
-  else if (/مزهرية|فازة|vase/.test(rawText)) {
+  // Ù…Ø²Ù‡Ø±ÙŠØ©
+  else if (/Ù…Ø²Ù‡Ø±ÙŠØ©|ÙØ§Ø²Ø©|vase/.test(rawText)) {
     itemTerms.push("antique vase", "decorative vase");
   }
 
-  // كأس / قدح
-  else if (/كأس|كاس|قدح|goblet|cup|chalice/.test(rawText)) {
+  // ÙƒØ£Ø³ / Ù‚Ø¯Ø­
+  else if (/ÙƒØ£Ø³|ÙƒØ§Ø³|Ù‚Ø¯Ø­|goblet|cup|chalice/.test(rawText)) {
     itemTerms.push("antique goblet", "decorative chalice");
   }
 
-  // صحن / طبق
-  else if (/صحن|طبق|plate|dish/.test(rawText)) {
+  // ØµØ­Ù† / Ø·Ø¨Ù‚
+  else if (/ØµØ­Ù†|Ø·Ø¨Ù‚|plate|dish/.test(rawText)) {
     itemTerms.push("antique decorative plate");
   }
 
-  // تمثال
-  else if (/تمثال|figure|statue|figurine/.test(rawText)) {
+  // ØªÙ…Ø«Ø§Ù„
+  else if (/ØªÙ…Ø«Ø§Ù„|figure|statue|figurine/.test(rawText)) {
     itemTerms.push("antique figurine");
   }
 
-  // fallback إذا ما عرف نوع القطعة
+  // fallback Ø¥Ø°Ø§ Ù…Ø§ Ø¹Ø±Ù Ù†ÙˆØ¹ Ø§Ù„Ù‚Ø·Ø¹Ø©
   else {
     itemTerms.push(
       result.title || "",
@@ -245,58 +249,58 @@ function buildPinterestSearchQuery(result: AnalysisResult) {
     );
   }
 
-  // المواد
-  if (/نحاس|brass|copper|برونز|bronze/.test(rawText)) {
+  // Ø§Ù„Ù…ÙˆØ§Ø¯
+  if (/Ù†Ø­Ø§Ø³|brass|copper|Ø¨Ø±ÙˆÙ†Ø²|bronze/.test(rawText)) {
     materialTerms.push("brass", "copper", "bronze");
   }
 
-  if (/فضة|silver|مطلي فضة|silver plated/.test(rawText)) {
+  if (/ÙØ¶Ø©|silver|Ù…Ø·Ù„ÙŠ ÙØ¶Ø©|silver plated/.test(rawText)) {
     materialTerms.push("silver plated", "silver");
   }
 
-  if (/كريستال|crystal|glass|زجاج/.test(rawText)) {
+  if (/ÙƒØ±ÙŠØ³ØªØ§Ù„|crystal|glass|Ø²Ø¬Ø§Ø¬/.test(rawText)) {
     materialTerms.push("crystal glass");
   }
 
-  if (/خشب|wood|wooden/.test(rawText)) {
+  if (/Ø®Ø´Ø¨|wood|wooden/.test(rawText)) {
     materialTerms.push("wooden");
   }
 
-  if (/بورسلين|porcelain|ceramic|خزف/.test(rawText)) {
+  if (/Ø¨ÙˆØ±Ø³Ù„ÙŠÙ†|porcelain|ceramic|Ø®Ø²Ù/.test(rawText)) {
     materialTerms.push("porcelain ceramic");
   }
 
-  // الألوان
-  if (/أزرق|ازرق|blue|كحلي/.test(rawText)) {
+  // Ø§Ù„Ø£Ù„ÙˆØ§Ù†
+  if (/Ø£Ø²Ø±Ù‚|Ø§Ø²Ø±Ù‚|blue|ÙƒØ­Ù„ÙŠ/.test(rawText)) {
     colorTerms.push("blue");
   }
 
-  if (/ذهبي|gold|gilded/.test(rawText)) {
+  if (/Ø°Ù‡Ø¨ÙŠ|gold|gilded/.test(rawText)) {
     colorTerms.push("gold");
   }
 
-  if (/أسود|اسود|black/.test(rawText)) {
+  if (/Ø£Ø³ÙˆØ¯|Ø§Ø³ÙˆØ¯|black/.test(rawText)) {
     colorTerms.push("black");
   }
 
-  if (/بني|brown/.test(rawText)) {
+  if (/Ø¨Ù†ÙŠ|brown/.test(rawText)) {
     colorTerms.push("brown");
   }
 
-  // الأسلوب / المنشأ
-  if (/عثماني|ottoman/.test(rawText)) {
+  // Ø§Ù„Ø£Ø³Ù„ÙˆØ¨ / Ø§Ù„Ù…Ù†Ø´Ø£
+  if (/Ø¹Ø«Ù…Ø§Ù†ÙŠ|ottoman/.test(rawText)) {
     styleTerms.push("ottoman");
   }
 
-  if (/شرقي|middle eastern|islamic|arabic/.test(rawText)) {
+  if (/Ø´Ø±Ù‚ÙŠ|middle eastern|islamic|arabic/.test(rawText)) {
     styleTerms.push("middle eastern", "islamic");
   }
 
-  if (/مزخرف|زخرفة|engraved|etched|ornate|decorated/.test(rawText)) {
+  if (/Ù…Ø²Ø®Ø±Ù|Ø²Ø®Ø±ÙØ©|engraved|etched|ornate|decorated/.test(rawText)) {
     styleTerms.push("engraved", "ornate");
   }
 
-  if (/قديم|antique|vintage/.test(rawText)) {
+  if (/Ù‚Ø¯ÙŠÙ…|antique|vintage/.test(rawText)) {
     styleTerms.push("antique", "vintage");
   }
 
@@ -352,8 +356,56 @@ function mergeSimilarImages(
     .slice(0, 16);
 }
 
-function getSimilarItems(result: Partial<AnalysisResult> | null | undefined) {
-  return (
+function normalizeSimilarImageItems(items: unknown): SimilarImageResult[] {
+  if (!Array.isArray(items)) return [];
+
+  return items
+    .map((item): SimilarImageResult | null => {
+      if (!item || typeof item !== "object") return null;
+
+      const record = item as Record<string, unknown>;
+      const title = typeof record.title === "string" ? record.title : "";
+      const imageUrl =
+        typeof record.imageUrl === "string"
+          ? record.imageUrl
+          : Array.isArray(record.images) && typeof record.images[0] === "string"
+            ? record.images[0]
+            : "";
+      const link =
+        typeof record.link === "string"
+          ? record.link
+          : typeof record.url === "string"
+            ? record.url
+            : imageUrl;
+
+      if (!imageUrl && !link) return null;
+
+      const normalizedItem: SimilarImageResult = {
+        title: title || "Similar item",
+        imageUrl,
+        link,
+      };
+
+      if (typeof record.source === "string") normalizedItem.source = record.source;
+      if (typeof record.price === "string") normalizedItem.price = record.price;
+      if (typeof record.description === "string") {
+        normalizedItem.description = record.description;
+      }
+
+      return normalizedItem;
+    })
+    .filter((item): item is SimilarImageResult => Boolean(item));
+}
+
+function getSimilarItems(result: Partial<AnalysisResult> | null | undefined): SimilarImageResult[] {
+  const extendedResult = result as
+    | (Partial<AnalysisResult> & {
+        houseOfAntiquesMatches?: SimilarImageResult[];
+      })
+    | null
+    | undefined;
+
+  return normalizeSimilarImageItems(
     result?.similarItems ||
     result?.similarPhotos ||
     result?.similarImages ||
@@ -363,7 +415,9 @@ function getSimilarItems(result: Partial<AnalysisResult> | null | undefined) {
     result?.matches ||
     result?.similar ||
     result?.similarPieces ||
-    []
+    extendedResult?.houseOfAntiquesMatches ||
+    result?.houseOfAntiques?.matches ||
+    [],
   );
 }
 
@@ -386,6 +440,9 @@ const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [archiveImagePreviews, setArchiveImagePreviews] = useState<string[]>(
+    [],
+  );
+  const [archiveOriginalImages, setArchiveOriginalImages] = useState<string[]>(
     [],
   );
   const [currentScreen, setCurrentScreen] = useState<AppScreen>("home");
@@ -434,6 +491,7 @@ setIsLoadingSimilar(false);
     setSelectedFiles([]);
     setImagePreviews([]);
     setArchiveImagePreviews([]);
+    setArchiveOriginalImages([]);
     setResult(null);
     setSelectedArchiveItemId(null);
     setError("");
@@ -465,7 +523,7 @@ setIsLoadingSimilar(false);
   goBackInsideAppRef.current = goBackInsideApp;
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
+    const timer = window.setTimeout(async () => {
       const savedLocale = window.localStorage.getItem(
         USER_LOCALE_STORAGE_KEY,
       ) as Locale | null;
@@ -474,10 +532,43 @@ setIsLoadingSimilar(false);
         setLocale(savedLocale);
       }
 
-      setHistory(loadArchiveItems());
+      const archiveItems = await loadArchiveItemsWithImages();
+      console.info("[KISHIB archive] Initial archive load", {
+        key: ARCHIVE_STORAGE_KEY,
+        count: archiveItems.length,
+      });
+      setHistory(archiveItems);
     }, 0);
 
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    async function refreshArchiveFromStorage() {
+      const archiveItems = await loadArchiveItemsWithImages();
+
+      console.info("[KISHIB archive] Refreshed archive from storage", {
+        key: ARCHIVE_STORAGE_KEY,
+        count: archiveItems.length,
+      });
+      setHistory(archiveItems);
+    }
+
+    function handleStorage(event: StorageEvent) {
+      if (event.key && event.key !== ARCHIVE_STORAGE_KEY) return;
+      refreshArchiveFromStorage();
+    }
+
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener(ARCHIVE_STORAGE_EVENT, refreshArchiveFromStorage);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(
+        ARCHIVE_STORAGE_EVENT,
+        refreshArchiveFromStorage,
+      );
+    };
   }, []);
 
   useEffect(() => {
@@ -633,7 +724,7 @@ async function changeLocale(nextLocale: Locale) {
     );
 
     if (!imageFiles.length) {
-      setError("الملفات لازم تكون صور.");
+      setError("Ø§Ù„Ù…Ù„ÙØ§Øª Ù„Ø§Ø²Ù… ØªÙƒÙˆÙ† ØµÙˆØ±.");
       event.target.value = "";
       return;
     }
@@ -643,7 +734,7 @@ async function changeLocale(nextLocale: Locale) {
     );
 
     if (tooLargeFile) {
-      setError(`إحدى الصور كبيرة جداً. اختاري صور أقل من ${MAX_IMAGE_SIZE_MB}MB.`);
+      setError(`Ø¥Ø­Ø¯Ù‰ Ø§Ù„ØµÙˆØ± ÙƒØ¨ÙŠØ±Ø© Ø¬Ø¯Ø§Ù‹. Ø§Ø®ØªØ§Ø±ÙŠ ØµÙˆØ± Ø£Ù‚Ù„ Ù…Ù† ${MAX_IMAGE_SIZE_MB}MB.`);
       event.target.value = "";
       return;
     }
@@ -651,7 +742,7 @@ async function changeLocale(nextLocale: Locale) {
     const mergedFiles = [...selectedFiles, ...imageFiles].slice(0, MAX_IMAGES);
 
     if (selectedFiles.length + imageFiles.length > MAX_IMAGES) {
-      setError(`مسموح رفع ${MAX_IMAGES} صور كحد أقصى للتقييم الواحد.`);
+      setError(`Ù…Ø³Ù…ÙˆØ­ Ø±ÙØ¹ ${MAX_IMAGES} ØµÙˆØ± ÙƒØ­Ø¯ Ø£Ù‚ØµÙ‰ Ù„Ù„ØªÙ‚ÙŠÙŠÙ… Ø§Ù„ÙˆØ§Ø­Ø¯.`);
     } else {
       setError("");
     }
@@ -663,10 +754,12 @@ async function changeLocale(nextLocale: Locale) {
     setSelectedFiles(mergedFiles);
     setImagePreviews(nextPreviews);
     setArchiveImagePreviews([]);
+    setArchiveOriginalImages([]);
     setResult(null);
 
-    const previews = await createArchiveImagePreviews(mergedFiles);
-    setArchiveImagePreviews(previews);
+    const assets = await createArchiveImageAssets(mergedFiles);
+    setArchiveImagePreviews(assets.imagePreviews);
+    setArchiveOriginalImages(assets.originalImages);
 
     event.target.value = "";
   }
@@ -677,6 +770,7 @@ async function changeLocale(nextLocale: Locale) {
     setSelectedFiles([]);
     setImagePreviews([]);
     setArchiveImagePreviews([]);
+    setArchiveOriginalImages([]);
     setResult(null);
     setError("");
   }
@@ -697,33 +791,69 @@ async function changeLocale(nextLocale: Locale) {
     const nextArchivePreviews = archiveImagePreviews.filter(
       (_, previewIndex) => previewIndex !== index,
     );
+    const nextArchiveOriginalImages = archiveOriginalImages.filter(
+      (_, previewIndex) => previewIndex !== index,
+    );
 
     setSelectedFiles(nextFiles);
     setImagePreviews(nextPreviews);
     setArchiveImagePreviews(nextArchivePreviews);
+    setArchiveOriginalImages(nextArchiveOriginalImages);
     setResult(null);
     setError("");
 
     if (nextFiles.length && nextArchivePreviews.length !== nextFiles.length) {
-      const previews = await createArchiveImagePreviews(nextFiles);
-      setArchiveImagePreviews(previews);
+      const assets = await createArchiveImageAssets(nextFiles);
+      setArchiveImagePreviews(assets.imagePreviews);
+      setArchiveOriginalImages(assets.originalImages);
     }
   }
 
-  function saveHistory(item: ArchiveItem) {
-    const updatedArchive = addArchiveItem(item);
+  async function saveHistory(item: ArchiveItem) {
+    console.info("[KISHIB archive] saveHistory called", {
+      key: ARCHIVE_STORAGE_KEY,
+      id: item.id,
+      title: item.title,
+      hasImagePreview: Boolean(item.imagePreview),
+      hasOriginalImage: Boolean(item.originalImage),
+    });
+    const archiveSaveResult = await addArchiveItemWithStatus(item);
+    const updatedArchive = archiveSaveResult.items;
+    console.info("[KISHIB archive] History state updated", {
+      key: ARCHIVE_STORAGE_KEY,
+      count: updatedArchive.length,
+      saved: archiveSaveResult.saved,
+    });
     setHistory(updatedArchive);
+
+    if (!archiveSaveResult.saved) {
+      setError(
+        locale === "en"
+          ? "The evaluation is visible now, but your browser storage is full and it could not be saved to the archive."
+          : "\u0627\u0644\u062a\u0642\u064a\u064a\u0645 \u0638\u0627\u0647\u0631 \u0627\u0644\u0622\u0646\u060c \u0644\u0643\u0646 \u062a\u062e\u0632\u064a\u0646 \u0627\u0644\u0645\u062a\u0635\u0641\u062d \u0645\u0645\u062a\u0644\u0626 \u0648\u0644\u0645 \u0646\u062a\u0645\u0643\u0646 \u0645\u0646 \u062d\u0641\u0638\u0647 \u0641\u064a \u0627\u0644\u0623\u0631\u0634\u064a\u0641.",
+      );
+    }
   }
 
   function openHistoryItem(item: ArchiveItem) {
     revokePreviewUrls(imagePreviews);
 
     const restoredImagePreviews =
+      item.originalImages?.length
+        ? item.originalImages.filter((preview) => !preview.startsWith("blob:"))
+        : item.originalImage && !item.originalImage.startsWith("blob:")
+          ? [item.originalImage]
+          : item.imagePreviews?.length
+            ? item.imagePreviews.filter((preview) => !preview.startsWith("blob:"))
+            : item.imagePreview && !item.imagePreview.startsWith("blob:")
+              ? [item.imagePreview]
+              : [];
+    const restoredArchivePreviews =
       item.imagePreviews?.length
         ? item.imagePreviews.filter((preview) => !preview.startsWith("blob:"))
         : item.imagePreview && !item.imagePreview.startsWith("blob:")
           ? [item.imagePreview]
-          : [];
+          : restoredImagePreviews;
 
    const savedResult = normalizeResult(item.result);
 const restoredSimilarImages =
@@ -738,7 +868,8 @@ setTranslatedResults({
 });
 setSelectedFiles([]);
     setImagePreviews(restoredImagePreviews);
-    setArchiveImagePreviews(restoredImagePreviews);
+    setArchiveImagePreviews(restoredArchivePreviews);
+    setArchiveOriginalImages(restoredImagePreviews);
     setError("");
     setHistoryOpen(false);
     setAppScreen("archive-result");
@@ -981,6 +1112,12 @@ async function handleAnalyze() {
    houseOfAntiques: houseStoreContext || undefined,
  });
 
+ console.info("[KISHIB archive] Analysis completed", {
+   title: analyzedResult.title,
+   hasSelectedFiles: selectedFiles.length > 0,
+   selectedFilesCount: selectedFiles.length,
+ });
+
   try {
     const refinedHouseResponse = await fetch("/api/house-comparables", {
       method: "POST",
@@ -1071,9 +1208,21 @@ const finalSimilarImages = getSimilarItems(finalResult).length
 if (finalSimilarImages.length > 0) {
   finalResult = normalizeResult({
     ...finalResult,
+    uploadedImageUrl: uploadedImageUrl || finalResult.uploadedImageUrl,
+    sourceImageUrl: uploadedImageUrl || finalResult.sourceImageUrl,
+    imageUrl: uploadedImageUrl || finalResult.imageUrl,
     similarImages: finalSimilarImages,
     similarItems: finalSimilarImages,
     visualMatches: finalSimilarImages,
+  });
+}
+
+if (uploadedImageUrl) {
+  finalResult = normalizeResult({
+    ...finalResult,
+    uploadedImageUrl,
+    sourceImageUrl: uploadedImageUrl,
+    imageUrl: uploadedImageUrl,
   });
 }
 
@@ -1086,10 +1235,32 @@ setTranslatedResults({
   [locale]: finalResult,
 });
 
-const archivePreviews = archiveImagePreviews.length
-  ? archiveImagePreviews
+const archiveAssets =
+  archiveImagePreviews.length && archiveOriginalImages.length
+    ? {
+        imagePreviews: archiveImagePreviews,
+        originalImages: archiveOriginalImages,
+      }
+    : await createArchiveImageAssets(selectedFiles);
+const archivePreviews = archiveAssets.imagePreviews.length
+  ? archiveAssets.imagePreviews
   : await createArchiveImagePreviews(selectedFiles);
+const archiveOriginals = archiveAssets.originalImages.length
+  ? archiveAssets.originalImages
+  : archivePreviews;
 const imagePreview = archivePreviews[0] || undefined;
+const originalImage = archiveOriginals[0] || imagePreview || uploadedImageUrl || undefined;
+const stableImagePreview = imagePreview || uploadedImageUrl || undefined;
+const stableImagePreviews = archivePreviews.length
+  ? archivePreviews
+  : stableImagePreview
+    ? [stableImagePreview]
+    : [];
+const stableOriginalImages = archiveOriginals.length
+  ? archiveOriginals
+  : originalImage
+    ? [originalImage]
+    : stableImagePreviews;
 const analyzedArchiveResult = finalResult as AnalysisResult & {
   itemName?: string;
   objectName?: string;
@@ -1102,21 +1273,20 @@ const archiveItem: ArchiveItem = {
     analyzedArchiveResult?.objectName ||
     "Untitled item",
   prompt: prompt || "",
-  imagePreview,
-  imagePreviews: archivePreviews.length
-    ? archivePreviews
-    : imagePreview
-      ? [imagePreview]
-      : [],
+  imagePreview: stableImagePreview,
+  imagePreviews: stableImagePreviews,
+  originalImage,
+  originalImages: stableOriginalImages,
   createdAt: new Date().toISOString(),
   result: {
     ...finalResult,
-    imagePreview,
-    imagePreviews: archivePreviews.length
-      ? archivePreviews
-      : imagePreview
-        ? [imagePreview]
-        : [],
+    uploadedImageUrl: uploadedImageUrl || finalResult.uploadedImageUrl,
+    sourceImageUrl: uploadedImageUrl || finalResult.sourceImageUrl,
+    imageUrl: uploadedImageUrl || finalResult.imageUrl,
+    imagePreview: stableImagePreview,
+    imagePreviews: stableImagePreviews,
+    originalImage,
+    originalImages: stableOriginalImages,
     similarImages: finalSimilarImages,
     similarItems: finalSimilarImages,
     visualMatches: finalSimilarImages,
@@ -1124,7 +1294,18 @@ const archiveItem: ArchiveItem = {
   similarImages: finalSimilarImages,
 };
 
-saveHistory(archiveItem);
+console.info("[KISHIB archive] Prepared history item before save", {
+  key: ARCHIVE_STORAGE_KEY,
+  id: archiveItem.id,
+  title: archiveItem.title,
+  hasPrompt: Boolean(archiveItem.prompt),
+  hasResult: Boolean(archiveItem.result),
+  hasImagePreview: Boolean(archiveItem.imagePreview),
+  hasOriginalImage: Boolean(archiveItem.originalImage),
+  similarImagesCount: finalSimilarImages.length,
+});
+
+await saveHistory(archiveItem);
 
 
   } catch (err) {
@@ -1192,9 +1373,9 @@ async function handleShare() {
 
     try {
       await copyFallbackSummary(result);
-      alert("تعذر إنشاء صورة المشاركة. تم نسخ ملخص التقرير بدل الصورة.");
+      alert("ØªØ¹Ø°Ø± Ø¥Ù†Ø´Ø§Ø¡ ØµÙˆØ±Ø© Ø§Ù„Ù…Ø´Ø§Ø±ÙƒØ©. ØªÙ… Ù†Ø³Ø® Ù…Ù„Ø®Øµ Ø§Ù„ØªÙ‚Ø±ÙŠØ± Ø¨Ø¯Ù„ Ø§Ù„ØµÙˆØ±Ø©.");
     } catch {
-      alert("تعذر إنشاء صورة المشاركة.");
+      alert("ØªØ¹Ø°Ø± Ø¥Ù†Ø´Ø§Ø¡ ØµÙˆØ±Ø© Ø§Ù„Ù…Ø´Ø§Ø±ÙƒØ©.");
     }
   }
 }

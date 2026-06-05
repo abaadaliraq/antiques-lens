@@ -287,9 +287,52 @@ function getDirection(locale: Locale) {
   return locale === "ar" || locale === "ku" || locale === "fa" ? "rtl" : "ltr";
 }
 
+function looksMojibake(value: string) {
+  return /(?:\u00d8|\u00d9|\u00da|\u00db|\u00d0|\u00d1|\u00c3|\u00c2|\u00e0\u00a4|\u00e0\u00a5|Ã˜|Ã™|Ãš|Ã›|Ãƒ|Ã‚)/.test(value);
+}
+
+function mojibakeScore(value: string) {
+  return (
+    value.match(
+      /(?:\u00d8|\u00d9|\u00da|\u00db|\u00d0|\u00d1|\u00c3|\u00c2|\u00e0\u00a4|\u00e0\u00a5|Ã˜|Ã™|Ãš|Ã›|Ãƒ|Ã‚)/g,
+    )?.length || 0
+  );
+}
+
+function repairMojibakeText(value: string): string {
+  if (!looksMojibake(value)) return value;
+
+  try {
+    let best = value;
+    let bestScore = mojibakeScore(value);
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const bytes = Uint8Array.from(best, (char) => char.charCodeAt(0) & 0xff);
+      const repaired = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+      const score = mojibakeScore(repaired);
+
+      if (score >= bestScore) break;
+
+      best = repaired;
+      bestScore = score;
+
+      if (score === 0) break;
+    }
+
+    return best;
+  } catch {
+    return value;
+  }
+}
+
+function repairLabels<T extends Record<string, string>>(labels: T): T {
+  return Object.fromEntries(
+    Object.entries(labels).map(([key, value]) => [key, repairMojibakeText(value)]),
+  ) as T;
+}
 function cleanText(value?: string) {
-  if (!value || !value.trim()) return "—";
-  return value.trim();
+  if (!value || !value.trim()) return "-";
+  return repairMojibakeText(value.trim());
 }
 
 function getDefaultDisclaimer(locale: Locale) {
@@ -447,7 +490,7 @@ export default function AntiqueReportDocument({
   generatedAt,
   variant = "preview",
 }: AntiqueReportDocumentProps) {
-  const labels = REPORT_LABELS[locale] || REPORT_LABELS.ar;
+  const labels = repairLabels(REPORT_LABELS[locale] || REPORT_LABELS.ar);
   const dir = getDirection(locale);
   const dateText = formatDate(locale, generatedAt);
 

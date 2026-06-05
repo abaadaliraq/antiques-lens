@@ -33,6 +33,13 @@ export type AnalysisResult = {
 
   itemType?: string;
   description?: string;
+  uploadedImageUrl?: string;
+  sourceImageUrl?: string;
+  imageUrl?: string;
+  imagePreview?: string;
+  imagePreviews?: string[];
+  originalImage?: string;
+  originalImages?: string[];
   priceRange?: string;
   period?: string;
   keywords?: string[];
@@ -135,5 +142,7 @@ export type HistoryItem = {
   createdAt: string;
   imagePreview: string | null;
   imagePreviews?: string[];
+  originalImage?: string | null;
+  originalImages?: string[];
   result: AnalysisResult;
 };

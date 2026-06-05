@@ -1,4 +1,4 @@
-import type { AnalysisResult } from "./types";
+﻿import type { AnalysisResult } from "./types";
 
 export const content = {
   ar: {
@@ -340,49 +340,138 @@ export const content = {
 
 export type ContentItem = (typeof content)[keyof typeof content];
 
+function looksMojibake(value: string) {
+  return /(?:\u00d8|\u00d9|\u00da|\u00db|\u00d0|\u00d1|\u00c3|\u00c2|\u00e0\u00a4|\u00e0\u00a5|Ã˜|Ã™|Ãš|Ã›|Ãƒ|Ã‚)/.test(value);
+}
+
+function mojibakeScore(value: string) {
+  return (
+    value.match(
+      /(?:\u00d8|\u00d9|\u00da|\u00db|\u00d0|\u00d1|\u00c3|\u00c2|\u00e0\u00a4|\u00e0\u00a5|Ã˜|Ã™|Ãš|Ã›|Ãƒ|Ã‚)/g,
+    )?.length || 0
+  );
+}
+
+function repairMojibakeText(value: string): string {
+  if (!looksMojibake(value)) return value;
+
+  try {
+    let best = value;
+    let bestScore = mojibakeScore(value);
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const bytes = Uint8Array.from(best, (char) => char.charCodeAt(0) & 0xff);
+      const repaired = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+      const score = mojibakeScore(repaired);
+
+      if (score >= bestScore) break;
+
+      best = repaired;
+      bestScore = score;
+
+      if (score === 0) break;
+    }
+
+    return best;
+  } catch {
+    return value;
+  }
+}
+
+function repairText(value: unknown): unknown {
+  if (typeof value === "string") return repairMojibakeText(value);
+  if (Array.isArray(value)) return value.map(repairText);
+  if (!value || typeof value !== "object") return value;
+
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
+      key,
+      repairText(entry),
+    ]),
+  );
+}
+
+function text(value: unknown, fallback = ""): string {
+  return typeof value === "string" && value.trim()
+    ? repairMojibakeText(value)
+    : fallback;
+}
+
+function textArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => repairMojibakeText(item))
+    : [];
+}
+
 export function normalizeResult(data: Partial<AnalysisResult>): AnalysisResult {
+  const repairedData = repairText(data) as Partial<AnalysisResult>;
+
   return {
-    title: data.title || data.itemType || "Antique item",
-    lookup: data.lookup || data.description || "",
-    timePeriod: data.timePeriod || data.period || "غير واضح",
-    origin: data.origin || "غير واضح",
-    material: data.material || "غير واضح",
-    style: data.style || "غير واضح",
-    condition: data.condition || "غير واضح",
-    authenticity: data.authenticity || "لا يمكن الجزم من الصورة فقط.",
-    estimatedValue: data.estimatedValue || data.priceRange || "غير واضح",
-    priceReasoning: data.priceReasoning || "",
-    history: data.history || data.description || "",
-    valueDrivers: Array.isArray(data.valueDrivers) ? data.valueDrivers : [],
-    valueReducers: Array.isArray(data.valueReducers) ? data.valueReducers : [],
-    visualSearchKeywords: Array.isArray(data.visualSearchKeywords)
-      ? data.visualSearchKeywords
-      : Array.isArray(data.keywords)
-        ? data.keywords
+    title: text(repairedData.title || repairedData.itemType, "Antique item"),
+    lookup: text(repairedData.lookup || repairedData.description),
+    timePeriod: text(repairedData.timePeriod || repairedData.period, "غير واضح"),
+    origin: text(repairedData.origin, "غير واضح"),
+    material: text(repairedData.material, "غير واضح"),
+    style: text(repairedData.style, "غير واضح"),
+    condition: text(repairedData.condition, "غير واضح"),
+    authenticity: text(
+      repairedData.authenticity,
+      "لا يمكن الجزم من الصورة فقط.",
+    ),
+    estimatedValue: text(
+      repairedData.estimatedValue || repairedData.priceRange,
+      "غير واضح",
+    ),
+    priceReasoning: text(repairedData.priceReasoning),
+    history: text(repairedData.history || repairedData.description),
+    valueDrivers: textArray(repairedData.valueDrivers),
+    valueReducers: textArray(repairedData.valueReducers),
+    visualSearchKeywords: Array.isArray(repairedData.visualSearchKeywords)
+      ? textArray(repairedData.visualSearchKeywords)
+      : Array.isArray(repairedData.keywords)
+        ? textArray(repairedData.keywords)
         : [],
-    neededPhotos: Array.isArray(data.neededPhotos) ? data.neededPhotos : [],
-    followUpQuestion: data.followUpQuestion || "",
+    neededPhotos: textArray(repairedData.neededPhotos),
+    followUpQuestion: text(repairedData.followUpQuestion),
     confidence:
-      typeof data.confidence === "number"
-        ? Math.min(10, Math.max(1, data.confidence))
+      typeof repairedData.confidence === "number"
+        ? Math.min(10, Math.max(1, repairedData.confidence))
         : 3,
-    confidenceNote: data.confidenceNote || "",
-    disclaimer: data.disclaimer || "",
-    itemType: data.itemType,
-    description: data.description,
-    priceRange: data.priceRange,
-    period: data.period,
-    keywords: data.keywords,
-    similar: data.similar,
-    similarItems: data.similarItems,
-    similarPhotos: data.similarPhotos,
-    similarImages: data.similarImages,
-    similarPieces: data.similarPieces,
-    imageMatches: data.imageMatches,
-    visualMatches: data.visualMatches,
-    storeMatches: data.storeMatches,
-    matches: data.matches,
-    houseOfAntiques: data.houseOfAntiques,
-    metalValue: data.metalValue,
+    confidenceNote: text(repairedData.confidenceNote),
+    disclaimer: text(repairedData.disclaimer),
+    itemType: text(repairedData.itemType),
+    description: text(repairedData.description),
+    uploadedImageUrl: text(repairedData.uploadedImageUrl),
+    sourceImageUrl: text(repairedData.sourceImageUrl),
+    imageUrl: text(repairedData.imageUrl),
+    imagePreview: text(repairedData.imagePreview),
+    imagePreviews: Array.isArray(repairedData.imagePreviews)
+      ? repairedData.imagePreviews.filter(
+          (item): item is string => typeof item === "string",
+        )
+      : undefined,
+    originalImage: text(repairedData.originalImage),
+    originalImages: Array.isArray(repairedData.originalImages)
+      ? repairedData.originalImages.filter(
+          (item): item is string => typeof item === "string",
+        )
+      : undefined,
+    priceRange: text(repairedData.priceRange),
+    period: text(repairedData.period),
+    keywords: textArray(repairedData.keywords),
+    similar: repairedData.similar,
+    similarItems: repairedData.similarItems,
+    similarPhotos: repairedData.similarPhotos,
+    similarImages: repairedData.similarImages,
+    similarPieces: repairedData.similarPieces,
+    imageMatches: repairedData.imageMatches,
+    visualMatches: repairedData.visualMatches,
+    storeMatches: repairedData.storeMatches,
+    matches: repairedData.matches,
+    houseOfAntiques: repairedData.houseOfAntiques,
+    brandAssessment: repairedData.brandAssessment,
+    metalValue: repairedData.metalValue,
   };
 }

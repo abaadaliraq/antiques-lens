@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   ChevronLeft,
@@ -52,23 +52,23 @@ type Props = {
 function getFallbackText(locale: Locale) {
   if (locale === "en") return "Not clear";
   if (locale === "fr") return "Non clair";
-  if (locale === "ku") return "ڕوون نییە";
-  if (locale === "hi") return "स्पष्ट नहीं";
-  if (locale === "fa") return "نامشخص";
-  if (locale === "tr") return "Net değil";
-  if (locale === "ru") return "Не ясно";
-  return "غير واضح";
+  if (locale === "ku") return "Ú•ÙˆÙˆÙ† Ù†ÛŒÛŒÛ•";
+  if (locale === "hi") return "à¤¸à¥à¤ªà¤·à¥à¤Ÿ à¤¨à¤¹à¥€à¤‚";
+  if (locale === "fa") return "Ù†Ø§Ù…Ø´Ø®Øµ";
+  if (locale === "tr") return "Net deÄŸil";
+  if (locale === "ru") return "ÐÐµ ÑÑÐ½Ð¾";
+  return "ØºÙŠØ± ÙˆØ§Ø¶Ø­";
 }
 
 function getAddInfoText(locale: Locale) {
   if (locale === "en") return "Add info";
   if (locale === "fr") return "Ajouter";
-  if (locale === "ku") return "زیادکردن";
-  if (locale === "hi") return "जानकारी जोड़ें";
-  if (locale === "fa") return "افزودن اطلاعات";
+  if (locale === "ku") return "Ø²ÛŒØ§Ø¯Ú©Ø±Ø¯Ù†";
+  if (locale === "hi") return "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤œà¥‹à¤¡à¤¼à¥‡à¤‚";
+  if (locale === "fa") return "Ø§ÙØ²ÙˆØ¯Ù† Ø§Ø·Ù„Ø§Ø¹Ø§Øª";
   if (locale === "tr") return "Bilgi ekle";
-  if (locale === "ru") return "Добавить информацию";
-  return "أضف معلومات";
+  if (locale === "ru") return "Ð”Ð¾Ð±Ð°Ð²Ð¸Ñ‚ÑŒ Ð¸Ð½Ñ„Ð¾Ñ€Ð¼Ð°Ñ†Ð¸ÑŽ";
+  return "Ø£Ø¶Ù Ù…Ø¹Ù„ÙˆÙ…Ø§Øª";
 }
 
 function getUserNoteLabel(locale: Locale) {
@@ -76,10 +76,10 @@ function getUserNoteLabel(locale: Locale) {
   if (locale === "fr") return "Votre note sur l'objet";
   if (locale === "tr") return "Parca hakkindaki notunuz";
   if (locale === "ru") return "Your note about the item";
-  if (locale === "fa") return "یادداشت شما درباره شیء";
-  if (locale === "ku") return "تێبینییەکەت دەربارەی پارچەکە";
+  if (locale === "fa") return "ÛŒØ§Ø¯Ø¯Ø§Ø´Øª Ø´Ù…Ø§ Ø¯Ø±Ø¨Ø§Ø±Ù‡ Ø´ÛŒØ¡";
+  if (locale === "ku") return "ØªÛŽØ¨ÛŒÙ†ÛŒÛŒÛ•Ú©Û•Øª Ø¯Û•Ø±Ø¨Ø§Ø±Û•ÛŒ Ù¾Ø§Ø±Ú†Û•Ú©Û•";
   if (locale === "hi") return "Your note about the item";
-  return "ملاحظتك عن القطعة";
+  return "Ù…Ù„Ø§Ø­Ø¸ØªÙƒ Ø¹Ù† Ø§Ù„Ù‚Ø·Ø¹Ø©";
 }
 
 function getReportLabels(locale: Locale) {
@@ -97,8 +97,8 @@ function getReportLabels(locale: Locale) {
   if (locale === "fr") {
     return {
       eyebrow: "Rapport",
-      title: "Évaluation imprimable",
-      hint: "Ouvrez le rapport A4 uniquement pour l’export PDF ou l’impression.",
+      title: "Ã‰valuation imprimable",
+      hint: "Ouvrez le rapport A4 uniquement pour lâ€™export PDF ou lâ€™impression.",
       open: "Ouvrir",
       print: "PDF / Imprimer",
       close: "Fermer",
@@ -107,19 +107,19 @@ function getReportLabels(locale: Locale) {
 
   if (locale === "ku") {
     return {
-      eyebrow: "ڕاپۆرت",
-      title: "هەڵسەنگاندنی چاپکراو",
-      hint: "ڕاپۆرتی A4 تەنها بۆ PDF یان چاپ بکەرەوە.",
-      open: "کردنەوە",
-      print: "PDF / چاپ",
-      close: "داخستن",
+      eyebrow: "Ú•Ø§Ù¾Û†Ø±Øª",
+      title: "Ù‡Û•ÚµØ³Û•Ù†Ú¯Ø§Ù†Ø¯Ù†ÛŒ Ú†Ø§Ù¾Ú©Ø±Ø§Ùˆ",
+      hint: "Ú•Ø§Ù¾Û†Ø±ØªÛŒ A4 ØªÛ•Ù†Ù‡Ø§ Ø¨Û† PDF ÛŒØ§Ù† Ú†Ø§Ù¾ Ø¨Ú©Û•Ø±Û•ÙˆÛ•.",
+      open: "Ú©Ø±Ø¯Ù†Û•ÙˆÛ•",
+      print: "PDF / Ú†Ø§Ù¾",
+      close: "Ø¯Ø§Ø®Ø³ØªÙ†",
     };
   }
 
   return {
     eyebrow: "التقرير",
     title: "تقرير تقييم قابل للطباعة",
-    hint: "التقرير مخفي حتى لا يزحم الصفحة. افتحيه فقط عند الطباعة أو التصدير.",
+    hint: "افتح تقرير A4 فقط عند الحاجة للطباعة أو التصدير.",
     open: "فتح التقرير",
     print: "PDF / طباعة",
     close: "إغلاق",
@@ -129,16 +129,63 @@ function getReportLabels(locale: Locale) {
 function getSimilarSourceLabel(locale: Locale) {
   if (locale === "en") return "Comparable sources";
   if (locale === "fr") return "Sources comparables";
-  if (locale === "hi") return "तुलनीय स्रोत";
-  if (locale === "fa") return "منابع مشابه";
+  if (locale === "hi") return "à¤¤à¥à¤²à¤¨à¥€à¤¯ à¤¸à¥à¤°à¥‹à¤¤";
+  if (locale === "fa") return "Ù…Ù†Ø§Ø¨Ø¹ Ù…Ø´Ø§Ø¨Ù‡";
   if (locale === "tr") return "Benzer kaynaklar";
-  if (locale === "ru") return "Похожие источники";
-  if (locale === "ku") return "سەرچاوە هاوشێوەکان";
-  return "مصادر مشابهة";
+  if (locale === "ru") return "ÐŸÐ¾Ñ…Ð¾Ð¶Ð¸Ðµ Ð¸ÑÑ‚Ð¾Ñ‡Ð½Ð¸ÐºÐ¸";
+  if (locale === "ku") return "Ø³Û•Ø±Ú†Ø§ÙˆÛ• Ù‡Ø§ÙˆØ´ÛŽÙˆÛ•Ú©Ø§Ù†";
+  return "Ù…ØµØ§Ø¯Ø± Ù…Ø´Ø§Ø¨Ù‡Ø©";
+}
+
+function normalizeSimilarImageItems(items: unknown): SimilarImageResult[] {
+  if (!Array.isArray(items)) return [];
+
+  return items
+    .map((item): SimilarImageResult | null => {
+      if (!item || typeof item !== "object") return null;
+
+      const record = item as Record<string, unknown>;
+      const title = typeof record.title === "string" ? record.title : "";
+      const imageUrl =
+        typeof record.imageUrl === "string"
+          ? record.imageUrl
+          : Array.isArray(record.images) && typeof record.images[0] === "string"
+            ? record.images[0]
+            : "";
+      const link =
+        typeof record.link === "string"
+          ? record.link
+          : typeof record.url === "string"
+            ? record.url
+            : imageUrl;
+
+      if (!imageUrl && !link) return null;
+
+      const normalizedItem: SimilarImageResult = {
+        title: title || "Similar item",
+        imageUrl,
+        link,
+      };
+
+      if (typeof record.source === "string") normalizedItem.source = record.source;
+      if (typeof record.price === "string") normalizedItem.price = record.price;
+      if (typeof record.description === "string") {
+        normalizedItem.description = record.description;
+      }
+
+      return normalizedItem;
+    })
+    .filter((item): item is SimilarImageResult => Boolean(item));
 }
 
 function getSimilarItems(result: AnalysisResult | null): SimilarImageResult[] {
-  return (
+  const extendedResult = result as
+    | (AnalysisResult & {
+        houseOfAntiquesMatches?: SimilarImageResult[];
+      })
+    | null;
+
+  return normalizeSimilarImageItems(
     result?.similarItems ||
     result?.similarPhotos ||
     result?.similarImages ||
@@ -148,19 +195,21 @@ function getSimilarItems(result: AnalysisResult | null): SimilarImageResult[] {
     result?.matches ||
     result?.similar ||
     result?.similarPieces ||
-    []
+    extendedResult?.houseOfAntiquesMatches ||
+    result?.houseOfAntiques?.matches ||
+    [],
   );
 }
 
 function getItemTypeLabel(locale: Locale) {
   if (locale === "en") return "Object type";
-  if (locale === "fr") return "Type d’objet";
-  if (locale === "hi") return "वस्तु का प्रकार";
-  if (locale === "fa") return "نوع شیء";
-  if (locale === "tr") return "Nesne türü";
-  if (locale === "ru") return "Тип предмета";
-  if (locale === "ku") return "جۆری پارچە";
-  return "نوع القطعة";
+  if (locale === "fr") return "Type dâ€™objet";
+  if (locale === "hi") return "à¤µà¤¸à¥à¤¤à¥ à¤•à¤¾ à¤ªà¥à¤°à¤•à¤¾à¤°";
+  if (locale === "fa") return "Ù†ÙˆØ¹ Ø´ÛŒØ¡";
+  if (locale === "tr") return "Nesne tÃ¼rÃ¼";
+  if (locale === "ru") return "Ð¢Ð¸Ð¿ Ð¿Ñ€ÐµÐ´Ð¼ÐµÑ‚Ð°";
+  if (locale === "ku") return "Ø¬Û†Ø±ÛŒ Ù¾Ø§Ø±Ú†Û•";
+  return "Ù†ÙˆØ¹ Ø§Ù„Ù‚Ø·Ø¹Ø©";
 }
 
 function getSilverScenarioLabels(locale: Locale) {
@@ -176,12 +225,12 @@ function getSilverScenarioLabels(locale: Locale) {
   }
 
   return {
-    title: "احتمالات قيمة الفضة حسب الوزن",
+    title: "Ø§Ø­ØªÙ…Ø§Ù„Ø§Øª Ù‚ÙŠÙ…Ø© Ø§Ù„ÙØ¶Ø© Ø­Ø³Ø¨ Ø§Ù„ÙˆØ²Ù†",
     note:
-      "لم يتم إدخال وزن دقيق، لذلك هذه تقديرات احتمالية. الوزن والعيار ضروريان لتقييم نهائي.",
-    weight: "الوزن المفترض",
-    melt: "قيمة الفضة الخام",
-    antique: "مع قيمة الأنتيك",
+      "Ù„Ù… ÙŠØªÙ… Ø¥Ø¯Ø®Ø§Ù„ ÙˆØ²Ù† Ø¯Ù‚ÙŠÙ‚ØŒ Ù„Ø°Ù„Ùƒ Ù‡Ø°Ù‡ ØªÙ‚Ø¯ÙŠØ±Ø§Øª Ø§Ø­ØªÙ…Ø§Ù„ÙŠØ©. Ø§Ù„ÙˆØ²Ù† ÙˆØ§Ù„Ø¹ÙŠØ§Ø± Ø¶Ø±ÙˆØ±ÙŠØ§Ù† Ù„ØªÙ‚ÙŠÙŠÙ… Ù†Ù‡Ø§Ø¦ÙŠ.",
+    weight: "Ø§Ù„ÙˆØ²Ù† Ø§Ù„Ù…ÙØªØ±Ø¶",
+    melt: "Ù‚ÙŠÙ…Ø© Ø§Ù„ÙØ¶Ø© Ø§Ù„Ø®Ø§Ù…",
+    antique: "Ù…Ø¹ Ù‚ÙŠÙ…Ø© Ø§Ù„Ø£Ù†ØªÙŠÙƒ",
   };
 }
 
@@ -189,26 +238,26 @@ const preciousMetalKeywords = [
   "silver",
   "sterling",
   "925",
-  "فضة",
-  "ذهب",
+  "ÙØ¶Ø©",
+  "Ø°Ù‡Ø¨",
   "gold",
 ];
 
 const excludedMaterialKeywords = [
   "wood",
-  "خشب",
+  "Ø®Ø´Ø¨",
   "wooden",
   "furniture",
   "chair",
-  "كرسي",
-  "أثاث",
+  "ÙƒØ±Ø³ÙŠ",
+  "Ø£Ø«Ø§Ø«",
   "ceramic",
-  "خزف",
+  "Ø®Ø²Ù",
   "pottery",
-  "فخار",
+  "ÙØ®Ø§Ø±",
   "rug",
   "carpet",
-  "سجاد",
+  "Ø³Ø¬Ø§Ø¯",
   "textile",
   "painting",
   "glass",
@@ -264,6 +313,9 @@ export default function ResultView({
   const [openImageIndex, setOpenImageIndex] = useState<number | null>(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [hasOpenedFollowUp, setHasOpenedFollowUp] = useState(false);
+  const [failedImageSources, setFailedImageSources] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const reportId = useMemo(() => buildReportId(), []);
   const fallbackText = getFallbackText(locale);
@@ -275,6 +327,11 @@ export default function ResultView({
   const resultWithArchiveImages = result as AnalysisResult & {
     imagePreview?: string;
     imagePreviews?: string[];
+    originalImage?: string;
+    originalImages?: string[];
+    uploadedImageUrl?: string;
+    sourceImageUrl?: string;
+    imageUrl?: string;
   };
   const resultImagePreviews = Array.isArray(resultWithArchiveImages.imagePreviews)
     ? resultWithArchiveImages.imagePreviews.filter(
@@ -285,17 +342,38 @@ export default function ResultView({
     typeof resultWithArchiveImages.imagePreview === "string"
       ? resultWithArchiveImages.imagePreview
       : null;
+  const resultOriginalImages = Array.isArray(resultWithArchiveImages.originalImages)
+    ? resultWithArchiveImages.originalImages.filter(
+        (preview) => typeof preview === "string",
+      )
+    : [];
+  const resultStableImage =
+    typeof resultWithArchiveImages.originalImage === "string"
+      ? resultWithArchiveImages.originalImage
+      : typeof resultWithArchiveImages.uploadedImageUrl === "string"
+        ? resultWithArchiveImages.uploadedImageUrl
+        : typeof resultWithArchiveImages.sourceImageUrl === "string"
+          ? resultWithArchiveImages.sourceImageUrl
+          : typeof resultWithArchiveImages.imageUrl === "string"
+            ? resultWithArchiveImages.imageUrl
+            : null;
 
-  const galleryImages =
-    imagePreviews.length > 0
-      ? imagePreviews
-      : imagePreview
-        ? [imagePreview]
-        : resultImagePreviews.length > 0
-          ? resultImagePreviews
-          : resultImagePreview
-            ? [resultImagePreview]
-            : [];
+  const rawGalleryImages = imagePreviews.length
+    ? imagePreviews
+    : imagePreview
+      ? [imagePreview]
+      : resultOriginalImages.length
+        ? resultOriginalImages
+        : resultStableImage
+          ? [resultStableImage]
+          : resultImagePreviews.length
+            ? resultImagePreviews
+            : resultImagePreview
+              ? [resultImagePreview]
+              : [];
+  const galleryImages = rawGalleryImages.filter(
+    (src) => !failedImageSources.has(src),
+  );
 
   const mainImage = galleryImages[0] || null;
   const openedImage =
@@ -360,6 +438,14 @@ export default function ResultView({
     setOpenImageIndex(null);
   }
 
+  function handleImageError(src: string) {
+    setFailedImageSources((current) => {
+      const next = new Set(current);
+      next.add(src);
+      return next;
+    });
+  }
+
   function showPrevImage() {
     setOpenImageIndex((current) => {
       if (current === null || galleryImages.length === 0) return current;
@@ -387,6 +473,7 @@ export default function ResultView({
                   src={mainImage}
                   alt=""
                   aria-hidden="true"
+                  onError={() => handleImageError(mainImage)}
                   className="h-full w-full scale-110 object-cover opacity-10 blur-3xl"
                 />
               </div>
@@ -400,6 +487,7 @@ export default function ResultView({
                 <img
                   src={mainImage}
                   alt={result.title || labels.result}
+                  onError={() => handleImageError(mainImage)}
                   className="h-full w-full rounded-[16px] border border-[#d6b576]/35 object-contain shadow-lg"
                 />
               </button>
@@ -432,6 +520,7 @@ export default function ResultView({
                         <img
                           src={src}
                           alt={`${result.title || labels.result} ${index + 1}`}
+                          onError={() => handleImageError(src)}
                           className="h-full w-full object-cover"
                         />
 
@@ -639,6 +728,9 @@ export default function ResultView({
                       <img
                         src={item.imageUrl}
                         alt={item.title || "Similar result"}
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
                         className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                       />
                     </div>
@@ -666,7 +758,7 @@ export default function ResultView({
         {result.brandAssessment ? (
           <section className="mt-8 border-t border-[#c7b99e] pt-6">
             <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#986f2e]">
-              {locale === "ar" ? "تقييم البراند" : "Brand assessment"}
+              {locale === "ar" ? "ØªÙ‚ÙŠÙŠÙ… Ø§Ù„Ø¨Ø±Ø§Ù†Ø¯" : "Brand assessment"}
             </p>
 
             <div className="grid gap-3 md:grid-cols-2">
@@ -675,7 +767,7 @@ export default function ResultView({
                   {result.brandAssessment.possibleBrand}
                 </p>
                 <p className="mt-2 text-[12px] leading-6 text-[#735f4b]">
-                  {result.brandAssessment.category} · {result.brandAssessment.confidence}
+                  {result.brandAssessment.category} Â· {result.brandAssessment.confidence}
                 </p>
                 <p className="mt-3 text-[12px] leading-6 text-[#735f4b]">
                   {result.brandAssessment.authenticityStatus}
@@ -684,7 +776,7 @@ export default function ResultView({
 
               <div className="rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/70 p-4">
                 <p className="text-[12px] font-medium text-[#233f32]">
-                  {locale === "ar" ? "سيناريو السعر المشروط" : "Conditional price scenario"}
+                  {locale === "ar" ? "Ø³ÙŠÙ†Ø§Ø±ÙŠÙˆ Ø§Ù„Ø³Ø¹Ø± Ø§Ù„Ù…Ø´Ø±ÙˆØ·" : "Conditional price scenario"}
                 </p>
                 <p className="mt-2 text-[12px] leading-6 text-[#735f4b]">
                   {result.brandAssessment.priceScenario}
@@ -692,36 +784,8 @@ export default function ResultView({
               </div>
             </div>
 
-            {result.brandAssessment.requiredPhotos.length > 0 ? (
-              <div className="mt-4">
-                <CompactNeededPhotos
-                  title={locale === "ar" ? "صور مطلوبة لتأكيد البراند" : "Required brand photos"}
-                  items={result.brandAssessment.requiredPhotos}
-                />
-              </div>
-            ) : null}
           </section>
         ) : null}
-
-        <CompactNeededPhotos title={labels.neededPhotos} items={result.neededPhotos} />
-
-        {result.followUpQuestion && (
-          <section className="mt-8 border-t border-[#c7b99e] pt-6">
-            <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#986f2e]">
-              {labels.followUp}
-            </p>
-
-            <p className="max-w-4xl text-[18px] font-normal leading-9 tracking-[-0.02em] text-[#735f4b]">
-              {result.followUpQuestion}
-            </p>
-          </section>
-        )}
-
-        <section className="mt-8 border-t border-[#c7b99e] pt-5">
-          <p className="text-[12px] font-normal leading-6 text-[#735f4b]">
-            {result.disclaimer || labels.notice}
-          </p>
-        </section>
 
         <section className="mt-9 border-y border-[#c7b99e] py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -802,6 +866,10 @@ export default function ResultView({
             src={openedImage}
             alt={result.title || labels.result}
             onClick={(event) => event.stopPropagation()}
+            onError={() => {
+              handleImageError(openedImage);
+              setOpenImageIndex(null);
+            }}
             className="max-h-[94dvh] max-w-[96vw] rounded-xl object-contain shadow-[0_30px_120px_rgba(0,0,0,0.8)]"
           />
 
@@ -1134,36 +1202,3 @@ function SoftList({ title, items }: { title: string; items?: string[] }) {
   );
 }
 
-function CompactNeededPhotos({
-  title,
-  items,
-}: {
-  title: string;
-  items?: string[];
-}) {
-  const cleanItems = Array.isArray(items) ? items.filter(Boolean) : [];
-
-  if (cleanItems.length === 0) return null;
-
-  return (
-    <section className="mt-8 border-t border-[#c7b99e] pt-5">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center">
-        <p className="shrink-0 text-[13px] font-medium text-[#233f32]">
-          {title}
-        </p>
-
-        <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
-          {cleanItems.map((item, index) => (
-            <span
-              key={`${item}-${index}`}
-              className="inline-flex shrink-0 items-center gap-2 rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/70 px-3 py-2 text-[12px] font-normal leading-5 text-[#735f4b]"
-            >
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#b88a3d]" />
-              {item}
-            </span>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}

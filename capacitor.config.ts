@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.antiqueslens.app',
-  appName: 'Antiques Lens',
+  appId: 'com.kishib.app',
+  appName: 'KISHIB',
   webDir: 'out',
   server: {
     url: 'https://antiques-lens.vercel.app',

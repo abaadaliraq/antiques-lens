@@ -93,6 +93,10 @@ function getSafeSimilarImages(lens: ReturnType<typeof useAntiqueLens>) {
         visualMatches?: SimilarImageResult[];
         storeMatches?: SimilarImageResult[];
         matches?: SimilarImageResult[];
+        houseOfAntiquesMatches?: SimilarImageResult[];
+        houseOfAntiques?: {
+          matches?: SimilarImageResult[];
+        };
       })
     | null;
 
@@ -108,6 +112,8 @@ function getSafeSimilarImages(lens: ReturnType<typeof useAntiqueLens>) {
     result?.visualMatches ||
     result?.storeMatches ||
     result?.matches ||
+    result?.houseOfAntiquesMatches ||
+    result?.houseOfAntiques?.matches ||
     result?.similar ||
     result?.similarPieces ||
     [];
@@ -544,6 +550,9 @@ function LatestCollection({
                     <img
                       src={item.imagePreview}
                       alt={item.title}
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                      }}
                       className="h-full w-full object-cover opacity-90 transition duration-500 group-hover:scale-105"
                     />
                   ) : (
