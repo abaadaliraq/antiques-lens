@@ -3,6 +3,7 @@
 import AntiqueBackground from "@/components/antique-ai/AntiqueBackground";
 import AuthScreen from "@/components/antique-ai/AuthScreen";
 import BottomBar from "@/components/antique-ai/BottomBar";
+import CompleteProfileModal from "@/components/antique-ai/CompleteProfileModal";
 import CookieBar from "@/components/antique-ai/CookieBar";
 import EvaluationComposer from "@/components/antique-ai/EvaluationComposer";
 import ExpertContactButton from "@/components/antique-ai/ExpertContactButton";
@@ -12,6 +13,11 @@ import ResultView from "@/components/antique-ai/ResultView";
 import ThinkingMotion from "@/components/antique-ai/ThinkingMotion";
 import UserMenu from "@/components/antique-ai/UserMenu";
 import { getMarketplaceNavLabel } from "@/lib/marketplaceI18n";
+import {
+  ensureCurrentUserProfile,
+  PROFILE_UPDATED_EVENT,
+  type UserProfile,
+} from "@/lib/profilesSupabase";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { ShoppingBag, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -202,6 +208,24 @@ export default function AntiqueLensShell() {
   const lens = useAntiqueLens();
   const [hasSession, setHasSession] = useState(false);
   const [authReady, setAuthReady] = useState(false);
+  const [profileReady, setProfileReady] = useState(false);
+  const [profileComplete, setProfileComplete] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  async function refreshProfile() {
+    try {
+      setProfileReady(false);
+      const result = await ensureCurrentUserProfile();
+      setProfile(result.profile);
+      setProfileComplete(result.complete);
+    } catch (error) {
+      console.error("Failed to load required profile", error);
+      setProfile(null);
+      setProfileComplete(false);
+    } finally {
+      setProfileReady(true);
+    }
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -232,8 +256,17 @@ export default function AntiqueLensShell() {
             });
           }
 
-          cacheAuthSession(Boolean(data.session));
-          setHasSession(Boolean(data.session));
+          const sessionIsActive = Boolean(data.session);
+
+          cacheAuthSession(sessionIsActive);
+          setHasSession(sessionIsActive);
+          if (sessionIsActive) {
+            void refreshProfile();
+          } else {
+            setProfile(null);
+            setProfileComplete(false);
+            setProfileReady(true);
+          }
           setAuthReady(true);
         });
 
@@ -261,6 +294,13 @@ export default function AntiqueLensShell() {
 
           cacheAuthSession(sessionIsActive);
           setHasSession(sessionIsActive);
+          if (sessionIsActive) {
+            void refreshProfile();
+          } else {
+            setProfile(null);
+            setProfileComplete(false);
+            setProfileReady(true);
+          }
           setAuthReady(true);
         });
 
@@ -283,7 +323,18 @@ export default function AntiqueLensShell() {
     cacheAuthSession(true);
     setHasSession(true);
     setAuthReady(true);
+    void refreshProfile();
   }
+
+  useEffect(() => {
+    function handleProfileUpdated() {
+      void refreshProfile();
+    }
+
+    window.addEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdated);
+    return () =>
+      window.removeEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdated);
+  }, []);
 
   if (!authReady) {
     return <main className="min-h-dvh kishib-bg-auth" />;
@@ -299,6 +350,23 @@ export default function AntiqueLensShell() {
         />
         <CookieBar />
       </>
+    );
+  }
+
+  if (!profileReady) {
+    return <main className="min-h-dvh kishib-bg-auth" />;
+  }
+
+  if (!profileComplete) {
+    return (
+      <main className="relative min-h-dvh overflow-hidden kishib-bg-auth">
+        <CompleteProfileModal
+          locale={lens.locale}
+          profile={profile}
+          onCompleted={() => void refreshProfile()}
+        />
+        <CookieBar />
+      </main>
     );
   }
 

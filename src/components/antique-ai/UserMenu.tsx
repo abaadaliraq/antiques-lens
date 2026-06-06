@@ -19,6 +19,12 @@ import {
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
+import {
+  getCurrentUserProfile,
+  PROFILE_UPDATED_EVENT,
+  updateCurrentUserProfile,
+  type UserProfile,
+} from "@/lib/profilesSupabase";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import type { Locale } from "./types";
 
@@ -35,6 +41,7 @@ type EditableProfile = {
   name: string;
   phone: string;
   country: string;
+  city: string;
 };
 
 type ProfileInfo = EditableProfile & {
@@ -50,6 +57,7 @@ type MenuCopy = {
   email: string;
   phone: string;
   country: string;
+  province?: string;
   language: string;
   subscriptions: string;
   support: string;
@@ -358,6 +366,7 @@ function readCachedProfile(userId: string): EditableProfile | null {
       name: typeof parsed.name === "string" ? parsed.name : "",
       phone: typeof parsed.phone === "string" ? parsed.phone : "",
       country: typeof parsed.country === "string" ? parsed.country : "",
+      city: typeof parsed.city === "string" ? parsed.city : "",
     };
   } catch {
     return null;
@@ -378,6 +387,7 @@ function buildProfileInfo(
     email?: string | null;
     user_metadata?: Record<string, unknown> | null;
   } | null,
+  profile?: UserProfile | null,
 ): ProfileInfo | null {
   if (!user) return null;
 
@@ -393,20 +403,34 @@ function buildProfileInfo(
 
   return {
     userId,
-    name: cached?.name || metadataName || getFallbackName(email),
-    email,
+    name: profile?.full_name || cached?.name || metadataName || getFallbackName(email),
+    email: profile?.email || email,
     phone:
+      profile?.phone ||
       cached?.phone ||
       readMetadataText(metadata, ["phone", "phone_number", "mobile"]),
     country:
+      profile?.country ||
       cached?.country ||
       readMetadataText(metadata, ["country", "country_name"]),
-    avatarUrl: readMetadataText(metadata, ["avatar_url", "picture", "photo_url"]),
+    city:
+      profile?.city ||
+      profile?.province ||
+      cached?.city ||
+      readMetadataText(metadata, ["city", "province", "governorate"]),
+    avatarUrl:
+      profile?.avatar_url ||
+      readMetadataText(metadata, ["avatar_url", "picture", "photo_url"]),
   };
 }
 
 function isProfileIncomplete(profile: ProfileInfo | null) {
-  return !profile?.name?.trim() || !profile.phone.trim() || !profile.country.trim();
+  return (
+    !profile?.name?.trim() ||
+    !profile.phone.trim() ||
+    !profile.country.trim() ||
+    !profile.city.trim()
+  );
 }
 
 function Avatar({
@@ -455,6 +479,7 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
     name: "",
     phone: "",
     country: "",
+    city: "",
   });
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -467,24 +492,26 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
   const displayEmail = profileInfo?.email || copy.unknown;
   const avatarUrl = profileInfo?.avatarUrl || "";
   const profileIncomplete = isProfileIncomplete(profileInfo);
+  const provinceLabel =
+    copy.province || (locale === "ar" ? "المدينة / المحافظة" : "City / Province");
 
   useEffect(() => {
     let mounted = true;
     let unsubscribe: (() => void) | undefined;
 
     async function loadUser() {
-      const supabase = getSupabaseBrowserClient();
-      const { data: userData } = await supabase.auth.getUser();
+      const { user, profile } = await getCurrentUserProfile();
 
       if (!mounted) return;
 
-      const nextProfile = buildProfileInfo(userData.user);
+      const nextProfile = buildProfileInfo(user, profile);
       setProfileInfo(nextProfile);
       if (nextProfile) {
         setFormProfile({
           name: nextProfile.name,
           phone: nextProfile.phone,
           country: nextProfile.country,
+          city: nextProfile.city,
         });
         setEditOpen(isProfileIncomplete(nextProfile));
       }
@@ -494,18 +521,9 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
 
     try {
       const supabase = getSupabaseBrowserClient();
-      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data } = supabase.auth.onAuthStateChange(() => {
         if (!mounted) return;
-
-        const nextProfile = buildProfileInfo(session?.user ?? null);
-        setProfileInfo(nextProfile);
-        if (nextProfile) {
-          setFormProfile({
-            name: nextProfile.name,
-            phone: nextProfile.phone,
-            country: nextProfile.country,
-          });
-        }
+        void loadUser();
       });
 
       unsubscribe = () => data.subscription.unsubscribe();
@@ -516,6 +534,33 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
     return () => {
       mounted = false;
       unsubscribe?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadUpdatedProfile() {
+      const { user, profile } = await getCurrentUserProfile();
+      if (!mounted) return;
+
+      const nextProfile = buildProfileInfo(user, profile);
+      setProfileInfo(nextProfile);
+      if (nextProfile) {
+        setFormProfile({
+          name: nextProfile.name,
+          phone: nextProfile.phone,
+          country: nextProfile.country,
+          city: nextProfile.city,
+        });
+      }
+    }
+
+    window.addEventListener(PROFILE_UPDATED_EVENT, loadUpdatedProfile);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener(PROFILE_UPDATED_EVENT, loadUpdatedProfile);
     };
   }, []);
 
@@ -547,6 +592,7 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
       name: formProfile.name.trim(),
       phone: formProfile.phone.trim(),
       country: formProfile.country.trim(),
+      city: formProfile.city.trim(),
     };
 
     setSaving(true);
@@ -555,20 +601,27 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
     try {
       cacheProfile(profileInfo.userId, nextProfile);
 
-      const supabase = getSupabaseBrowserClient();
-      const { data, error } = await supabase.auth.updateUser({
-        data: {
-          full_name: nextProfile.name,
-          name: nextProfile.name,
-          phone: nextProfile.phone,
-          country: nextProfile.country,
-        },
+      const { profile } = await updateCurrentUserProfile({
+        full_name: nextProfile.name,
+        phone: nextProfile.phone,
+        country: nextProfile.country,
+        city: nextProfile.city,
       });
 
-      if (error) throw error;
-
       setProfileInfo(
-        buildProfileInfo(data.user) ?? {
+        buildProfileInfo(
+          {
+            id: profileInfo.userId,
+            email: profileInfo.email,
+            user_metadata: {
+              full_name: nextProfile.name,
+              phone: nextProfile.phone,
+              country: nextProfile.country,
+              city: nextProfile.city,
+            },
+          },
+          profile,
+        ) ?? {
           ...profileInfo,
           ...nextProfile,
         },
@@ -660,6 +713,11 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
                     label={copy.country}
                     value={profileInfo?.country || copy.unknown}
                   />
+                  <ProfileLine
+                    icon={<MapPin className="h-3.5 w-3.5" />}
+                    label={provinceLabel}
+                    value={profileInfo?.city || copy.unknown}
+                  />
                 </div>
 
                 {profileIncomplete || saveMessage ? (
@@ -716,6 +774,14 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
                       setFormProfile((current) => ({ ...current, country: value }))
                     }
                     autoComplete="country-name"
+                  />
+                  <ProfileInput
+                    label={provinceLabel}
+                    value={formProfile.city}
+                    onChange={(value) =>
+                      setFormProfile((current) => ({ ...current, city: value }))
+                    }
+                    autoComplete="address-level2"
                   />
 
                   <div className="mt-2 flex gap-2">
@@ -939,6 +1005,7 @@ function ProfileInput({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         autoComplete={autoComplete}
+        required
         className="h-9 w-full rounded-[11px] border border-[#d2b98f] bg-[#fffaf0] px-3 text-[12px] font-medium text-[#241913] outline-none transition focus:border-[#b88a3d] focus:ring-2 focus:ring-[#b88a3d]/18"
       />
     </label>

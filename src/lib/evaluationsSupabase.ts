@@ -1,6 +1,7 @@
 "use client";
 
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
+import { getCurrentUserProfile } from "@/lib/profilesSupabase";
 import type { ArchiveItem } from "@/components/antique-ai/archiveStore";
 import type { AnalysisResult, Locale } from "@/components/antique-ai/types";
 
@@ -27,6 +28,10 @@ type EvaluationRow = {
   user_id: string | null;
   user_email: string | null;
   user_name: string | null;
+  user_phone: string | null;
+  user_country: string | null;
+  user_city: string | null;
+  user_province: string | null;
   title: string | null;
   locale: string | null;
   item_type: string | null;
@@ -135,7 +140,7 @@ export async function loadEvaluationArchiveItemsFromSupabase() {
     const { data, error } = await (supabase as unknown as SupabaseTableClient)
       .from("evaluations")
       .select(
-        "id,user_id,user_email,user_name,title,locale,item_type,image_url,cloudinary_public_id,analysis_result,created_at,updated_at",
+        "id,user_id,user_email,user_name,user_phone,user_country,user_city,user_province,title,locale,item_type,image_url,cloudinary_public_id,analysis_result,created_at,updated_at",
       )
       .eq("user_id", userData.user.id)
       .order("created_at", { ascending: false })
@@ -160,6 +165,7 @@ export async function saveEvaluationToSupabase({
     const supabase = getSupabaseBrowserClient();
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
+    const { profile } = await getCurrentUserProfile();
     const metadata = user?.user_metadata ?? {};
     const userName = readMetadataText(metadata, [
       "full_name",
@@ -175,13 +181,23 @@ export async function saveEvaluationToSupabase({
       ...archiveItem.result,
       userNote: archiveItem.prompt || "",
       cloudinaryPublicId: finalCloudinaryPublicId || undefined,
+      userProfile: {
+        phone: profile?.phone ?? null,
+        country: profile?.country ?? null,
+        city: profile?.city ?? null,
+        province: profile?.province ?? null,
+      },
     };
 
     const payload = {
       id: archiveItem.id,
       user_id: user?.id ?? null,
-      user_email: user?.email ?? null,
-      user_name: userName || null,
+      user_email: profile?.email ?? user?.email ?? null,
+      user_name: profile?.full_name || userName || null,
+      user_phone: profile?.phone ?? null,
+      user_country: profile?.country ?? null,
+      user_city: profile?.city ?? null,
+      user_province: profile?.province ?? null,
       title: archiveItem.title || result.title || null,
       locale,
       item_type: result.itemType || result.lookup || null,

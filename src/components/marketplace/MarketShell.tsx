@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Gem, LayoutDashboard, Plus, ScrollText, ShoppingBag, Archive } from "lucide-react";
+import ProfileCompletionGate from "@/components/antique-ai/ProfileCompletionGate";
 import { collectionCopy } from "@/lib/collectionI18n";
 import {
   getMarketplaceDirection,
@@ -35,17 +36,18 @@ export default function MarketShell({
   ];
 
   return (
-    <main dir={getMarketplaceDirection(locale)} className="min-h-dvh bg-[#130d0a] text-[#fff4e2]">
-      <div className="min-h-dvh bg-[radial-gradient(circle_at_top_left,rgba(35,91,74,0.22),transparent_34%),linear-gradient(145deg,rgba(88,29,22,0.42),rgba(19,13,10,0.96)_46%,rgba(8,8,11,1))]">
-        <header className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 pb-6 pt-5 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <Link
-              href="/"
-              className="inline-flex w-fit items-center gap-2 rounded-full border border-[#d2b98f]/28 bg-[#fff4e2]/8 px-3 py-2 text-sm text-[#f8ead6] transition hover:border-[#d2b98f]/55 hover:bg-[#fff4e2]/12"
-            >
-              <Gem className="h-4 w-4 text-[#d7ae61]" />
-              KISHIB
-            </Link>
+    <ProfileCompletionGate locale={locale}>
+      <main dir={getMarketplaceDirection(locale)} className="min-h-dvh bg-[#130d0a] text-[#fff4e2]">
+        <div className="min-h-dvh bg-[radial-gradient(circle_at_top_left,rgba(35,91,74,0.22),transparent_34%),linear-gradient(145deg,rgba(88,29,22,0.42),rgba(19,13,10,0.96)_46%,rgba(8,8,11,1))]">
+          <header className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 pb-6 pt-5 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <Link
+                href="/"
+                className="inline-flex w-fit items-center gap-2 rounded-full border border-[#d2b98f]/28 bg-[#fff4e2]/8 px-3 py-2 text-sm text-[#f8ead6] transition hover:border-[#d2b98f]/55 hover:bg-[#fff4e2]/12"
+              >
+                <Gem className="h-4 w-4 text-[#d7ae61]" />
+                KISHIB
+              </Link>
 
             <nav className="flex gap-2 overflow-x-auto rounded-full border border-[#d2b98f]/16 bg-black/18 p-1">
               {links.map((link) => {
@@ -81,10 +83,11 @@ export default function MarketShell({
           </section>
         </header>
 
-        <div className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 lg:px-8">
-          {children}
+          <div className="mx-auto w-full max-w-6xl px-4 pb-12 sm:px-6 lg:px-8">
+            {children}
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </ProfileCompletionGate>
   );
 }
