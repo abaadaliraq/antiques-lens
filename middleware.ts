@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const TEMP_ACCESS_COOKIE = "kishib_temp_access";
-const TEMP_ACCESS_VALUE = "granted";
+const TEMP_ACCESS_VALUE = "preview_v2";
 const PASSWORD_GATE_PATH = "/private-preview";
 
 const PUBLIC_PREFIXES = [

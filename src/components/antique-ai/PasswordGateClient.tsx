@@ -1,12 +1,12 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LockKeyhole, ShieldCheck } from "lucide-react";
 
 const TEMP_ACCESS_PASSWORD = "202020";
 const TEMP_ACCESS_KEY = "kishib_temp_access";
-const TEMP_ACCESS_VALUE = "granted";
+const TEMP_ACCESS_VALUE = "preview_v2";
 const ACCESS_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
 function getSafeNextPath(value: string | null) {
@@ -52,12 +52,6 @@ export default function PasswordGateClient() {
     document.cookie = `${TEMP_ACCESS_KEY}=${TEMP_ACCESS_VALUE}; Max-Age=${ACCESS_MAX_AGE_SECONDS}; Path=/; SameSite=Lax`;
     router.replace(nextPath);
   }
-
-  useEffect(() => {
-    if (window.localStorage.getItem(TEMP_ACCESS_KEY) === TEMP_ACCESS_VALUE) {
-      grantTemporaryAccess();
-    }
-  }, []);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
