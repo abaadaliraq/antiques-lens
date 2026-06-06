@@ -2,6 +2,7 @@ export type ArchiveItem = {
   id: string;
   title: string;
   prompt?: string;
+  locale?: string;
   imagePreview?: string;
   imagePreviews?: string[];
   imagePreviewRef?: string;
@@ -13,6 +14,7 @@ export type ArchiveItem = {
   createdAt: string;
   result: any;
   similarImages?: any[];
+  cloudinaryPublicId?: string;
 };
 
 export const ARCHIVE_STORAGE_KEY = "antiques-lens:history-v2";
@@ -416,6 +418,7 @@ function cleanArchiveItem(item: ArchiveItem): ArchiveItem {
     id: item.id || createArchiveId(),
     title: repairedTitle || "Untitled item",
     prompt: repairedPrompt,
+    locale: item.locale,
     imagePreview,
     imagePreviews: cleanImagePreviews,
     imagePreviewRef,
@@ -427,6 +430,7 @@ function cleanArchiveItem(item: ArchiveItem): ArchiveItem {
     createdAt: item.createdAt || new Date().toISOString(),
     result: archiveResult,
     similarImages,
+    cloudinaryPublicId: item.cloudinaryPublicId || item.result?.cloudinaryPublicId,
   };
 }
 

@@ -5,7 +5,9 @@ import AuthScreen from "@/components/antique-ai/AuthScreen";
 import BottomBar from "@/components/antique-ai/BottomBar";
 import CookieBar from "@/components/antique-ai/CookieBar";
 import EvaluationComposer from "@/components/antique-ai/EvaluationComposer";
+import ExpertContactButton from "@/components/antique-ai/ExpertContactButton";
 import FollowUpEvaluationPanel from "@/components/antique-ai/FollowUpEvaluationPanel";
+import PlatformNewsTicker from "@/components/antique-ai/PlatformNewsTicker";
 import ResultView from "@/components/antique-ai/ResultView";
 import ThinkingMotion from "@/components/antique-ai/ThinkingMotion";
 import UserMenu from "@/components/antique-ai/UserMenu";
@@ -309,6 +311,7 @@ export default function AntiqueLensShell() {
   );
   const copy = homeCopy(lens.locale);
   const latestItems = lens.history;
+  const showHomeTicker = !lens.result && !lens.isAnalyzing;
 
   function handleDeleteArchiveItem(id: string) {
     const confirmed = window.confirm(
@@ -350,13 +353,28 @@ export default function AntiqueLensShell() {
       {!lens.result ? <AntiqueBackground /> : null}
 
       <div className="relative z-10 min-h-dvh">
-        <div className="fixed right-4 top-4 z-40 lg:right-8 lg:top-8">
+        {showHomeTicker ? (
+          <div className="fixed inset-x-0 top-0 z-50">
+            <PlatformNewsTicker locale={lens.locale} />
+          </div>
+        ) : null}
+        {showHomeTicker ? <ExpertContactButton locale={lens.locale} /> : null}
+
+        <div
+          className={[
+            "fixed right-4 z-40 lg:right-8",
+            showHomeTicker ? "top-12 lg:top-14" : "top-4 lg:top-8",
+          ].join(" ")}
+        >
           <UserMenu locale={lens.locale} setLocale={lens.changeLocale} />
         </div>
 
         <Link
           href="/marketplace"
-          className="fixed left-4 top-4 z-40 inline-flex h-10 items-center gap-2 rounded-full border border-[#d2b98f]/42 bg-[#11100f]/58 px-3 text-sm font-semibold text-[#fff4e2] shadow-[0_18px_45px_rgba(0,0,0,0.18)] backdrop-blur-2xl transition hover:bg-[#b88a3d] lg:left-8 lg:top-8"
+          className={[
+            "fixed left-4 z-40 inline-flex h-10 items-center gap-2 rounded-full border border-[#d2b98f]/42 bg-[#11100f]/58 px-3 text-sm font-semibold text-[#fff4e2] shadow-[0_18px_45px_rgba(0,0,0,0.18)] backdrop-blur-2xl transition hover:bg-[#b88a3d] lg:left-8",
+            showHomeTicker ? "top-12 lg:top-14" : "top-4 lg:top-8",
+          ].join(" ")}
         >
           <ShoppingBag className="h-4 w-4" />
           {getMarketplaceNavLabel(lens.locale)}
@@ -377,7 +395,12 @@ export default function AntiqueLensShell() {
           </div>
         )}
 
-        <section className="relative z-10 mx-auto min-h-dvh w-full max-w-md px-4 pb-24 pt-10 sm:max-w-xl md:px-8 lg:max-w-6xl lg:px-10 lg:pb-28 lg:pt-10 xl:px-14">
+        <section
+          className={[
+            "relative z-10 mx-auto min-h-dvh w-full max-w-md px-4 pb-24 sm:max-w-xl md:px-8 lg:max-w-6xl lg:px-10 lg:pb-28 xl:px-14",
+            showHomeTicker ? "pt-20 lg:pt-24" : "pt-10 lg:pt-10",
+          ].join(" ")}
+        >
           {!lens.result && !lens.isAnalyzing && (
             <div className="mx-auto flex w-full max-w-[520px] flex-col gap-5 lg:max-w-6xl lg:gap-10">
               <section className="mx-auto w-full lg:max-w-[720px]">
@@ -568,6 +591,11 @@ function LatestCollection({
                   </p>
                   <p className="mt-1 truncate text-[10px] text-[#735f4b] lg:text-[11px]">
                     {formatArchiveDate(item.createdAt, locale)}
+                  </p>
+                  <p className="mt-1 truncate text-[10px] text-[#735f4b] lg:text-[11px]">
+                    {[item.result?.itemType || item.result?.lookup, item.locale]
+                      .filter(Boolean)
+                      .join(" - ")}
                   </p>
                 </div>
               </button>

@@ -16,6 +16,7 @@ import {
   Phone,
   User,
   Users,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -33,6 +34,7 @@ type AuthScreenProps = {
 };
 
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
+const PASSWORD_RESET_SUCCESS_KEY = "kishib:password-reset-success";
 
 function cacheAuthSession() {
   window.localStorage.setItem(AUTH_CACHE_KEY, "true");
@@ -65,6 +67,10 @@ type AuthCopy = {
   cookies: string;
   checkEmail: string;
   configError: string;
+  resetTitle: string;
+  resetInstruction: string;
+  resetSubmit: string;
+  resetSuccess: string;
 };
 
 const PHONE_CODES = [
@@ -117,6 +123,10 @@ const COPY: Record<Locale, AuthCopy> = {
     cookies: "Cookies",
     checkEmail: "Account created. A confirmation link has been sent to your email.",
     configError: "Supabase setup is incomplete. Add the anon key to the environment file.",
+    resetTitle: "Reset password",
+    resetInstruction: "Enter your email and we will send a password reset link.",
+    resetSubmit: "Send reset link",
+    resetSuccess: "A password reset link has been sent to your email if the account exists.",
   },
   ar: {
     eyebrow: "وثّق • قيّم • احفظ",
@@ -149,6 +159,10 @@ const COPY: Record<Locale, AuthCopy> = {
     cookies: "الكوكيز",
     checkEmail: "تم إنشاء الحساب. سيصلك رابط التأكيد على بريدك الإلكتروني.",
     configError: "إعدادات Supabase غير مكتملة. أضف anon key في ملف البيئة.",
+    resetTitle: "استعادة كلمة المرور",
+    resetInstruction: "اكتب بريدك الإلكتروني وسنرسل لك رابط إعادة تعيين كلمة المرور.",
+    resetSubmit: "إرسال رابط الاستعادة",
+    resetSuccess: "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني إن كان الحساب موجوداً.",
   },
   fr: {
     eyebrow: "Authentifier • Évaluer • Préserver",
@@ -181,6 +195,10 @@ const COPY: Record<Locale, AuthCopy> = {
     cookies: "Cookies",
     checkEmail: "Compte créé. Un lien de confirmation a été envoyé à votre e-mail.",
     configError: "La configuration Supabase est incomplète. Ajoutez la clé anon au fichier d'environnement.",
+    resetTitle: "Réinitialiser le mot de passe",
+    resetInstruction: "Saisissez votre e-mail pour recevoir un lien de réinitialisation.",
+    resetSubmit: "Envoyer le lien",
+    resetSuccess: "Un lien de réinitialisation a été envoyé si le compte existe.",
   },
   hi: {
     eyebrow: "प्रमाणित • मूल्यांकन • सुरक्षित",
@@ -213,6 +231,10 @@ const COPY: Record<Locale, AuthCopy> = {
     cookies: "कुकीज़",
     checkEmail: "खाता बन गया. पुष्टि लिंक आपके ईमेल पर भेजा गया है.",
     configError: "Supabase setup अधूरा है. environment file में anon key जोड़ें.",
+    resetTitle: "पासवर्ड रीसेट",
+    resetInstruction: "रीसेट लिंक पाने के लिए अपना ईमेल लिखें.",
+    resetSubmit: "रीसेट लिंक भेजें",
+    resetSuccess: "यदि खाता मौजूद है तो रीसेट लिंक ईमेल पर भेजा गया है.",
   },
   fa: {
     eyebrow: "اعتبارسنجی • ارزیابی • نگهداری",
@@ -245,6 +267,10 @@ const COPY: Record<Locale, AuthCopy> = {
     cookies: "کوکی‌ها",
     checkEmail: "حساب ساخته شد. لینک تأیید به ایمیل شما ارسال شد.",
     configError: "تنظیمات Supabase کامل نیست. anon key را به فایل محیط اضافه کنید.",
+    resetTitle: "بازیابی رمز عبور",
+    resetInstruction: "ایمیل خود را وارد کنید تا لینک بازیابی ارسال شود.",
+    resetSubmit: "ارسال لینک بازیابی",
+    resetSuccess: "اگر حساب وجود داشته باشد، لینک بازیابی به ایمیل شما ارسال شد.",
   },
   tr: {
     eyebrow: "Doğrula • Değerlendir • Koru",
@@ -277,6 +303,10 @@ const COPY: Record<Locale, AuthCopy> = {
     cookies: "Çerezler",
     checkEmail: "Hesap oluşturuldu. Onay bağlantısı e-postanıza gönderildi.",
     configError: "Supabase kurulumu eksik. Ortam dosyasına anon key ekleyin.",
+    resetTitle: "Şifre sıfırla",
+    resetInstruction: "Sıfırlama bağlantısı için e-postanızı yazın.",
+    resetSubmit: "Sıfırlama bağlantısı gönder",
+    resetSuccess: "Hesap varsa sıfırlama bağlantısı e-postanıza gönderildi.",
   },
   ru: {
     eyebrow: "Проверить • Оценить • Сохранить",
@@ -309,6 +339,10 @@ const COPY: Record<Locale, AuthCopy> = {
     cookies: "Cookies",
     checkEmail: "Аккаунт создан. Ссылка подтверждения отправлена на вашу почту.",
     configError: "Настройка Supabase не завершена. Добавьте anon key в файл окружения.",
+    resetTitle: "Сброс пароля",
+    resetInstruction: "Введите e-mail, чтобы получить ссылку для сброса.",
+    resetSubmit: "Отправить ссылку",
+    resetSuccess: "Если аккаунт существует, ссылка для сброса отправлена на e-mail.",
   },
   ku: {
     eyebrow: "پشتڕاستکردن • هەڵسەنگاندن • پاراستن",
@@ -341,6 +375,10 @@ const COPY: Record<Locale, AuthCopy> = {
     cookies: "کوکیز",
     checkEmail: "هەژمار دروستکرا. بەستەری پشتڕاستکردنەوە بۆ ئیمەیڵەکەت نێردرا.",
     configError: "ڕێکخستنی Supabase تەواو نییە. anon key زیاد بکە بۆ فایلەکانی ژینگە.",
+    resetTitle: "گۆڕینی وشەی نهێنی",
+    resetInstruction: "ئیمەیڵەکەت بنووسە بۆ ناردنی بەستەری گۆڕین.",
+    resetSubmit: "ناردنی بەستەر",
+    resetSuccess: "ئەگەر هەژمارەکە هەبێت، بەستەری گۆڕین بۆ ئیمەیڵەکەت نێردرا.",
   },
 };
 
@@ -366,6 +404,11 @@ export default function AuthScreen({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [isResetSubmitting, setIsResetSubmitting] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
+  const [resetError, setResetError] = useState("");
   const [authMessage, setAuthMessage] = useState("");
   const [authError, setAuthError] = useState("");
   const copy = COPY[locale] || COPY.en;
@@ -373,6 +416,18 @@ export default function AuthScreen({
   const activeIntro = copy.intro[activeLine] || copy.intro[0];
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
+
+  useEffect(() => {
+    const resetSucceeded = window.sessionStorage.getItem(
+      PASSWORD_RESET_SUCCESS_KEY,
+    );
+
+    if (resetSucceeded) {
+      window.sessionStorage.removeItem(PASSWORD_RESET_SUCCESS_KEY);
+      setAuthMessage("تم حفظ كلمة المرور الجديدة بنجاح. يمكنك تسجيل الدخول الآن.");
+      setMode("login");
+    }
+  }, []);
 
   useEffect(() => {
   let mounted = true;
@@ -538,6 +593,37 @@ export default function AuthScreen({
     }
   }
 
+  async function handlePasswordResetSubmit() {
+    setResetError("");
+    setResetMessage("");
+    setIsResetSubmitting(true);
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        resetEmail.trim(),
+        {
+          redirectTo: `${window.location.origin}/reset-password`,
+        },
+      );
+
+      if (error) throw error;
+
+      setResetMessage(copy.resetSuccess);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.includes("NEXT_PUBLIC_SUPABASE")
+      ) {
+        setResetError(copy.configError);
+      } else {
+        setResetMessage(copy.resetSuccess);
+      }
+    } finally {
+      setIsResetSubmitting(false);
+    }
+  }
+
   return (
     <main
       dir={direction}
@@ -655,6 +741,12 @@ export default function AuthScreen({
               {mode === "login" && (
                 <button
                   type="button"
+                  onClick={() => {
+                    setResetEmail(email);
+                    setResetError("");
+                    setResetMessage("");
+                    setResetOpen(true);
+                  }}
                   className="block w-full text-end text-[11px] font-semibold text-[#986f2e]"
                 >
                   {copy.forgot}
@@ -747,6 +839,67 @@ export default function AuthScreen({
           </motion.aside>
         </section>
       </div>
+
+      {resetOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-[#241913]/24 px-4 py-6 backdrop-blur-[2px]">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handlePasswordResetSubmit();
+            }}
+            className="w-full max-w-[360px] rounded-[18px] border border-[#d2b98f] bg-[#fff4e2]/98 p-4 shadow-[0_24px_70px_rgba(62,39,22,0.2)]"
+          >
+            <div className="mb-3 flex items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-[15px] font-bold text-[#241913]">
+                  {copy.resetTitle}
+                </h3>
+                <p className="mt-1 text-[11.5px] leading-5 text-[#735f4b]">
+                  {copy.resetInstruction}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResetOpen(false)}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#d2b98f] text-[#735f4b] transition hover:bg-[#efe3cf]"
+                aria-label={copy.back}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <AuthInput
+              icon={<Mail />}
+              type="email"
+              value={resetEmail}
+              onChange={setResetEmail}
+              placeholder={copy.email}
+              autoComplete="email"
+              required
+            />
+
+            <button
+              type="submit"
+              disabled={isResetSubmitting}
+              className="mt-3 flex h-10 w-full items-center justify-center rounded-[13px] bg-[#b88a3d] text-[12px] font-bold text-[#fff4e2] transition hover:bg-[#986f2e] disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isResetSubmitting ? "..." : copy.resetSubmit}
+            </button>
+
+            {resetMessage ? (
+              <p className="mt-3 rounded-[13px] border border-[#b88a3d]/30 bg-[#fffaf0] px-3 py-2 text-[11.5px] leading-5 text-[#735f4b]">
+                {resetMessage}
+              </p>
+            ) : null}
+
+            {resetError ? (
+              <p className="mt-3 rounded-[13px] border border-[#8b3a2b]/30 bg-[#d9b59e]/70 px-3 py-2 text-[11.5px] leading-5 text-[#6d241d]">
+                {resetError}
+              </p>
+            ) : null}
+          </form>
+        </div>
+      ) : null}
     </main>
   );
 }

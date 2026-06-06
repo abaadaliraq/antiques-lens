@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { useFollowUpEvaluation } from "./useFollowUpEvaluation";
+import {
+  loadEvaluationArchiveItemsFromSupabase,
+  mergeEvaluationArchiveItems,
+  saveEvaluationToSupabase,
+} from "@/lib/evaluationsSupabase";
 
 import {
   addArchiveItemWithStatus,
@@ -532,10 +537,19 @@ setIsLoadingSimilar(false);
         setLocale(savedLocale);
       }
 
-      const archiveItems = await loadArchiveItemsWithImages();
+      const [localArchiveItems, supabaseArchiveItems] = await Promise.all([
+        loadArchiveItemsWithImages(),
+        loadEvaluationArchiveItemsFromSupabase(),
+      ]);
+      const archiveItems = mergeEvaluationArchiveItems(
+        localArchiveItems,
+        supabaseArchiveItems,
+      );
       console.info("[KISHIB archive] Initial archive load", {
         key: ARCHIVE_STORAGE_KEY,
         count: archiveItems.length,
+        localCount: localArchiveItems.length,
+        supabaseCount: supabaseArchiveItems.length,
       });
       setHistory(archiveItems);
     }, 0);
@@ -545,11 +559,20 @@ setIsLoadingSimilar(false);
 
   useEffect(() => {
     async function refreshArchiveFromStorage() {
-      const archiveItems = await loadArchiveItemsWithImages();
+      const [localArchiveItems, supabaseArchiveItems] = await Promise.all([
+        loadArchiveItemsWithImages(),
+        loadEvaluationArchiveItemsFromSupabase(),
+      ]);
+      const archiveItems = mergeEvaluationArchiveItems(
+        localArchiveItems,
+        supabaseArchiveItems,
+      );
 
       console.info("[KISHIB archive] Refreshed archive from storage", {
         key: ARCHIVE_STORAGE_KEY,
         count: archiveItems.length,
+        localCount: localArchiveItems.length,
+        supabaseCount: supabaseArchiveItems.length,
       });
       setHistory(archiveItems);
     }
@@ -952,6 +975,7 @@ async function handleAnalyze() {
     formData.append("locale", locale);
 
     let uploadedImageUrl = "";
+    let cloudinaryPublicId = "";
     let googleLensContext = "";
     let houseContext = "";
     let googleLensItems: SimilarImageResult[] = [];
@@ -974,6 +998,8 @@ async function handleAnalyze() {
       }
 
       uploadedImageUrl = uploadData.imageUrl;
+      cloudinaryPublicId =
+        typeof uploadData.publicId === "string" ? uploadData.publicId : "";
       formData.append("uploadedImageUrl", uploadedImageUrl);
     }
 
@@ -1273,6 +1299,7 @@ const archiveItem: ArchiveItem = {
     analyzedArchiveResult?.objectName ||
     "Untitled item",
   prompt: prompt || "",
+  locale,
   imagePreview: stableImagePreview,
   imagePreviews: stableImagePreviews,
   originalImage,
@@ -1280,6 +1307,8 @@ const archiveItem: ArchiveItem = {
   createdAt: new Date().toISOString(),
   result: {
     ...finalResult,
+    userNote: prompt || "",
+    cloudinaryPublicId: cloudinaryPublicId || undefined,
     uploadedImageUrl: uploadedImageUrl || finalResult.uploadedImageUrl,
     sourceImageUrl: uploadedImageUrl || finalResult.sourceImageUrl,
     imageUrl: uploadedImageUrl || finalResult.imageUrl,
@@ -1292,6 +1321,7 @@ const archiveItem: ArchiveItem = {
     visualMatches: finalSimilarImages,
   },
   similarImages: finalSimilarImages,
+  cloudinaryPublicId: cloudinaryPublicId || undefined,
 };
 
 console.info("[KISHIB archive] Prepared history item before save", {
@@ -1306,6 +1336,12 @@ console.info("[KISHIB archive] Prepared history item before save", {
 });
 
 await saveHistory(archiveItem);
+await saveEvaluationToSupabase({
+  archiveItem,
+  locale,
+  imageUrl: uploadedImageUrl || finalResult.imageUrl,
+  cloudinaryPublicId,
+});
 
 
   } catch (err) {

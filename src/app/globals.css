@@ -102,6 +102,137 @@ option {
   background: rgba(255, 244, 226, 0.08);
 }
 
+.kishib-news-ticker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 34px;
+  overflow: hidden;
+  border-block-end: 1px solid rgba(218, 188, 132, 0.22);
+  border-radius: 0;
+  background: rgba(86, 53, 29, 0.82);
+  color: #f7ead2;
+  backdrop-filter: blur(10px);
+}
+
+.kishib-news-label {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  height: 100%;
+  max-width: 38vw;
+  flex: 0 0 auto;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  padding-inline: 10px;
+  color: #f8dfaa;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.kishib-news-viewport {
+  min-width: 0;
+  flex: 1 1 auto;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  direction: ltr;
+}
+
+.kishib-news-track {
+  display: flex;
+  width: max-content;
+  align-items: center;
+  gap: 0;
+  white-space: nowrap;
+  will-change: transform;
+  direction: ltr;
+  animation: kishib-news-marquee-ltr 28s linear infinite;
+}
+
+.kishib-news-track[data-locale-direction="rtl"] {
+  animation-name: kishib-news-marquee-rtl;
+}
+
+.kishib-news-track[data-locale-direction="ltr"] {
+  animation-name: kishib-news-marquee-ltr;
+}
+
+.kishib-news-group {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  min-width: max-content;
+}
+
+.kishib-news-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-inline: 14px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #fff4dd;
+  white-space: nowrap;
+}
+
+.kishib-news-dot {
+  color: #e7c16a;
+  font-size: 10px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .kishib-news-ticker:hover .kishib-news-track {
+    animation-play-state: paused;
+  }
+}
+
+@media (max-width: 640px) {
+  .kishib-news-ticker {
+    height: 31px;
+    border-radius: 0;
+  }
+
+  .kishib-news-label {
+    max-width: 34vw;
+    padding-inline: 8px;
+    font-size: 10px;
+  }
+
+  .kishib-news-track {
+    animation-duration: 24s;
+  }
+
+  .kishib-news-item {
+    padding-inline: 10px;
+    font-size: 11px;
+  }
+}
+
+@keyframes kishib-news-marquee-ltr {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-25%);
+  }
+}
+
+@keyframes kishib-news-marquee-rtl {
+  from {
+    transform: translateX(-25%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
 .kishib-card {
   background: var(--kishib-card);
   border: 1px solid rgba(210, 185, 143, 0.72);

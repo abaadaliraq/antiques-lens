@@ -3,18 +3,22 @@
 import {
   BadgeCheck,
   Check,
+  ChevronDown,
   Cookie,
   Crown,
-  ExternalLink,
   FileText,
   Globe2,
+  LifeBuoy,
   LogOut,
+  Mail,
+  MapPin,
+  Phone,
   ShieldCheck,
-  UserRound,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import type { Locale } from "./types";
 
@@ -24,183 +28,295 @@ type UserMenuProps = {
 };
 
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
-const SUBSCRIPTIONS_URL = "";
+const PROFILE_CACHE_PREFIX = "kishib:user-profile:";
+const SUPPORT_EMAIL = "support@kishib.com";
 
-type ProfileInfo = {
+type EditableProfile = {
   name: string;
-  email: string;
+  phone: string;
   country: string;
-  city: string;
-  birthdate: string;
+};
+
+type ProfileInfo = EditableProfile & {
+  email: string;
   avatarUrl: string;
+  userId: string;
 };
 
 type MenuCopy = {
   profile: string;
   account: string;
+  name: string;
+  email: string;
+  phone: string;
   country: string;
-  province: string;
-  birthDate: string;
+  language: string;
   subscriptions: string;
-  packages: string;
+  support: string;
   cookies: string;
   terms: string;
   privacy: string;
   logout: string;
-  freePlan: string;
   comingSoon: string;
+  paymentDisabled: string;
   unknown: string;
   editProfile: string;
+  save: string;
+  cancel: string;
+  saved: string;
+  supportText: string;
+  close: string;
+  monthlyPlan: string;
+  annualPlan: string;
+  reportsPack: string;
+  price: string;
+  includes: string;
 };
 
 const COPY: Record<Locale, MenuCopy> = {
   ar: {
     profile: "الملف الشخصي",
     account: "الحساب",
+    name: "الاسم",
+    email: "الإيميل",
+    phone: "رقم الهاتف",
     country: "الدولة",
-    province: "المحافظة",
-    birthDate: "المواليد",
+    language: "اللغة",
     subscriptions: "الاشتراكات",
-    packages: "الباقات",
+    support: "الدعم",
     cookies: "الكوكيز",
     terms: "الشروط والأحكام",
     privacy: "سياسة الخصوصية",
     logout: "تسجيل خروج",
-    freePlan: "الخطة المجانية",
     comingSoon: "قريباً",
+    paymentDisabled: "الدفع غير مفعل حالياً",
     unknown: "غير مضاف",
     editProfile: "تعديل الملف الشخصي",
+    save: "حفظ",
+    cancel: "إلغاء",
+    saved: "تم الحفظ",
+    supportText: "للدعم والمساعدة تواصل معنا عبر البريد الإلكتروني",
+    close: "إغلاق",
+    monthlyPlan: "الاشتراك الشهري",
+    annualPlan: "الاشتراك السنوي",
+    reportsPack: "باقة التقارير",
+    price: "السعر",
+    includes: "يشمل",
   },
   en: {
     profile: "Profile",
     account: "Account",
+    name: "Name",
+    email: "Email",
+    phone: "Phone",
     country: "Country",
-    province: "Province",
-    birthDate: "Birth date",
+    language: "Language",
     subscriptions: "Subscriptions",
-    packages: "Plans",
+    support: "Support",
     cookies: "Cookies",
     terms: "Terms & Conditions",
     privacy: "Privacy Policy",
     logout: "Log out",
-    freePlan: "Free plan",
     comingSoon: "Coming soon",
+    paymentDisabled: "Payment is not enabled yet",
     unknown: "Not added",
     editProfile: "Edit profile",
+    save: "Save",
+    cancel: "Cancel",
+    saved: "Saved",
+    supportText: "For support and help, contact us by email",
+    close: "Close",
+    monthlyPlan: "Monthly subscription",
+    annualPlan: "Annual subscription",
+    reportsPack: "Reports package",
+    price: "Price",
+    includes: "Includes",
   },
   fr: {
     profile: "Profil",
     account: "Compte",
+    name: "Nom",
+    email: "E-mail",
+    phone: "Téléphone",
     country: "Pays",
-    province: "Province",
-    birthDate: "Date de naissance",
+    language: "Langue",
     subscriptions: "Abonnements",
-    packages: "Forfaits",
+    support: "Support",
     cookies: "Cookies",
     terms: "Conditions",
     privacy: "Confidentialité",
     logout: "Déconnexion",
-    freePlan: "Forfait gratuit",
     comingSoon: "Bientôt",
+    paymentDisabled: "Paiement non activé",
     unknown: "Non ajouté",
     editProfile: "Modifier le profil",
+    save: "Enregistrer",
+    cancel: "Annuler",
+    saved: "Enregistré",
+    supportText: "Pour obtenir de l'aide, contactez-nous par e-mail",
+    close: "Fermer",
+    monthlyPlan: "Abonnement mensuel",
+    annualPlan: "Abonnement annuel",
+    reportsPack: "Pack de rapports",
+    price: "Prix",
+    includes: "Comprend",
   },
   hi: {
     profile: "प्रोफ़ाइल",
     account: "खाता",
+    name: "नाम",
+    email: "ईमेल",
+    phone: "फ़ोन",
     country: "देश",
-    province: "प्रदेश",
-    birthDate: "जन्म तारीख",
+    language: "भाषा",
     subscriptions: "सदस्यता",
-    packages: "पैकेज",
+    support: "Support",
     cookies: "कुकीज़",
     terms: "नियम और शर्तें",
     privacy: "गोपनीयता नीति",
     logout: "लॉग आउट",
-    freePlan: "मुफ़्त योजना",
     comingSoon: "जल्द",
+    paymentDisabled: "भुगतान अभी सक्रिय नहीं है",
     unknown: "जोड़ा नहीं गया",
     editProfile: "प्रोफ़ाइल संपादित करें",
+    save: "सहेजें",
+    cancel: "रद्द करें",
+    saved: "सहेजा गया",
+    supportText: "सहायता के लिए हमें ईमेल से संपर्क करें",
+    close: "बंद करें",
+    monthlyPlan: "मासिक सदस्यता",
+    annualPlan: "वार्षिक सदस्यता",
+    reportsPack: "रिपोर्ट पैकेज",
+    price: "मूल्य",
+    includes: "शामिल",
   },
   fa: {
     profile: "پروفایل",
     account: "حساب",
+    name: "نام",
+    email: "ایمیل",
+    phone: "شماره تلفن",
     country: "کشور",
-    province: "استان",
-    birthDate: "تاریخ تولد",
+    language: "زبان",
     subscriptions: "اشتراک‌ها",
-    packages: "بسته‌ها",
+    support: "پشتیبانی",
     cookies: "کوکی‌ها",
     terms: "شرایط و قوانین",
     privacy: "حریم خصوصی",
     logout: "خروج",
-    freePlan: "پلن رایگان",
     comingSoon: "به‌زودی",
+    paymentDisabled: "پرداخت فعلاً فعال نیست",
     unknown: "اضافه نشده",
     editProfile: "ویرایش پروفایل",
+    save: "ذخیره",
+    cancel: "لغو",
+    saved: "ذخیره شد",
+    supportText: "برای پشتیبانی و کمک از طریق ایمیل با ما تماس بگیرید",
+    close: "بستن",
+    monthlyPlan: "اشتراک ماهانه",
+    annualPlan: "اشتراک سالانه",
+    reportsPack: "بسته گزارش‌ها",
+    price: "قیمت",
+    includes: "شامل",
   },
   tr: {
     profile: "Profil",
     account: "Hesap",
+    name: "Ad",
+    email: "E-posta",
+    phone: "Telefon",
     country: "Ülke",
-    province: "İl",
-    birthDate: "Doğum tarihi",
+    language: "Dil",
     subscriptions: "Abonelikler",
-    packages: "Paketler",
+    support: "Destek",
     cookies: "Çerezler",
     terms: "Şartlar ve Koşullar",
     privacy: "Gizlilik Politikası",
     logout: "Çıkış yap",
-    freePlan: "Ücretsiz plan",
     comingSoon: "Yakında",
+    paymentDisabled: "Ödeme şu anda etkin değil",
     unknown: "Eklenmedi",
     editProfile: "Profili düzenle",
+    save: "Kaydet",
+    cancel: "İptal",
+    saved: "Kaydedildi",
+    supportText: "Destek ve yardım için bize e-posta ile ulaşın",
+    close: "Kapat",
+    monthlyPlan: "Aylık abonelik",
+    annualPlan: "Yıllık abonelik",
+    reportsPack: "Rapor paketi",
+    price: "Fiyat",
+    includes: "İçerir",
   },
   ru: {
     profile: "Профиль",
     account: "Аккаунт",
+    name: "Имя",
+    email: "Email",
+    phone: "Телефон",
     country: "Страна",
-    province: "Регион",
-    birthDate: "Дата рождения",
+    language: "Язык",
     subscriptions: "Подписки",
-    packages: "Пакеты",
+    support: "Поддержка",
     cookies: "Cookies",
     terms: "Условия",
     privacy: "Политика конфиденциальности",
     logout: "Выйти",
-    freePlan: "Бесплатный план",
     comingSoon: "Скоро",
+    paymentDisabled: "Оплата пока не включена",
     unknown: "Не добавлено",
     editProfile: "Редактировать профиль",
+    save: "Сохранить",
+    cancel: "Отмена",
+    saved: "Сохранено",
+    supportText: "Для поддержки и помощи свяжитесь с нами по электронной почте",
+    close: "Закрыть",
+    monthlyPlan: "Месячная подписка",
+    annualPlan: "Годовая подписка",
+    reportsPack: "Пакет отчетов",
+    price: "Цена",
+    includes: "Включает",
   },
   ku: {
     profile: "پرۆفایل",
     account: "هەژمار",
+    name: "ناو",
+    email: "ئیمەیل",
+    phone: "ژمارەی تەلەفۆن",
     country: "وڵات",
-    province: "پارێزگا",
-    birthDate: "لەدایکبوون",
+    language: "زمان",
     subscriptions: "بەشداربوونەکان",
-    packages: "پاکێجەکان",
+    support: "پاڵپشتی",
     cookies: "کوکیز",
     terms: "مەرج و ڕێساکان",
     privacy: "تایبەتمەندی",
     logout: "چوونەدەرەوە",
-    freePlan: "پلانی خۆڕایی",
     comingSoon: "بەم زووانە",
+    paymentDisabled: "پارەدان لە ئێستادا چالاک نییە",
     unknown: "زیاد نەکراوە",
     editProfile: "دەستکاری پرۆفایل",
+    save: "پاشەکەوت",
+    cancel: "هەڵوەشاندنەوە",
+    saved: "پاشەکەوت کرا",
+    supportText: "بۆ پاڵپشتی و یارمەتی لە ڕێگەی ئیمەیل پەیوەندیمان پێوە بکە",
+    close: "داخستن",
+    monthlyPlan: "بەشداربوونی مانگانە",
+    annualPlan: "بەشداربوونی ساڵانە",
+    reportsPack: "پاکێجی ڕاپۆرتەکان",
+    price: "نرخ",
+    includes: "لەخۆدەگرێت",
   },
 };
 
 const MENU_LANGUAGES: { code: Locale; label: string; short: string }[] = [
-  { code: "en", label: "English", short: "EN" },
   { code: "ar", label: "العربية", short: "AR" },
-  { code: "tr", label: "Türkçe", short: "TR" },
+  { code: "en", label: "English", short: "EN" },
   { code: "fa", label: "فارسی", short: "FA" },
+  { code: "tr", label: "Türkçe", short: "TR" },
   { code: "fr", label: "Français", short: "FR" },
   { code: "hi", label: "हिन्दी", short: "HI" },
-  { code: "ru", label: "Русский", short: "RU" },
   { code: "ku", label: "Kurdî", short: "KU" },
+  { code: "ru", label: "Русский", short: "RU" },
 ];
 
 function isRtl(locale: Locale) {
@@ -213,14 +329,11 @@ function getInitial(name?: string | null, email?: string | null) {
 }
 
 function getFallbackName(email?: string | null) {
-  if (!email) return "مستخدم كيشيب";
-  return email.split("@")[0] || "مستخدم كيشيب";
+  if (!email) return "KISHIB user";
+  return email.split("@")[0] || "KISHIB user";
 }
 
-function readMetadataText(
-  metadata: Record<string, unknown>,
-  keys: string[],
-) {
+function readMetadataText(metadata: Record<string, unknown>, keys: string[]) {
   for (const key of keys) {
     const value = metadata[key];
 
@@ -232,36 +345,68 @@ function readMetadataText(
   return "";
 }
 
+function readCachedProfile(userId: string): EditableProfile | null {
+  if (typeof window === "undefined" || !userId) return null;
+
+  try {
+    const raw = window.localStorage.getItem(`${PROFILE_CACHE_PREFIX}${userId}`);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as Partial<EditableProfile>;
+
+    return {
+      name: typeof parsed.name === "string" ? parsed.name : "",
+      phone: typeof parsed.phone === "string" ? parsed.phone : "",
+      country: typeof parsed.country === "string" ? parsed.country : "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function cacheProfile(userId: string, profile: EditableProfile) {
+  if (typeof window === "undefined" || !userId) return;
+  window.localStorage.setItem(
+    `${PROFILE_CACHE_PREFIX}${userId}`,
+    JSON.stringify(profile),
+  );
+}
+
 function buildProfileInfo(
   user: {
+    id?: string;
     email?: string | null;
     user_metadata?: Record<string, unknown> | null;
   } | null,
-  notAdded: string,
-): ProfileInfo {
-  const metadata = user?.user_metadata ?? {};
-  const email = user?.email || notAdded;
+): ProfileInfo | null {
+  if (!user) return null;
+
+  const metadata = user.user_metadata ?? {};
+  const userId = user.id || "";
+  const cached = readCachedProfile(userId);
+  const email = user.email || "";
+  const metadataName = readMetadataText(metadata, [
+    "full_name",
+    "name",
+    "display_name",
+  ]);
 
   return {
-    name:
-      readMetadataText(metadata, ["full_name", "name"]) ||
-      getFallbackName(user?.email),
+    userId,
+    name: cached?.name || metadataName || getFallbackName(email),
     email,
+    phone:
+      cached?.phone ||
+      readMetadataText(metadata, ["phone", "phone_number", "mobile"]),
     country:
-      readMetadataText(metadata, ["country", "country_name"]) || notAdded,
-    city:
-      readMetadataText(metadata, ["city", "governorate", "province"]) ||
-      notAdded,
-    birthdate:
-      readMetadataText(metadata, ["birthdate", "date_of_birth", "birth_date"]) ||
-      notAdded,
+      cached?.country ||
+      readMetadataText(metadata, ["country", "country_name"]),
     avatarUrl: readMetadataText(metadata, ["avatar_url", "picture", "photo_url"]),
   };
 }
 
-function formatBirthDate(value: string) {
-  if (!value) return value;
-  return /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : value;
+function isProfileIncomplete(profile: ProfileInfo | null) {
+  return !profile?.name?.trim() || !profile.phone.trim() || !profile.country.trim();
 }
 
 function Avatar({
@@ -299,15 +444,29 @@ function Avatar({
 
 export default function UserMenu({ locale, setLocale }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [plansOpen, setPlansOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
   const [profileInfo, setProfileInfo] = useState<ProfileInfo | null>(null);
+  const [formProfile, setFormProfile] = useState<EditableProfile>({
+    name: "",
+    phone: "",
+    country: "",
+  });
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const copy = COPY[locale];
   const rtl = isRtl(locale);
+  const activeLanguage =
+    MENU_LANGUAGES.find((item) => item.code === locale) ?? MENU_LANGUAGES[0];
 
-  const displayName = profileInfo?.name || getFallbackName(null);
+  const displayName = profileInfo?.name || getFallbackName(profileInfo?.email);
   const displayEmail = profileInfo?.email || copy.unknown;
   const avatarUrl = profileInfo?.avatarUrl || "";
+  const profileIncomplete = isProfileIncomplete(profileInfo);
 
   useEffect(() => {
     let mounted = true;
@@ -319,7 +478,16 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
 
       if (!mounted) return;
 
-      setProfileInfo(buildProfileInfo(userData.user, copy.unknown));
+      const nextProfile = buildProfileInfo(userData.user);
+      setProfileInfo(nextProfile);
+      if (nextProfile) {
+        setFormProfile({
+          name: nextProfile.name,
+          phone: nextProfile.phone,
+          country: nextProfile.country,
+        });
+        setEditOpen(isProfileIncomplete(nextProfile));
+      }
     }
 
     void loadUser();
@@ -328,7 +496,16 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
       const supabase = getSupabaseBrowserClient();
       const { data } = supabase.auth.onAuthStateChange((_event, session) => {
         if (!mounted) return;
-        setProfileInfo(buildProfileInfo(session?.user ?? null, copy.unknown));
+
+        const nextProfile = buildProfileInfo(session?.user ?? null);
+        setProfileInfo(nextProfile);
+        if (nextProfile) {
+          setFormProfile({
+            name: nextProfile.name,
+            phone: nextProfile.phone,
+            country: nextProfile.country,
+          });
+        }
       });
 
       unsubscribe = () => data.subscription.unsubscribe();
@@ -340,13 +517,14 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
       mounted = false;
       unsubscribe?.();
     };
-  }, [copy.unknown]);
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (!menuRef.current) return;
       if (!menuRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setLanguageOpen(false);
       }
     }
 
@@ -361,9 +539,57 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
     window.location.reload();
   }
 
-  function handleSubscriptionsClick() {
-    if (!SUBSCRIPTIONS_URL) return;
-    window.location.href = SUBSCRIPTIONS_URL;
+  async function handleProfileSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!profileInfo) return;
+
+    const nextProfile = {
+      name: formProfile.name.trim(),
+      phone: formProfile.phone.trim(),
+      country: formProfile.country.trim(),
+    };
+
+    setSaving(true);
+    setSaveMessage("");
+
+    try {
+      cacheProfile(profileInfo.userId, nextProfile);
+
+      const supabase = getSupabaseBrowserClient();
+      const { data, error } = await supabase.auth.updateUser({
+        data: {
+          full_name: nextProfile.name,
+          name: nextProfile.name,
+          phone: nextProfile.phone,
+          country: nextProfile.country,
+        },
+      });
+
+      if (error) throw error;
+
+      setProfileInfo(
+        buildProfileInfo(data.user) ?? {
+          ...profileInfo,
+          ...nextProfile,
+        },
+      );
+      setEditOpen(false);
+      setSaveMessage(copy.saved);
+    } catch {
+      setProfileInfo((current) =>
+        current ? { ...current, ...nextProfile } : current,
+      );
+      setEditOpen(false);
+      setSaveMessage(copy.saved);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function openPanel(panel: "support" | "plans") {
+    setLanguageOpen(false);
+    setSupportOpen(panel === "support");
+    setPlansOpen(panel === "plans");
   }
 
   return (
@@ -393,102 +619,329 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
 
           <div
             className={[
-              "fixed inset-x-3 bottom-3 z-[9999] h-[54dvh] min-h-[320px] max-h-[520px] overflow-hidden rounded-[22px] border border-[#d2b98f] bg-[#fff4e2]/96 shadow-[0_26px_82px_rgba(62,39,22,0.18)] backdrop-blur-2xl",
-              "md:inset-x-auto md:bottom-auto md:top-16 md:h-auto md:max-h-[calc(100dvh-5rem)] md:w-[340px] md:rounded-[1.35rem]",
+              "fixed inset-x-3 bottom-3 z-[9999] h-[78dvh] min-h-[360px] max-h-[620px] overflow-hidden rounded-[20px] border border-[#d2b98f] bg-[#fff4e2]/96 shadow-[0_26px_82px_rgba(62,39,22,0.18)] backdrop-blur-2xl",
+              "md:inset-x-auto md:bottom-auto md:top-16 md:h-auto md:max-h-[calc(100dvh-5rem)] md:w-[350px] md:rounded-[1.25rem]",
               rtl ? "md:left-4" : "md:right-4",
             ].join(" ")}
           >
             <div className="flex h-full flex-col overflow-y-auto p-3">
-            <div className="rounded-[18px] border border-[#d2b98f] bg-[#efe3cf]/70 p-3.5">
-              <div className="flex items-center gap-3">
-                <Avatar
-                  name={displayName}
-                  email={displayEmail}
-                  avatarUrl={avatarUrl}
-                  className="h-10 w-10 shrink-0 rounded-2xl text-sm"
-                />
+              <div className="rounded-[16px] border border-[#d2b98f] bg-[#efe3cf]/70 p-3">
+                <div className="flex items-center gap-3">
+                  <Avatar
+                    name={displayName}
+                    email={displayEmail}
+                    avatarUrl={avatarUrl}
+                    className="h-10 w-10 shrink-0 rounded-2xl text-sm"
+                  />
 
-                <div className="min-w-0">
-                  <p className="truncate text-[13px] font-semibold text-[#241913]">
-                    {displayName}
-                  </p>
-                  <p className="truncate text-[11px] text-[#735f4b]">
-                    {displayEmail || copy.account}
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-semibold text-[#241913]">
+                      {displayName}
+                    </p>
+                    <p className="truncate text-[11px] text-[#735f4b]">
+                      {displayEmail || copy.account}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="mt-2 rounded-[16px] border border-[#d2b98f] bg-[#fff4e2]/55 p-1.5">
-              <MenuButton
-                icon={<UserRound className="h-4 w-4" />}
-                label={copy.profile}
-                value={displayEmail}
-              />
-              <InfoRow label={copy.country} value={profileInfo?.country || copy.unknown} />
-              <InfoRow label={copy.province} value={profileInfo?.city || copy.unknown} />
-              <InfoRow
-                label={copy.birthDate}
-                value={formatBirthDate(profileInfo?.birthdate || copy.unknown)}
-              />
+                <div className="mt-3 grid gap-1.5">
+                  <ProfileLine
+                    icon={<Mail className="h-3.5 w-3.5" />}
+                    label={copy.email}
+                    value={displayEmail}
+                  />
+                  <ProfileLine
+                    icon={<Phone className="h-3.5 w-3.5" />}
+                    label={copy.phone}
+                    value={profileInfo?.phone || copy.unknown}
+                  />
+                  <ProfileLine
+                    icon={<MapPin className="h-3.5 w-3.5" />}
+                    label={copy.country}
+                    value={profileInfo?.country || copy.unknown}
+                  />
+                </div>
+
+                {profileIncomplete || saveMessage ? (
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditOpen((current) => !current)}
+                      className="h-8 rounded-[10px] border border-[#b88a3d]/35 bg-[#fff4e2]/70 px-3 text-[11px] font-semibold text-[#6d241d] transition hover:bg-[#fff4e2]"
+                    >
+                      {copy.editProfile}
+                    </button>
+                    {saveMessage ? (
+                      <span className="text-[10.5px] font-medium text-[#2f6d3a]">
+                        {saveMessage}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setEditOpen((current) => !current)}
+                    className="mt-2 h-8 rounded-[10px] px-2 text-[11px] font-semibold text-[#6d241d] transition hover:bg-[#d9b59e]/45"
+                  >
+                    {copy.editProfile}
+                  </button>
+                )}
+              </div>
+
+              {editOpen ? (
+                <form
+                  onSubmit={(event) => void handleProfileSave(event)}
+                  className="mt-2 rounded-[16px] border border-[#d2b98f] bg-[#fff4e2]/65 p-3"
+                >
+                  <ProfileInput
+                    label={copy.name}
+                    value={formProfile.name}
+                    onChange={(value) =>
+                      setFormProfile((current) => ({ ...current, name: value }))
+                    }
+                    autoComplete="name"
+                  />
+                  <ProfileInput
+                    label={copy.phone}
+                    value={formProfile.phone}
+                    onChange={(value) =>
+                      setFormProfile((current) => ({ ...current, phone: value }))
+                    }
+                    autoComplete="tel"
+                  />
+                  <ProfileInput
+                    label={copy.country}
+                    value={formProfile.country}
+                    onChange={(value) =>
+                      setFormProfile((current) => ({ ...current, country: value }))
+                    }
+                    autoComplete="country-name"
+                  />
+
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="h-9 flex-1 rounded-[11px] bg-[#6d241d] px-3 text-[11.5px] font-semibold text-[#fff4e2] transition hover:bg-[#7d2d23] disabled:opacity-60"
+                    >
+                      {saving ? `${copy.save}...` : copy.save}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditOpen(false)}
+                      className="h-9 flex-1 rounded-[11px] border border-[#d2b98f] px-3 text-[11.5px] font-semibold text-[#735f4b] transition hover:bg-[#efe3cf]"
+                    >
+                      {copy.cancel}
+                    </button>
+                  </div>
+                </form>
+              ) : null}
+
+              {setLocale ? (
+                <div className="relative mt-2 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/55 p-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setLanguageOpen((current) => !current)}
+                    className="flex h-9 w-full items-center gap-3 rounded-[11px] px-2.5 text-start transition hover:bg-[#d9b59e]/55"
+                    aria-expanded={languageOpen}
+                  >
+                    <span className="text-[#986f2e]">
+                      <Globe2 className="h-4 w-4" />
+                    </span>
+                    <span className="flex-1 text-[12px] font-medium text-[#241913]">
+                      {copy.language}
+                    </span>
+                    <span className="flex items-center gap-2 text-[10.5px] font-semibold text-[#735f4b]">
+                      {activeLanguage.label}
+                      <ChevronDown
+                        className={[
+                          "h-3.5 w-3.5 transition",
+                          languageOpen ? "rotate-180" : "",
+                        ].join(" ")}
+                      />
+                    </span>
+                  </button>
+
+                  {languageOpen ? (
+                    <div className="absolute inset-x-1.5 top-12 z-10 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2] p-1.5 shadow-[0_18px_48px_rgba(62,39,22,0.16)]">
+                      <div className="grid max-h-[232px] grid-cols-1 gap-1 overflow-y-auto">
+                        {MENU_LANGUAGES.map((item) => {
+                          const active = item.code === locale;
+
+                          return (
+                            <button
+                              key={item.code}
+                              type="button"
+                              onClick={() => {
+                                setLocale(item.code);
+                                setLanguageOpen(false);
+                              }}
+                              className={[
+                                "flex h-8 items-center gap-2 rounded-[10px] px-2 text-start text-[11px] transition",
+                                active
+                                  ? "bg-[#b88a3d] text-[#fff4e2]"
+                                  : "text-[#735f4b] hover:bg-[#d9b59e]/55 hover:text-[#241913]",
+                              ].join(" ")}
+                            >
+                              <span
+                                className={[
+                                  "grid h-5 w-7 shrink-0 place-items-center rounded-lg text-[9px] font-semibold",
+                                  active
+                                    ? "bg-[#fff4e2]/20 text-[#fff4e2]"
+                                    : "border border-[#d2b98f] text-[#735f4b]",
+                                ].join(" ")}
+                              >
+                                {item.short}
+                              </span>
+                              <span className="min-w-0 flex-1 truncate font-medium">
+                                {item.label}
+                              </span>
+                              {active ? <Check className="h-3.5 w-3.5" /> : null}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <div className="mt-2 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/55 p-1.5">
+                <MenuButton
+                  icon={<Crown className="h-4 w-4" />}
+                  label={copy.subscriptions}
+                  value={copy.paymentDisabled}
+                  onClick={() => openPanel("plans")}
+                />
+                <MenuButton
+                  icon={<LifeBuoy className="h-4 w-4" />}
+                  label={copy.support}
+                  value={SUPPORT_EMAIL}
+                  onClick={() => openPanel("support")}
+                />
+              </div>
+
+              <div className="mt-2 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/55 p-1.5">
+                <MenuLink
+                  href="/cookies"
+                  icon={<Cookie className="h-4 w-4" />}
+                  label={copy.cookies}
+                />
+                <MenuLink
+                  href="/terms"
+                  icon={<FileText className="h-4 w-4" />}
+                  label={copy.terms}
+                />
+                <MenuLink
+                  href="/privacy"
+                  icon={<ShieldCheck className="h-4 w-4" />}
+                  label={copy.privacy}
+                />
+              </div>
+
               <button
                 type="button"
-                disabled
-                title={copy.comingSoon}
-                className="mt-1 flex h-9 w-full cursor-not-allowed items-center justify-center rounded-[12px] border border-[#d2b98f] bg-[#efe3cf]/55 px-3 text-[11.5px] font-medium text-[#735f4b]/55"
+                onClick={() => void handleLogout()}
+                className="mt-2 flex h-10 w-full items-center gap-3 rounded-[12px] px-3 text-start text-[12px] font-medium text-[#6d241d] transition hover:bg-[#d9b59e]/55"
               >
-                {copy.editProfile}
+                <LogOut className="h-4 w-4 text-[#a35a44]" />
+                <span className="flex-1">{copy.logout}</span>
               </button>
             </div>
 
-            {setLocale ? (
-              <LanguageMenu
-                activeLocale={locale}
-                onChange={(nextLocale) => setLocale(nextLocale)}
-              />
+            {supportOpen ? (
+              <MenuModal title={copy.support} closeLabel={copy.close} onClose={() => setSupportOpen(false)}>
+                <p className="text-[12px] leading-5 text-[#735f4b]">
+                  {copy.supportText}
+                </p>
+                <a
+                  href={`mailto:${SUPPORT_EMAIL}`}
+                  className="mt-3 flex h-10 items-center justify-center rounded-[12px] border border-[#b88a3d]/35 bg-[#efe3cf]/75 text-[12px] font-semibold text-[#6d241d]"
+                >
+                  {SUPPORT_EMAIL}
+                </a>
+              </MenuModal>
             ) : null}
 
-            <div className="mt-2 rounded-[16px] border border-[#d2b98f] bg-[#fff4e2]/55 p-1.5">
-              <MenuButton
-                icon={<Crown className="h-4 w-4" />}
-                label={copy.subscriptions}
-                value={copy.comingSoon}
-                onClick={handleSubscriptionsClick}
-                trailing={<ExternalLink className="h-3.5 w-3.5 text-[#735f4b]/55" />}
-              />
-            </div>
-
-            <div className="mt-2 rounded-[16px] border border-[#d2b98f] bg-[#fff4e2]/55 p-1.5">
-              <MenuLink
-                href="/cookies"
-                icon={<Cookie className="h-4 w-4" />}
-                label={copy.cookies}
-              />
-              <MenuLink
-                href="/terms"
-                icon={<FileText className="h-4 w-4" />}
-                label={copy.terms}
-              />
-              <MenuLink
-                href="/privacy"
-                icon={<ShieldCheck className="h-4 w-4" />}
-                label={copy.privacy}
-              />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => void handleLogout()}
-              className="mt-2 flex h-10 w-full items-center gap-3 rounded-[12px] px-3 text-start text-[12px] font-medium text-[#6d241d] transition hover:bg-[#d9b59e]/55"
-            >
-              <LogOut className="h-4 w-4 text-[#a35a44]" />
-              <span className="flex-1">{copy.logout}</span>
-            </button>
-            </div>
+            {plansOpen ? (
+              <MenuModal title={copy.subscriptions} closeLabel={copy.close} onClose={() => setPlansOpen(false)}>
+                <div className="grid gap-2">
+                  <PlanCard
+                    title={copy.monthlyPlan}
+                    price="5$"
+                    copy={copy}
+                    features={["استخدام شهري", "إمكانية طباعة 5 تقارير"]}
+                  />
+                  <PlanCard
+                    title={copy.annualPlan}
+                    price="45$"
+                    copy={copy}
+                    features={["استخدام سنوي", "75 تقرير قابل للطباعة"]}
+                  />
+                  <PlanCard
+                    title={copy.reportsPack}
+                    price="20$"
+                    copy={copy}
+                    features={[
+                      "150 تقرير",
+                      "يمكن شراؤها بشكل منفصل عن الاشتراك",
+                    ]}
+                  />
+                </div>
+              </MenuModal>
+            ) : null}
           </div>
         </>
       ) : null}
     </div>
+  );
+}
+
+function ProfileLine({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex h-7 items-center gap-2 rounded-[10px] bg-[#fff4e2]/42 px-2">
+      <span className="text-[#986f2e]">{icon}</span>
+      <span className="w-16 shrink-0 text-[10.5px] font-medium text-[#735f4b]">
+        {label}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-[#241913]/78">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function ProfileInput({
+  label,
+  value,
+  onChange,
+  autoComplete,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  autoComplete: string;
+}) {
+  return (
+    <label className="mb-2 block">
+      <span className="mb-1 block text-[10.5px] font-semibold text-[#735f4b]">
+        {label}
+      </span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        autoComplete={autoComplete}
+        className="h-9 w-full rounded-[11px] border border-[#d2b98f] bg-[#fffaf0] px-3 text-[12px] font-medium text-[#241913] outline-none transition focus:border-[#b88a3d] focus:ring-2 focus:ring-[#b88a3d]/18"
+      />
+    </label>
   );
 }
 
@@ -497,13 +950,11 @@ function MenuButton({
   label,
   value,
   onClick,
-  trailing,
 }: {
   icon: ReactNode;
   label: string;
   value: string;
   onClick?: () => void;
-  trailing?: ReactNode;
 }) {
   return (
     <button
@@ -515,84 +966,94 @@ function MenuButton({
       <span className="flex-1 text-[12px] font-medium text-[#241913]">
         {label}
       </span>
-      <span className="flex max-w-[126px] items-center gap-1.5 truncate text-[10.5px] font-medium text-[#735f4b]">
-        <span className="truncate">{value}</span>
-        {trailing}
+      <span className="max-w-[132px] truncate text-[10.5px] font-medium text-[#735f4b]">
+        {value}
       </span>
     </button>
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function MenuModal({
+  title,
+  closeLabel,
+  onClose,
+  children,
+}: {
+  title: string;
+  closeLabel: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex h-8 items-center justify-between gap-3 rounded-xl px-2.5">
-      <span className="text-[11px] font-medium text-[#735f4b]">{label}</span>
-      <span className="max-w-[142px] truncate text-[11px] font-medium text-[#241913]/72">
-        {value}
-      </span>
+    <div className="absolute inset-0 z-20 bg-[#241913]/18 p-3 backdrop-blur-[2px]">
+      <div className="flex max-h-full flex-col rounded-[18px] border border-[#d2b98f] bg-[#fff4e2] p-3 shadow-[0_18px_60px_rgba(62,39,22,0.18)]">
+        <div className="mb-3 flex items-center gap-3">
+          <h3 className="min-w-0 flex-1 truncate text-[14px] font-bold text-[#241913]">
+            {title}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={closeLabel}
+            className="grid h-8 w-8 place-items-center rounded-full border border-[#d2b98f] text-[#735f4b] transition hover:bg-[#efe3cf]"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="min-h-0 overflow-y-auto">{children}</div>
+      </div>
     </div>
   );
 }
 
-function LanguageMenu({
-  activeLocale,
-  onChange,
+function PlanCard({
+  title,
+  price,
+  copy,
+  features,
 }: {
-  activeLocale: Locale;
-  onChange: (locale: Locale) => void;
+  title: string;
+  price: string;
+  copy: MenuCopy;
+  features: string[];
 }) {
   return (
-    <div className="mt-2 rounded-[16px] border border-[#d2b98f] bg-[#fff4e2]/55 p-2">
-      <div className="mb-2 flex items-center justify-between px-1">
-        <div className="flex items-center gap-2">
-          <span className="grid h-7 w-7 place-items-center rounded-[12px] bg-[#d9b59e]/55 text-[#986f2e]">
-            <Globe2 className="h-3.5 w-3.5" />
-          </span>
-          <div>
-            <p className="text-[11px] font-semibold text-[#241913]">Language</p>
-            <p className="text-[9.5px] text-[#735f4b]">Interface language</p>
-          </div>
+    <section className="rounded-[14px] border border-[#d2b98f] bg-[#fffaf0] p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h4 className="truncate text-[13px] font-bold text-[#241913]">
+            {title}
+          </h4>
+          <p className="mt-0.5 text-[11px] font-semibold text-[#986f2e]">
+            {copy.price}: {price}
+          </p>
         </div>
-        <span className="rounded-[10px] border border-[#d2b98f] bg-[#efe3cf] px-2 py-1 text-[10px] font-semibold text-[#735f4b]">
-          {activeLocale.toUpperCase()}
+        <span className="rounded-full bg-[#efe3cf] px-2 py-1 text-[10px] font-semibold text-[#6d241d]">
+          {copy.comingSoon}
         </span>
       </div>
-
-      <div className="grid grid-cols-2 gap-1">
-        {MENU_LANGUAGES.map((item) => {
-          const active = item.code === activeLocale;
-
-          return (
-            <button
-              key={item.code}
-              type="button"
-              onClick={() => onChange(item.code)}
-              className={[
-                "flex h-8 items-center gap-2 rounded-xl px-2 text-start text-[11px] transition",
-                active
-                  ? "bg-[#b88a3d] text-[#fff4e2]"
-                  : "text-[#735f4b] hover:bg-[#d9b59e]/55 hover:text-[#241913]",
-              ].join(" ")}
-            >
-              <span
-                className={[
-                  "grid h-5 w-6 shrink-0 place-items-center rounded-lg text-[9px] font-semibold",
-                  active
-                    ? "bg-[#fff4e2]/20 text-[#fff4e2]"
-                    : "border border-[#d2b98f] text-[#735f4b]",
-                ].join(" ")}
-              >
-                {item.short}
-              </span>
-              <span className="min-w-0 flex-1 truncate font-medium">
-                {item.label}
-              </span>
-              {active ? <Check className="h-3.5 w-3.5 shrink-0" /> : null}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+      <p className="mt-2 text-[10.5px] font-semibold text-[#735f4b]">
+        {copy.includes}
+      </p>
+      <ul className="mt-1 grid gap-1">
+        {features.map((feature) => (
+          <li
+            key={feature}
+            className="flex items-start gap-2 text-[11px] leading-4 text-[#241913]/78"
+          >
+            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#986f2e]" />
+            <span>{feature}</span>
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        disabled
+        className="mt-3 h-9 w-full cursor-not-allowed rounded-[11px] border border-[#d2b98f] bg-[#efe3cf]/65 text-[11.5px] font-semibold text-[#735f4b]"
+      >
+        {copy.paymentDisabled}
+      </button>
+    </section>
   );
 }
 
