@@ -97,24 +97,13 @@ export default function ExpertContactButton({ locale }: { locale: Locale }) {
         onClick={handleClick}
         title={copy.button}
         aria-label={copy.button}
-        className="fixed bottom-4 left-3 z-40 flex items-center gap-2 rounded-full border border-[#d2b98f]/55 bg-[#4f241b]/90 px-3 py-2 text-[#fff4e2] shadow-[0_18px_48px_rgba(36,25,19,0.24)] backdrop-blur-xl transition hover:border-[#dcc18a] hover:bg-[#6d241d] sm:bottom-[18px] sm:left-[18px]"
+        className="fixed bottom-4 left-3 z-40 grid h-12 w-12 place-items-center rounded-full border border-[#d2b98f]/45 bg-[#11100f]/50 text-[#fff4e2] shadow-[0_14px_34px_rgba(36,25,19,0.18)] backdrop-blur-2xl transition hover:border-[#dcc18a]/80 hover:bg-[#6d241d]/78 sm:bottom-[18px] sm:left-[18px] sm:h-[52px] sm:w-[52px]"
       >
-        <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#b88a3d] text-[#fff4e2]">
-          <BadgeCheck className="h-5 w-5" />
-          <span className="absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full border border-[#fff4e2] bg-[#241913]">
+        <span className="relative grid h-9 w-9 place-items-center rounded-full bg-[#b88a3d]/92 text-[#fff4e2] shadow-inner shadow-white/10">
+          <BadgeCheck className="h-5 w-5" aria-hidden="true" />
+          <span className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full border border-[#fff4e2]/80 bg-[#241913]">
             <LockKeyhole className="h-2.5 w-2.5" />
           </span>
-        </span>
-        <span className="hidden min-w-0 text-start sm:block">
-          <span className="block text-[12px] font-bold leading-4">
-            {copy.button}
-          </span>
-          <span className="mt-0.5 inline-flex rounded-full bg-[#fff4e2]/12 px-2 py-0.5 text-[9.5px] font-bold text-[#f8dfaa]">
-            {copy.badge}
-          </span>
-        </span>
-        <span className="sm:hidden rounded-full bg-[#fff4e2]/12 px-2 py-0.5 text-[10px] font-bold text-[#f8dfaa]">
-          {copy.badge}
         </span>
       </button>
 

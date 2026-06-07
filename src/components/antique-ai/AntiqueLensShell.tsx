@@ -19,7 +19,7 @@ import {
   type UserProfile,
 } from "@/lib/profilesSupabase";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
-import { ShoppingBag, Trash2 } from "lucide-react";
+import { Coins, ShoppingBag, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatArchiveDate, type ArchiveItem } from "./archiveStore";
@@ -202,6 +202,21 @@ function homeCopy(locale: Locale) {
   } satisfies Record<Locale, Record<string, string>>;
 
   return text[locale] || text.en;
+}
+
+function getMetalPricesNavLabel(locale: Locale) {
+  const labels: Record<Locale, string> = {
+    ar: "بورصة المعادن",
+    en: "Metal Prices",
+    fr: "Prix des métaux",
+    hi: "Metal Prices",
+    fa: "قیمت فلزات",
+    tr: "Metal Fiyatları",
+    ru: "Цены на металлы",
+    ku: "نرخی کانزاکان",
+  };
+
+  return labels[locale] ?? labels.en;
 }
 
 export default function AntiqueLensShell() {
@@ -437,16 +452,32 @@ export default function AntiqueLensShell() {
           <UserMenu locale={lens.locale} setLocale={lens.changeLocale} />
         </div>
 
-        <Link
-          href="/marketplace"
+        <div
           className={[
-            "fixed left-4 z-40 inline-flex h-10 items-center gap-2 rounded-full border border-[#d2b98f]/42 bg-[#11100f]/58 px-3 text-sm font-semibold text-[#fff4e2] shadow-[0_18px_45px_rgba(0,0,0,0.18)] backdrop-blur-2xl transition hover:bg-[#b88a3d] lg:left-8",
-            showHomeTicker ? "top-12 lg:top-14" : "top-4 lg:top-8",
+            "fixed left-3 z-40 flex max-w-[calc(100vw-7.25rem)] items-center gap-0.5 rounded-full border border-[#d2b98f]/20 bg-[#11100f]/28 p-0.5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] backdrop-blur-2xl lg:left-8 lg:gap-1 lg:p-1",
+            showHomeTicker ? "top-[38px] lg:top-14" : "top-3 lg:top-8",
           ].join(" ")}
         >
-          <ShoppingBag className="h-4 w-4" />
-          {getMarketplaceNavLabel(lens.locale)}
-        </Link>
+          <Link
+            href="/marketplace"
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-[#fff4e2]/92 transition hover:bg-[#fff4e2]/10 sm:px-2.5 sm:text-xs lg:h-9 lg:gap-1.5 lg:px-3 lg:text-sm"
+          >
+            <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#fff4e2]/10 text-[#dcc18a] lg:h-6 lg:w-6">
+              <ShoppingBag className="h-3 w-3 lg:h-3.5 lg:w-3.5" />
+            </span>
+            {getMarketplaceNavLabel(lens.locale)}
+          </Link>
+
+          <Link
+            href="/metal-prices"
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-[#fff4e2]/92 transition hover:bg-[#fff4e2]/10 sm:px-2.5 sm:text-xs lg:h-9 lg:gap-1.5 lg:px-3 lg:text-sm"
+          >
+            <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#fff4e2]/10 text-[#dcc18a] lg:h-6 lg:w-6">
+              <Coins className="h-3 w-3 lg:h-3.5 lg:w-3.5" />
+            </span>
+            {getMetalPricesNavLabel(lens.locale)}
+          </Link>
+        </div>
 
         {lens.isTranslatingResult && (
           <div className="fixed inset-x-0 top-20 z-50 mx-auto flex w-fit items-center gap-3 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/92 px-5 py-3 text-[12px] font-medium text-[#735f4b] shadow-[0_16px_38px_rgba(62,39,22,0.12)] backdrop-blur-2xl">
