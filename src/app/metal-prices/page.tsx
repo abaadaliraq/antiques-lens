@@ -16,6 +16,7 @@ type MetalPrice = {
   symbol: "XAU" | "XAG" | "XCU" | "XPT";
   name: string;
   priceUsdPerOunce: number;
+  priceUsdPerGram: number;
   updatedAt: string;
   changeUsdPerOunce?: number;
   changePercent?: number;
@@ -186,6 +187,23 @@ const metalNames = {
   ku: { gold: "زێڕ", silver: "زیو", copper: "مس", platinum: "پلاتینیۆم" },
 } satisfies Record<Locale, Record<MetalKey, string>>;
 
+function getPerGramLabel(locale: Locale) {
+  if (locale === "ar") return "per gram / لكل غرام";
+  if (locale === "fa") return "per gram / برای هر گرم";
+  if (locale === "ku") return "per gram / بۆ هەر گرام";
+  if (locale === "fr") return "per gramme";
+  if (locale === "tr") return "gram başına";
+  return "per gram";
+}
+
+function getIndicativeWarning(locale: Locale) {
+  if (locale === "ar") {
+    return "تعذر الاتصال بالمصدر الحي حالياً، لذلك تظهر أسعار تقديرية مؤقتة بدل إخفاء الأسعار.";
+  }
+
+  return "Live market data is temporarily unavailable, so indicative fallback prices are shown instead of hiding prices.";
+}
+
 export default function MetalPricesPage() {
   const locale = useMarketplaceLocale();
   const t = copy[locale] ?? copy.en;
@@ -301,7 +319,7 @@ export default function MetalPricesPage() {
                 {data?.warning ? (
                   <div className="mb-5 flex items-start gap-3 rounded-[8px] border border-[#b88a3d]/35 bg-[#fff4e2]/78 p-4 text-sm leading-6 text-[#735f4b]">
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#986f2e]" />
-                    <span>{t.error}</span>
+                    <span>{getIndicativeWarning(locale)}</span>
                   </div>
                 ) : null}
 
@@ -349,6 +367,10 @@ function MetalCard({
     minimumFractionDigits: price.priceUsdPerOunce < 1 ? 4 : 2,
     maximumFractionDigits: price.priceUsdPerOunce < 1 ? 4 : 2,
   });
+  const gramFormatter = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: price.priceUsdPerGram < 1 ? 4 : 2,
+    maximumFractionDigits: price.priceUsdPerGram < 1 ? 4 : 2,
+  });
   const dateFormatter = new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
@@ -368,12 +390,22 @@ function MetalCard({
       </div>
 
       <div className="mt-6">
-        <p className="text-3xl font-semibold text-[#241913]">
-          {formatter.format(price.priceUsdPerOunce)}
-        </p>
-        <p className="mt-1 text-sm font-semibold text-[#735f4b]">
-          {labels.usd} / {labels.perOunce}
-        </p>
+        <div className="rounded-[8px] bg-[#fff7e8]/75 p-3">
+          <p className="text-2xl font-semibold text-[#241913]">
+            {formatter.format(price.priceUsdPerOunce)}
+          </p>
+          <p className="mt-1 text-xs font-semibold text-[#735f4b]">
+            {labels.usd} / {labels.perOunce}
+          </p>
+        </div>
+        <div className="mt-2 rounded-[8px] border border-[#d2b98f]/42 bg-[#fff4e2]/55 p-3">
+          <p className="text-xl font-semibold text-[#241913]">
+            {gramFormatter.format(price.priceUsdPerGram)}
+          </p>
+          <p className="mt-1 text-xs font-semibold text-[#735f4b]">
+            {labels.usd} / {getPerGramLabel(locale)}
+          </p>
+        </div>
       </div>
 
       <dl className="mt-5 space-y-3 border-t border-[#d2b98f]/48 pt-4 text-sm">

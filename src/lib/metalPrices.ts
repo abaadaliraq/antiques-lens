@@ -8,6 +8,7 @@ export type DisplayMetalPrice = {
   symbol: Exclude<MetalSymbol, "XPD">;
   name: string;
   priceUsdPerOunce: number;
+  priceUsdPerGram: number;
   updatedAt: string;
   changeUsdPerOunce?: number;
   changePercent?: number;
@@ -179,6 +180,7 @@ function buildSpotPrices(
         symbol: metal.symbol,
         name: metal.name,
         priceUsdPerOunce: roundMoney(prices[metal.symbol]),
+        priceUsdPerGram: roundMoney(prices[metal.symbol] / TROY_OUNCE_GRAMS),
         updatedAt,
       },
     ]),
