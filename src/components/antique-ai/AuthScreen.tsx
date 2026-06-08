@@ -4,6 +4,7 @@ import {
   AnimatePresence,
   motion,
 } from "framer-motion";
+import { Capacitor } from "@capacitor/core";
 import {
   ArrowRight,
   CalendarDays,
@@ -35,6 +36,7 @@ type AuthScreenProps = {
 
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
 const PASSWORD_RESET_SUCCESS_KEY = "kishib:password-reset-success";
+const NATIVE_AUTH_CALLBACK_URL = "com.antiqueslens.app://auth/callback";
 
 function cacheAuthSession() {
   window.localStorage.setItem(AUTH_CACHE_KEY, "true");
@@ -578,13 +580,16 @@ export default function AuthScreen({
 
     try {
       const supabase = getSupabaseBrowserClient();
+      const redirectTo = Capacitor.isNativePlatform()
+        ? NATIVE_AUTH_CALLBACK_URL
+        : `${window.location.origin}/auth/callback`;
 
       window.localStorage.setItem("kishib:pending-oauth-locale", locale);
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: window.location.origin,
+          redirectTo,
           queryParams: {
             prompt: "select_account",
           },

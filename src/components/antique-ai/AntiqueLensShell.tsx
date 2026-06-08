@@ -1,5 +1,7 @@
 "use client";
 
+import { App } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 import AntiqueBackground from "@/components/antique-ai/AntiqueBackground";
 import AuthScreen from "@/components/antique-ai/AuthScreen";
 import BottomBar from "@/components/antique-ai/BottomBar";
@@ -21,6 +23,7 @@ import {
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { Coins, ShoppingBag, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { formatArchiveDate, type ArchiveItem } from "./archiveStore";
 import type { Locale, SimilarImageResult } from "./types";
@@ -40,6 +43,7 @@ const SUPPORTED_AUTH_LOCALES: Locale[] = [
 const PENDING_OAUTH_LOCALE_KEY = "kishib:pending-oauth-locale";
 const USER_LOCALE_STORAGE_KEY = "antiques-lens:locale";
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
+const NATIVE_AUTH_CALLBACK_URL = "com.antiqueslens.app://auth/callback";
 
 function getSessionLocale(session: unknown): Locale | null {
   const record =
@@ -220,6 +224,7 @@ function getMetalPricesNavLabel(locale: Locale) {
 }
 
 export default function AntiqueLensShell() {
+  const router = useRouter();
   const lens = useAntiqueLens();
   const [hasSession, setHasSession] = useState(false);
   const [authReady, setAuthReady] = useState(false);
@@ -340,6 +345,44 @@ export default function AntiqueLensShell() {
     setAuthReady(true);
     void refreshProfile();
   }
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    const subscription = App.addListener("appUrlOpen", async ({ url }) => {
+      if (!url?.startsWith(NATIVE_AUTH_CALLBACK_URL)) return;
+
+      try {
+        const parsedUrl = new URL(url);
+        const code = parsedUrl.searchParams.get("code");
+        const supabase = getSupabaseBrowserClient();
+
+        if (code) {
+          await supabase.auth.exchangeCodeForSession(code);
+        }
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const sessionIsActive = Boolean(session);
+
+        cacheAuthSession(sessionIsActive);
+        setHasSession(sessionIsActive);
+        setAuthReady(true);
+        if (sessionIsActive) {
+          void refreshProfile();
+        }
+        router.replace("/");
+      } catch (error) {
+        console.error("Failed to complete native auth callback", error);
+        setAuthReady(true);
+      }
+    });
+
+    return () => {
+      void subscription.then((listener) => listener.remove());
+    };
+  }, [router]);
 
   useEffect(() => {
     function handleProfileUpdated() {
