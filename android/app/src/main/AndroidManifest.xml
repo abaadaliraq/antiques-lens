@@ -27,7 +27,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
-                    android:scheme="com.antiqueslens.app"
+                    android:scheme="com.kishib.app"
                     android:host="auth"
                     android:pathPrefix="/callback" />
             </intent-filter>

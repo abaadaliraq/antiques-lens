@@ -37,7 +37,7 @@ type AuthScreenProps = {
 
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
 const PASSWORD_RESET_SUCCESS_KEY = "kishib:password-reset-success";
-const NATIVE_AUTH_CALLBACK_URL = "com.antiqueslens.app://auth/callback";
+const NATIVE_AUTH_CALLBACK_URL = "com.kishib.app://auth/callback";
 
 function isNativeAuthEnvironment() {
   if (Capacitor.isNativePlatform()) return true;
@@ -605,6 +605,8 @@ export default function AuthScreen({
         ? NATIVE_AUTH_CALLBACK_URL
         : `${window.location.origin}/auth/callback`;
 
+      console.log("Google OAuth redirectTo:", redirectTo);
+
       window.localStorage.setItem("kishib:pending-oauth-locale", locale);
 
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -621,6 +623,8 @@ export default function AuthScreen({
       if (error) throw error;
 
       if (!data.url) throw new Error(copy.configError);
+
+      console.log("Google OAuth authorize URL:", data.url);
 
       try {
         if (isNative) {

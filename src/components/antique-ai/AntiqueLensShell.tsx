@@ -44,7 +44,7 @@ const SUPPORTED_AUTH_LOCALES: Locale[] = [
 const PENDING_OAUTH_LOCALE_KEY = "kishib:pending-oauth-locale";
 const USER_LOCALE_STORAGE_KEY = "antiques-lens:locale";
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
-const NATIVE_AUTH_CALLBACK_URL = "com.antiqueslens.app://auth/callback";
+const NATIVE_AUTH_CALLBACK_URL = "com.kishib.app://auth/callback";
 
 function getSessionLocale(session: unknown): Locale | null {
   const record =
@@ -351,9 +351,13 @@ export default function AntiqueLensShell() {
     if (!Capacitor.isNativePlatform()) return;
 
     const subscription = App.addListener("appUrlOpen", async ({ url }) => {
+      console.log("Native appUrlOpen URL:", url);
+
       if (!url?.startsWith(NATIVE_AUTH_CALLBACK_URL)) return;
 
       try {
+        await Browser.close().catch(() => undefined);
+
         const parsedUrl = new URL(url);
         const code = parsedUrl.searchParams.get("code");
         const supabase = getSupabaseBrowserClient();
@@ -361,8 +365,6 @@ export default function AntiqueLensShell() {
         if (code) {
           await supabase.auth.exchangeCodeForSession(code);
         }
-
-        await Browser.close().catch(() => undefined);
 
         const {
           data: { session },
@@ -377,8 +379,9 @@ export default function AntiqueLensShell() {
         }
         router.replace("/");
       } catch (error) {
-        console.error("Failed to complete native auth callback", error);
+        console.error("Native auth callback failed:", error);
         setAuthReady(true);
+        router.replace("/");
       }
     });
 
