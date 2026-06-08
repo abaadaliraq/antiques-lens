@@ -4,6 +4,7 @@ import {
   AnimatePresence,
   motion,
 } from "framer-motion";
+import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import {
   ArrowRight,
@@ -37,6 +38,25 @@ type AuthScreenProps = {
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
 const PASSWORD_RESET_SUCCESS_KEY = "kishib:password-reset-success";
 const NATIVE_AUTH_CALLBACK_URL = "com.antiqueslens.app://auth/callback";
+
+function isNativeAuthEnvironment() {
+  if (Capacitor.isNativePlatform()) return true;
+  if (typeof window === "undefined") return false;
+
+  const capacitorGlobal = (
+    window as typeof window & {
+      Capacitor?: {
+        getPlatform?: () => string;
+        isNativePlatform?: () => boolean;
+      };
+    }
+  ).Capacitor;
+
+  if (capacitorGlobal?.isNativePlatform?.()) return true;
+  if (capacitorGlobal?.getPlatform?.() === "android") return true;
+
+  return /Android/i.test(navigator.userAgent) && /;\s*wv\)/i.test(navigator.userAgent);
+}
 
 function cacheAuthSession() {
   window.localStorage.setItem(AUTH_CACHE_KEY, "true");
@@ -580,16 +600,18 @@ export default function AuthScreen({
 
     try {
       const supabase = getSupabaseBrowserClient();
-      const redirectTo = Capacitor.isNativePlatform()
+      const isNative = isNativeAuthEnvironment();
+      const redirectTo = isNative
         ? NATIVE_AUTH_CALLBACK_URL
         : `${window.location.origin}/auth/callback`;
 
       window.localStorage.setItem("kishib:pending-oauth-locale", locale);
 
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo,
+          skipBrowserRedirect: isNative,
           queryParams: {
             prompt: "select_account",
           },
@@ -597,6 +619,12 @@ export default function AuthScreen({
       });
 
       if (error) throw error;
+
+      if (isNative) {
+        if (!data.url) throw new Error(copy.configError);
+
+        await Browser.open({ url: data.url });
+      }
     } catch (error) {
       const message =
         error instanceof Error && error.message.includes("NEXT_PUBLIC_SUPABASE")
