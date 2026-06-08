@@ -11,9 +11,9 @@
   "dependencies": {
     "@capacitor/android": "^8.4.0",
     "@capacitor/app": "^8.1.0",
-    "@capacitor/browser": "^8.0.3",
     "@capacitor/cli": "^8.4.0",
     "@capacitor/core": "^8.4.0",
+    "@capgo/capacitor-social-login": "^8.3.22",
     "@supabase/supabase-js": "^2.106.2",
     "cloudinary": "^2.10.0",
     "framer-motion": "^12.40.0",

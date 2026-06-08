@@ -4,7 +4,7 @@ import {
   AnimatePresence,
   motion,
 } from "framer-motion";
-import { Browser } from "@capacitor/browser";
+import { SocialLogin } from "@capgo/capacitor-social-login";
 import { Capacitor } from "@capacitor/core";
 import {
   ArrowRight,
@@ -38,9 +38,18 @@ type AuthScreenProps = {
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
 const PASSWORD_RESET_SUCCESS_KEY = "kishib:password-reset-success";
 const NATIVE_AUTH_CALLBACK_URL = "com.kishib.app://auth/callback";
+const GOOGLE_WEB_CLIENT_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+  "";
 
-function isNativeAuthEnvironment() {
-  if (Capacitor.isNativePlatform()) return true;
+let nativeGoogleInitialized = false;
+
+function isAndroidNativeAuthEnvironment() {
+  if (Capacitor.getPlatform() === "android" && Capacitor.isNativePlatform()) {
+    return true;
+  }
+
   if (typeof window === "undefined") return false;
 
   const capacitorGlobal = (
@@ -51,15 +60,34 @@ function isNativeAuthEnvironment() {
       };
     }
   ).Capacitor;
+  const platform = capacitorGlobal?.getPlatform?.();
 
-  if (capacitorGlobal?.isNativePlatform?.()) return true;
-  if (capacitorGlobal?.getPlatform?.() === "android") return true;
+  if (platform === "android" && capacitorGlobal?.isNativePlatform?.()) {
+    return true;
+  }
+  if (platform === "android") return true;
 
   return /Android/i.test(navigator.userAgent) && /;\s*wv\)/i.test(navigator.userAgent);
 }
 
 function cacheAuthSession() {
   window.localStorage.setItem(AUTH_CACHE_KEY, "true");
+}
+
+async function initializeNativeGoogleSignIn() {
+  if (nativeGoogleInitialized) return;
+
+  if (!GOOGLE_WEB_CLIENT_ID) {
+    throw new Error("Missing NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID.");
+  }
+
+  await SocialLogin.initialize({
+    google: {
+      webClientId: GOOGLE_WEB_CLIENT_ID,
+      mode: "online",
+    },
+  });
+  nativeGoogleInitialized = true;
 }
 
 type AuthCopy = {
@@ -600,20 +628,68 @@ export default function AuthScreen({
 
     try {
       const supabase = getSupabaseBrowserClient();
-      const isNative = isNativeAuthEnvironment();
-      const redirectTo = isNative
-        ? NATIVE_AUTH_CALLBACK_URL
-        : `${window.location.origin}/auth/callback`;
+      const platform = Capacitor.getPlatform();
+      const isNative = isAndroidNativeAuthEnvironment();
 
-      console.log("Google OAuth redirectTo:", redirectTo);
+      console.log("Google Login platform:", platform);
+      console.log("Google Login isNative:", isNative);
 
       window.localStorage.setItem("kishib:pending-oauth-locale", locale);
 
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      if (isNative) {
+        console.log("Entering native Google login");
+        await initializeNativeGoogleSignIn();
+
+        const googleLogin = await SocialLogin.login({
+          provider: "google",
+          options: {
+            scopes: ["email", "profile"],
+            filterByAuthorizedAccounts: false,
+          },
+        });
+        const idToken =
+          googleLogin.result.responseType === "online"
+            ? googleLogin.result.idToken
+            : null;
+
+        console.log("Google idToken exists:", Boolean(idToken));
+
+        if (!idToken) {
+          console.error("Native Google login did not return an idToken.");
+          throw new Error("No Google idToken returned.");
+        }
+
+        const { data, error } = await supabase.auth.signInWithIdToken({
+          provider: "google",
+          token: idToken,
+        });
+
+        if (error) {
+          console.error("Supabase signInWithIdToken error:", error);
+          throw error;
+        }
+
+        if (!data.session) {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          if (!session) throw new Error(copy.configError);
+        }
+
+        console.log("Supabase signInWithIdToken success:", Boolean(data.session));
+        cacheAuthSession();
+        onAuthenticated();
+        return;
+      }
+
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      console.log("Entering web Google OAuth login");
+
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo,
-          skipBrowserRedirect: isNative,
           queryParams: {
             prompt: "select_account",
           },
@@ -621,21 +697,6 @@ export default function AuthScreen({
       });
 
       if (error) throw error;
-
-      if (!data.url) throw new Error(copy.configError);
-
-      console.log("Google OAuth authorize URL:", data.url);
-
-      try {
-        if (isNative) {
-          await Browser.open({ url: data.url });
-        } else {
-          window.location.href = data.url;
-        }
-      } catch (error) {
-        console.error("Browser.open failed, fallback to window.location", error);
-        window.location.href = data.url;
-      }
     } catch (error) {
       const message =
         error instanceof Error && error.message.includes("NEXT_PUBLIC_SUPABASE")

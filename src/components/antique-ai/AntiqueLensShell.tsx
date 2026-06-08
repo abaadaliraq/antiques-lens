@@ -1,7 +1,6 @@
 "use client";
 
 import { App } from "@capacitor/app";
-import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import AntiqueBackground from "@/components/antique-ai/AntiqueBackground";
 import AuthScreen from "@/components/antique-ai/AuthScreen";
@@ -356,8 +355,6 @@ export default function AntiqueLensShell() {
       if (!url?.startsWith(NATIVE_AUTH_CALLBACK_URL)) return;
 
       try {
-        await Browser.close().catch(() => undefined);
-
         const parsedUrl = new URL(url);
         const code = parsedUrl.searchParams.get("code");
         const supabase = getSupabaseBrowserClient();
