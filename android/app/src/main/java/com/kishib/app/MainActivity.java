@@ -1,5 +1,4 @@
-package com.antiqueslens.app;
-
+package com.kishib.app;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {}

@@ -527,8 +527,10 @@ export default function AuthScreen({
 
         if (error) throw error;
 
-        if (data.session) {
-          await supabase.auth.signOut();
+        if (data.session?.user) {
+          cacheAuthSession();
+          onAuthenticated();
+          return;
         }
 
         setAuthMessage(copy.checkEmail);
@@ -536,12 +538,22 @@ export default function AuthScreen({
         return;
       }
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
 
       if (error) throw error;
+
+      if (!data.session) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session) {
+          throw new Error(copy.configError);
+        }
+      }
 
       cacheAuthSession();
       onAuthenticated();
