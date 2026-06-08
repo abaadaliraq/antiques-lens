@@ -620,10 +620,17 @@ export default function AuthScreen({
 
       if (error) throw error;
 
-      if (isNative) {
-        if (!data.url) throw new Error(copy.configError);
+      if (!data.url) throw new Error(copy.configError);
 
-        await Browser.open({ url: data.url });
+      try {
+        if (isNative) {
+          await Browser.open({ url: data.url });
+        } else {
+          window.location.href = data.url;
+        }
+      } catch (error) {
+        console.error("Browser.open failed, fallback to window.location", error);
+        window.location.href = data.url;
       }
     } catch (error) {
       const message =
