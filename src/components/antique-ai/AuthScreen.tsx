@@ -92,6 +92,17 @@ function readJwtAudience(token: string) {
   }
 }
 
+function readNativeGoogleErrorCode(error: unknown) {
+  if (!error || typeof error !== "object") return null;
+
+  const errorRecord = error as Record<string, unknown>;
+  const code = errorRecord.code ?? errorRecord.statusCode ?? errorRecord.errorCode;
+
+  if (code === undefined || code === null) return null;
+
+  return String(code);
+}
+
 async function initializeNativeGoogleSignIn() {
   if (nativeGoogleInitialized) return;
 
@@ -707,10 +718,22 @@ export default function AuthScreen({
         } catch (nativeError) {
           const nativeErrorMessage =
             nativeError instanceof Error ? nativeError.message : String(nativeError);
+          const nativeErrorCode = readNativeGoogleErrorCode(nativeError);
 
           console.error("Native Google login raw error message:", nativeErrorMessage);
           throw new Error(
-            "Google native sign-in failed. Please check Android OAuth configuration.",
+            [
+              "Google native sign-in failed.",
+              `WEB prefix: ${GOOGLE_WEB_CLIENT_ID.slice(0, 14)}`,
+              `WEB suffix: ${GOOGLE_WEB_CLIENT_ID.slice(-35)}`,
+              `WEB valid: ${
+                GOOGLE_WEB_CLIENT_ID.endsWith("apps.googleusercontent.com")
+                  ? "yes"
+                  : "no"
+              }`,
+              `Native error: ${nativeErrorMessage}`,
+              `Native error code: ${nativeErrorCode ?? "unavailable"}`,
+            ].join("\n"),
           );
         }
       }
