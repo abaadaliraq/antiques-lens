@@ -38,10 +38,7 @@ type AuthScreenProps = {
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
 const PASSWORD_RESET_SUCCESS_KEY = "kishib:password-reset-success";
 const NATIVE_AUTH_CALLBACK_URL = "com.kishib.app://auth/callback";
-const GOOGLE_WEB_CLIENT_ID =
-  process.env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
-  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-  "";
+const GOOGLE_WEB_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
 
 let nativeGoogleInitialized = false;
 
@@ -72,6 +69,26 @@ function isAndroidNativeAuthEnvironment() {
 
 function cacheAuthSession() {
   window.localStorage.setItem(AUTH_CACHE_KEY, "true");
+}
+
+function readJwtAudience(token: string) {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+
+    const normalizedPayload = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const paddedPayload = normalizedPayload.padEnd(
+      normalizedPayload.length + ((4 - (normalizedPayload.length % 4)) % 4),
+      "=",
+    );
+    const decodedPayload = JSON.parse(window.atob(paddedPayload)) as {
+      aud?: string | string[];
+    };
+
+    return decodedPayload.aud ?? null;
+  } catch {
+    return null;
+  }
 }
 
 async function initializeNativeGoogleSignIn() {
@@ -638,6 +655,10 @@ export default function AuthScreen({
 
       if (isNative) {
         console.log("Entering native Google login");
+        console.log(
+          "NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID exists:",
+          GOOGLE_WEB_CLIENT_ID ? "yes" : "no",
+        );
         await initializeNativeGoogleSignIn();
 
         const googleLogin = await SocialLogin.login({
@@ -649,12 +670,14 @@ export default function AuthScreen({
             ? googleLogin.result.idToken
             : null;
 
-        console.log("Google idToken exists:", Boolean(idToken));
+        console.log("Google idToken exists:", idToken ? "yes" : "no");
 
         if (!idToken) {
           console.error("Native Google login did not return an idToken.");
           throw new Error("No Google idToken returned.");
         }
+
+        console.log("Google idToken aud:", readJwtAudience(idToken) ?? "unavailable");
 
         const { data, error } = await supabase.auth.signInWithIdToken({
           provider: "google",
@@ -662,7 +685,7 @@ export default function AuthScreen({
         });
 
         if (error) {
-          console.error("Supabase signInWithIdToken error:", error);
+          console.error("Supabase signInWithIdToken error message:", error.message);
           throw error;
         }
 
