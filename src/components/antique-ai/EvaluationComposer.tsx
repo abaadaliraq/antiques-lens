@@ -1,7 +1,8 @@
 "use client";
 
+import { Capacitor } from "@capacitor/core";
 import { Camera, Send, Sparkles, X } from "lucide-react";
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, MouseEvent } from "react";
 import { useState } from "react";
 import GemstoneFields, {
   buildGemstoneContext,
@@ -32,6 +33,7 @@ type Props = {
   imagePreview?: string | null;
   error: string;
   handleImageChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  handleTakePhoto?: () => void | Promise<void>;
   removeImage: () => void;
   removeImageAt?: (index: number) => void;
   handleAnalyze: () => void;
@@ -142,6 +144,7 @@ export default function EvaluationComposer({
   imagePreview = null,
   error,
   handleImageChange,
+  handleTakePhoto,
   removeImage,
   removeImageAt,
   handleAnalyze,
@@ -188,6 +191,24 @@ export default function EvaluationComposer({
     handleAnalyze();
   }
 
+  function handleUploadBoxClick(event: MouseEvent<HTMLLabelElement>) {
+    console.log("Upload button clicked");
+    console.log("Platform:", Capacitor.getPlatform());
+
+    if (
+      Capacitor.isNativePlatform() &&
+      Capacitor.getPlatform() === "android" &&
+      handleTakePhoto
+    ) {
+      event.preventDefault();
+      console.log("Using native CameraSource.Prompt");
+      void handleTakePhoto();
+      return;
+    }
+
+    console.log("Using web file input fallback");
+  }
+
   return (
     <section className="w-full" dir={dir}>
       {error && (
@@ -204,7 +225,10 @@ export default function EvaluationComposer({
             : "border-[rgba(34,211,238,0.18)] bg-[#07111F]/88 text-[#F8FAFC]",
         ].join(" ")}
       >
-        <label className="group relative flex min-h-[150px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[20px] border border-dashed border-[#d2b98f] bg-[#fff4e2]/72 px-5 py-5 text-center transition hover:border-[#b88a3d] hover:bg-[#f8edda]">
+        <label
+          onClick={handleUploadBoxClick}
+          className="group relative flex min-h-[150px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[20px] border border-dashed border-[#d2b98f] bg-[#fff4e2]/72 px-5 py-5 text-center transition hover:border-[#b88a3d] hover:bg-[#f8edda]"
+        >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(184,138,61,0.15),transparent_52%)] opacity-80" />
           <div className="relative grid h-14 w-14 place-items-center rounded-[16px] bg-[#e8d1ad] text-[#8b3a2b] ring-1 ring-[#b88a3d]/25">
             <Camera className="h-7 w-7" />

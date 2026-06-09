@@ -1,5 +1,11 @@
 ﻿"use client";
 
+import {
+  Camera,
+  CameraResultType,
+  CameraSource,
+} from "@capacitor/camera";
+import { Capacitor } from "@capacitor/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { useFollowUpEvaluation } from "./useFollowUpEvaluation";
@@ -76,6 +82,17 @@ function revokePreviewUrl(url: string | null) {
 
 function revokePreviewUrls(urls: string[]) {
   urls.forEach((url) => revokePreviewUrl(url));
+}
+
+async function cameraPhotoToFile(photoPath: string) {
+  const response = await fetch(photoPath);
+  const blob = await response.blob();
+  const type = blob.type || "image/jpeg";
+  const extension = type.split("/")[1] || "jpg";
+
+  return new File([blob], `kishib-camera-${Date.now()}.${extension}`, {
+    type,
+  });
 }
 
 function downloadShareImage(file: File) {
@@ -737,9 +754,7 @@ async function changeLocale(nextLocale: Locale) {
     pushAppHistoryState("follow-up");
   }
 
-  async function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
-    const incomingFiles = Array.from(event.target.files || []);
-
+  async function addImageFiles(incomingFiles: File[]) {
     if (!incomingFiles.length) return;
 
     const imageFiles = incomingFiles.filter((file) =>
@@ -748,7 +763,6 @@ async function changeLocale(nextLocale: Locale) {
 
     if (!imageFiles.length) {
       setError("Ø§Ù„Ù…Ù„ÙØ§Øª Ù„Ø§Ø²Ù… ØªÙƒÙˆÙ† ØµÙˆØ±.");
-      event.target.value = "";
       return;
     }
 
@@ -758,7 +772,6 @@ async function changeLocale(nextLocale: Locale) {
 
     if (tooLargeFile) {
       setError(`Ø¥Ø­Ø¯Ù‰ Ø§Ù„ØµÙˆØ± ÙƒØ¨ÙŠØ±Ø© Ø¬Ø¯Ø§Ù‹. Ø§Ø®ØªØ§Ø±ÙŠ ØµÙˆØ± Ø£Ù‚Ù„ Ù…Ù† ${MAX_IMAGE_SIZE_MB}MB.`);
-      event.target.value = "";
       return;
     }
 
@@ -783,8 +796,44 @@ async function changeLocale(nextLocale: Locale) {
     const assets = await createArchiveImageAssets(mergedFiles);
     setArchiveImagePreviews(assets.imagePreviews);
     setArchiveOriginalImages(assets.originalImages);
+  }
 
+  async function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
+    const incomingFiles = Array.from(event.target.files || []);
+
+    await addImageFiles(incomingFiles);
     event.target.value = "";
+  }
+
+  async function handleTakePhoto() {
+    try {
+      setError("");
+
+      const photo = await Camera.getPhoto({
+        source: CameraSource.Prompt,
+        resultType: CameraResultType.Uri,
+        quality: 85,
+        allowEditing: false,
+      });
+      const photoPath =
+        photo.webPath || (photo.path ? Capacitor.convertFileSrc(photo.path) : "");
+
+      if (!photoPath) {
+        setError("Unable to read the captured photo.");
+        return;
+      }
+
+      const file = await cameraPhotoToFile(photoPath);
+      await addImageFiles([file]);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to open camera.";
+
+      if (/cancel/i.test(message)) return;
+
+      console.error("Camera capture failed:", error);
+      setError(message);
+    }
   }
 
   function removeImage() {
@@ -1439,6 +1488,7 @@ error,
   changeLocale,
   resetEvaluation,
   handleImageChange,
+  handleTakePhoto,
   removeImage,
   removeImageAt,
   handleAnalyze,

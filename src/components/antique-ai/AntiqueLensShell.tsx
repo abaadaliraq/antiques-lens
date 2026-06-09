@@ -571,6 +571,7 @@ export default function AntiqueLensShell() {
                     error={lens.error}
                     locale={lens.locale}
                     handleImageChange={lens.handleImageChange}
+                    handleTakePhoto={lens.handleTakePhoto}
                     removeImage={lens.removeImage}
                     removeImageAt={lens.removeImageAt}
                     handleAnalyze={lens.handleAnalyze}
