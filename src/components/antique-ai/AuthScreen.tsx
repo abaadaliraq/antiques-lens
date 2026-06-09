@@ -642,10 +642,7 @@ export default function AuthScreen({
 
         const googleLogin = await SocialLogin.login({
           provider: "google",
-          options: {
-            scopes: ["email", "profile"],
-            filterByAuthorizedAccounts: false,
-          },
+          options: {},
         });
         const idToken =
           googleLogin.result.responseType === "online"
