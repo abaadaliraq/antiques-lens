@@ -654,53 +654,63 @@ export default function AuthScreen({
       window.localStorage.setItem("kishib:pending-oauth-locale", locale);
 
       if (isNative) {
-        console.log("Entering native Google login");
-        console.log(
-          "NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID exists:",
-          GOOGLE_WEB_CLIENT_ID ? "yes" : "no",
-        );
-        await initializeNativeGoogleSignIn();
+        try {
+          console.log("Trying native Google login");
+          console.log(
+            "NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID exists:",
+            GOOGLE_WEB_CLIENT_ID ? "yes" : "no",
+          );
+          await initializeNativeGoogleSignIn();
 
-        const googleLogin = await SocialLogin.login({
-          provider: "google",
-          options: {},
-        });
-        const idToken =
-          googleLogin.result.responseType === "online"
-            ? googleLogin.result.idToken
-            : null;
+          const googleLogin = await SocialLogin.login({
+            provider: "google",
+            options: {},
+          });
+          const idToken =
+            googleLogin.result.responseType === "online"
+              ? googleLogin.result.idToken
+              : null;
 
-        console.log("Google idToken exists:", idToken ? "yes" : "no");
+          console.log("Google idToken exists:", idToken ? "yes" : "no");
 
-        if (!idToken) {
-          console.error("Native Google login did not return an idToken.");
-          throw new Error("No Google idToken returned.");
+          if (!idToken) {
+            console.error("Native Google login did not return an idToken.");
+            throw new Error("idToken missing");
+          }
+
+          console.log("Google idToken aud:", readJwtAudience(idToken) ?? "unavailable");
+
+          const { data, error } = await supabase.auth.signInWithIdToken({
+            provider: "google",
+            token: idToken,
+          });
+
+          if (error) {
+            console.error("Supabase signInWithIdToken error message:", error.message);
+            throw error;
+          }
+
+          if (!data.session) {
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+
+            if (!session) throw new Error(copy.configError);
+          }
+
+          console.log("Supabase signInWithIdToken success:", Boolean(data.session));
+          cacheAuthSession();
+          onAuthenticated();
+          return;
+        } catch (nativeError) {
+          const nativeErrorMessage =
+            nativeError instanceof Error ? nativeError.message : String(nativeError);
+
+          console.error("Native Google login raw error message:", nativeErrorMessage);
+          throw new Error(
+            "Google native sign-in failed. Please check Android OAuth configuration.",
+          );
         }
-
-        console.log("Google idToken aud:", readJwtAudience(idToken) ?? "unavailable");
-
-        const { data, error } = await supabase.auth.signInWithIdToken({
-          provider: "google",
-          token: idToken,
-        });
-
-        if (error) {
-          console.error("Supabase signInWithIdToken error message:", error.message);
-          throw error;
-        }
-
-        if (!data.session) {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-
-          if (!session) throw new Error(copy.configError);
-        }
-
-        console.log("Supabase signInWithIdToken success:", Boolean(data.session));
-        cacheAuthSession();
-        onAuthenticated();
-        return;
       }
 
       const redirectTo = `${window.location.origin}/auth/callback`;
