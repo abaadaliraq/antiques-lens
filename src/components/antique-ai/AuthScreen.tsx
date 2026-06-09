@@ -38,7 +38,8 @@ type AuthScreenProps = {
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
 const PASSWORD_RESET_SUCCESS_KEY = "kishib:password-reset-success";
 const NATIVE_AUTH_CALLBACK_URL = "com.kishib.app://auth/callback";
-const GOOGLE_WEB_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
+const GOOGLE_WEB_CLIENT_ID =
+  "309692298921-ookqa9ennp5h7fif918f46n9sh5h8kle.apps.googleusercontent.com";
 
 let nativeGoogleInitialized = false;
 
@@ -101,7 +102,6 @@ async function initializeNativeGoogleSignIn() {
   await SocialLogin.initialize({
     google: {
       webClientId: GOOGLE_WEB_CLIENT_ID,
-      mode: "online",
     },
   });
   nativeGoogleInitialized = true;
@@ -660,6 +660,8 @@ export default function AuthScreen({
             "NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID exists:",
             GOOGLE_WEB_CLIENT_ID ? "yes" : "no",
           );
+          console.log("GOOGLE_WEB_CLIENT_ID prefix:", GOOGLE_WEB_CLIENT_ID.slice(0, 14));
+          console.log("GOOGLE_WEB_CLIENT_ID suffix:", GOOGLE_WEB_CLIENT_ID.slice(-30));
           await initializeNativeGoogleSignIn();
 
           const googleLogin = await SocialLogin.login({
