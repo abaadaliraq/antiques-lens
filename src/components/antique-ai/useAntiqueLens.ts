@@ -95,45 +95,41 @@ async function cameraPhotoToFile(photoPath: string) {
   });
 }
 
-function downloadShareImage(file: File) {
-  const url = URL.createObjectURL(file);
-  const link = document.createElement("a");
+function buildShareSummary(result: AnalysisResult) {
+  const title = result.title || result.itemType || "KISHIB Evaluation";
+  const category = result.itemType || result.lookup || "";
+  const value = result.estimatedValue || result.priceRange || "";
+  const pageUrl =
+    typeof window !== "undefined" && window.location?.href
+      ? window.location.href
+      : "";
 
-  link.href = url;
-  link.download = file.name;
-
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  window.setTimeout(() => {
-    URL.revokeObjectURL(url);
-  }, 1000);
-}
-
-async function copyFallbackSummary(result: AnalysisResult) {
-  const text = [
-    result.title,
-    "",
-    result.lookup,
-    "",
-    result.timePeriod,
-    result.origin,
-    result.material,
-    result.condition,
-    result.authenticity,
-    result.estimatedValue,
-    
-    "",
-    result.disclaimer,
-    
+  return [
+    "KISHIB Evaluation",
+    title,
+    category ? `Category: ${category}` : "",
+    value ? `Estimated value: ${value}` : "",
+    pageUrl,
   ]
     .filter(Boolean)
     .join("\n");
+}
 
-  if (!text.trim()) return;
+async function copyTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
 
-  await navigator.clipboard.writeText(text);
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
 }
 
 async function resizeImageForAnalysis(
@@ -1428,6 +1424,9 @@ await saveEvaluationToSupabase({
 async function handleShare() {
   if (!result) return;
 
+  const shareText = buildShareSummary(result);
+  const shareTitle = result.title || result.itemType || "KISHIB Evaluation";
+
   try {
     const labels = {
       result: t.result,
@@ -1460,8 +1459,8 @@ async function handleShare() {
     });
 
     const shareData = {
-      title: result.title || "Antique Lens Report",
-      text: "Antique Lens evaluation report",
+      title: shareTitle,
+      text: shareText,
       files: [file],
     } as ShareData & { files: File[] };
 
@@ -1474,17 +1473,28 @@ async function handleShare() {
       await navigator.share(shareData);
       return;
     }
-
-    downloadShareImage(file);
   } catch (err) {
     console.error("Failed to share report image:", err);
+  }
 
-    try {
-      await copyFallbackSummary(result);
-      alert("ØªØ¹Ø°Ø± Ø¥Ù†Ø´Ø§Ø¡ ØµÙˆØ±Ø© Ø§Ù„Ù…Ø´Ø§Ø±ÙƒØ©. ØªÙ… Ù†Ø³Ø® Ù…Ù„Ø®Øµ Ø§Ù„ØªÙ‚Ø±ÙŠØ± Ø¨Ø¯Ù„ Ø§Ù„ØµÙˆØ±Ø©.");
-    } catch {
-      alert("ØªØ¹Ø°Ø± Ø¥Ù†Ø´Ø§Ø¡ ØµÙˆØ±Ø© Ø§Ù„Ù…Ø´Ø§Ø±ÙƒØ©.");
+  try {
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      await navigator.share({
+        title: shareTitle,
+        text: shareText,
+        url:
+          typeof window !== "undefined" && window.location?.href
+            ? window.location.href
+            : undefined,
+      });
+      return;
     }
+
+    await copyTextToClipboard(shareText);
+    alert(locale === "en" ? "Report summary copied." : "تم نسخ ملخص التقرير.");
+  } catch (err) {
+    console.error("Failed to share or copy report summary:", err);
+    alert(locale === "en" ? "Sharing is not available right now." : "تعذرت المشاركة الآن.");
   }
 }
 

@@ -341,13 +341,13 @@ export const content = {
 export type ContentItem = (typeof content)[keyof typeof content];
 
 function looksMojibake(value: string) {
-  return /(?:\u00d8|\u00d9|\u00da|\u00db|\u00d0|\u00d1|\u00c3|\u00c2|\u00e0\u00a4|\u00e0\u00a5|Ã˜|Ã™|Ãš|Ã›|Ãƒ|Ã‚)/.test(value);
+  return /(?:\u00d8|\u00d9|\u00da|\u00db|\u00c3|\u00c2|Ø|Ù|Û|Ã|Â|Ð|Ñ|�)/.test(value);
 }
 
 function mojibakeScore(value: string) {
   return (
     value.match(
-      /(?:\u00d8|\u00d9|\u00da|\u00db|\u00d0|\u00d1|\u00c3|\u00c2|\u00e0\u00a4|\u00e0\u00a5|Ã˜|Ã™|Ãš|Ã›|Ãƒ|Ã‚)/g,
+      /(?:\u00d8|\u00d9|\u00da|\u00db|\u00c3|\u00c2|Ø|Ù|Û|Ã|Â|Ð|Ñ|�)/g,
     )?.length || 0
   );
 }

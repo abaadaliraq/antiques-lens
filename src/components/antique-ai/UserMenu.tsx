@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import { createPortal } from "react-dom";import type { FormEvent, ReactNode } from "react";
 import {
   getCurrentUserProfile,
   PROFILE_UPDATED_EVENT,
@@ -32,6 +32,7 @@ import type { Locale } from "./types";
 type UserMenuProps = {
   locale: Locale;
   setLocale?: (locale: Locale) => void;
+  compact?: boolean;
 };
 
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
@@ -477,7 +478,7 @@ function Avatar({
   return <span className={baseClass}>{initial}</span>;
 }
 
-export default function UserMenu({ locale, setLocale }: UserMenuProps) {
+export default function UserMenu({ locale, setLocale, compact = false }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -493,7 +494,7 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
     city: "",
   });
   const menuRef = useRef<HTMLDivElement | null>(null);
-
+const panelRef = useRef<HTMLDivElement | null>(null);
   const copy = COPY[locale];
   const rtl = isRtl(locale);
   const activeLanguage =
@@ -576,13 +577,15 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
   }, []);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setLanguageOpen(false);
-      }
-    }
+  function handleClickOutside(event: MouseEvent) {
+  const target = event.target as Node;
+
+  if (menuRef.current?.contains(target)) return;
+  if (panelRef.current?.contains(target)) return;
+
+  setIsOpen(false);
+  setLanguageOpen(false);
+}
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -666,29 +669,37 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="grid h-11 w-11 place-items-center rounded-full border border-[#d2b98f] bg-[#fff4e2]/88 text-[#241913] shadow-[0_14px_38px_rgba(62,39,22,0.14)] backdrop-blur-2xl transition hover:border-[#b88a3d]/55 hover:bg-[#fff4e2]"
+        className={[
+          "grid place-items-center rounded-full border border-[#d2b98f] bg-[#fff4e2]/88 text-[#241913] shadow-[0_14px_38px_rgba(62,39,22,0.14)] backdrop-blur-2xl transition hover:border-[#b88a3d]/55 hover:bg-[#fff4e2]",
+          compact ? "h-8 w-8" : "h-11 w-11",
+        ].join(" ")}
         aria-label={copy.profile}
       >
         <Avatar
           name={displayName}
           email={displayEmail}
           avatarUrl={avatarUrl}
-          className="h-8 w-8 text-xs"
+          className={compact ? "h-6 w-6 text-[10px]" : "h-8 w-8 text-xs"}
         />
       </button>
 
-      {isOpen ? (
-        <>
-          <button
-            type="button"
-            aria-label="Close user menu"
-            onClick={() => setIsOpen(false)}
-            className="fixed inset-0 z-[9998] bg-[#241913]/20 backdrop-blur-[2px]"
-          />
+      {isOpen && typeof document !== "undefined"
+  ? createPortal(
+      <>
+        <button
+          type="button"
+          aria-label="Close user menu"
+          onClick={() => setIsOpen(false)}
+          className="fixed inset-0 z-[9998] bg-[#241913]/20 backdrop-blur-[2px]"
+        />
 
-          <div
-            className={[
-              "fixed inset-x-3 bottom-3 z-[9999] h-[78dvh] min-h-[360px] max-h-[620px] overflow-hidden rounded-[20px] border border-[#d2b98f] bg-[#fff4e2]/96 shadow-[0_26px_82px_rgba(62,39,22,0.18)] backdrop-blur-2xl",
+        <div
+          ref={panelRef}
+          className={[
+            "fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+12px)] z-[9999] overflow-hidden rounded-[22px] border border-[#d2b98f] bg-[#fff4e2]/96 shadow-[0_26px_82px_rgba(62,39,22,0.18)] backdrop-blur-2xl",
+              compact
+                ? "h-[54dvh] min-h-[310px] max-h-[430px]"
+                : "h-[78dvh] min-h-[360px] max-h-[620px]",
               "md:inset-x-auto md:bottom-auto md:top-16 md:h-auto md:max-h-[calc(100dvh-5rem)] md:w-[350px] md:rounded-[1.25rem]",
               rtl ? "md:left-4" : "md:right-4",
             ].join(" ")}
@@ -977,9 +988,11 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
                 </div>
               </MenuModal>
             ) : null}
-          </div>
-        </>
-      ) : null}
+               </div>
+        </>,
+      document.body,
+    )
+  : null}
     </div>
   );
 }

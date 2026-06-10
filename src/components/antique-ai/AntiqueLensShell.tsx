@@ -548,49 +548,84 @@ export default function AntiqueLensShell() {
         ) : null}
         {showHomeTicker ? <ExpertContactButton locale={lens.locale} /> : null}
 
-        <div
-          className={[
-            "fixed right-4 z-40 lg:right-8",
-            showHomeTicker ? "top-12 lg:top-14" : "top-4 lg:top-8",
-          ].join(" ")}
-        >
-          <UserMenu locale={lens.locale} setLocale={lens.changeLocale} />
-        </div>
-
-        <div
-          className={[
-            "fixed left-3 z-40 flex max-w-[calc(100vw-7.25rem)] items-center gap-0.5 rounded-full border border-[#d2b98f]/20 bg-[#11100f]/28 p-0.5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] backdrop-blur-2xl lg:left-8 lg:gap-1 lg:p-1",
-            showHomeTicker ? "top-[38px] lg:top-14" : "top-3 lg:top-8",
-          ].join(" ")}
-        >
-          <button
-            type="button"
-            disabled
-            aria-disabled="true"
-            title={lens.t.soon}
-            className="inline-flex h-8 shrink-0 cursor-not-allowed items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-[#fff4e2]/55 opacity-75 sm:px-2.5 sm:text-xs lg:h-9 lg:gap-1.5 lg:px-3 lg:text-sm"
+        {showHomeTicker ? (
+          <div
+            dir="ltr"
+            className="fixed inset-x-0 top-[34px] z-40 flex items-center gap-2 border-y border-white/10 bg-[#241913]/18 px-2 py-1 shadow-[0_8px_22px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:top-[34px] sm:px-3"
           >
-            <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#fff4e2]/10 text-[#dcc18a] lg:h-6 lg:w-6">
-              <ShoppingBag className="h-3 w-3 lg:h-3.5 lg:w-3.5" />
-            </span>
-            {getMarketplaceNavLabel(lens.locale)}
-            <Lock className="h-3 w-3 text-[#dcc18a]/80" aria-hidden="true" />
-          </button>
+            <UserMenu locale={lens.locale} setLocale={lens.changeLocale} compact />
 
-          <button
-            type="button"
-            disabled
-            aria-disabled="true"
-            title={lens.t.soon}
-            className="inline-flex h-8 shrink-0 cursor-not-allowed items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-[#fff4e2]/55 opacity-75 sm:px-2.5 sm:text-xs lg:h-9 lg:gap-1.5 lg:px-3 lg:text-sm"
-          >
-            <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#fff4e2]/10 text-[#dcc18a] lg:h-6 lg:w-6">
-              <Coins className="h-3 w-3 lg:h-3.5 lg:w-3.5" />
-            </span>
-            {getMetalPricesNavLabel(lens.locale)}
-            <Lock className="h-3 w-3 text-[#dcc18a]/80" aria-hidden="true" />
-          </button>
-        </div>
+            <div
+              dir={lens.t.dir}
+              className="flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
+                title={lens.t.soon}
+                className="inline-flex h-7 shrink-0 cursor-not-allowed items-center gap-1 rounded-full px-1.5 text-[10.5px] font-normal text-white/90 opacity-90 sm:px-2 sm:text-[11px]"
+              >
+                <span className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-white/10 text-white/80">
+                  <ShoppingBag className="h-2.5 w-2.5" />
+                </span>
+                {getMarketplaceNavLabel(lens.locale)}
+                <Lock className="h-2.5 w-2.5 text-white/65" aria-hidden="true" />
+              </button>
+
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
+                title={lens.t.soon}
+                className="inline-flex h-7 shrink-0 cursor-not-allowed items-center gap-1 rounded-full px-1.5 text-[10.5px] font-normal text-white/90 opacity-90 sm:px-2 sm:text-[11px]"
+              >
+                <span className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-white/10 text-white/80">
+                  <Coins className="h-2.5 w-2.5" />
+                </span>
+                {getMetalPricesNavLabel(lens.locale)}
+                <Lock className="h-2.5 w-2.5 text-white/65" aria-hidden="true" />
+              </button>
+            </div>
+
+          </div>
+        ) : (
+          <>
+            <div className="fixed right-4 top-4 z-40 lg:right-8 lg:top-8">
+              <UserMenu locale={lens.locale} setLocale={lens.changeLocale} />
+            </div>
+
+            <div className="fixed left-3 top-3 z-40 flex max-w-[calc(100vw-7.25rem)] items-center gap-0.5 rounded-full border border-[#d2b98f]/20 bg-[#11100f]/28 p-0.5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] backdrop-blur-2xl lg:left-8 lg:top-8 lg:gap-1 lg:p-1">
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
+                title={lens.t.soon}
+                className="inline-flex h-8 shrink-0 cursor-not-allowed items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-[#fff4e2]/55 opacity-75 sm:px-2.5 sm:text-xs lg:h-9 lg:gap-1.5 lg:px-3 lg:text-sm"
+              >
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#fff4e2]/10 text-[#dcc18a] lg:h-6 lg:w-6">
+                  <ShoppingBag className="h-3 w-3 lg:h-3.5 lg:w-3.5" />
+                </span>
+                {getMarketplaceNavLabel(lens.locale)}
+                <Lock className="h-3 w-3 text-[#dcc18a]/80" aria-hidden="true" />
+              </button>
+
+              <button
+                type="button"
+                disabled
+                aria-disabled="true"
+                title={lens.t.soon}
+                className="inline-flex h-8 shrink-0 cursor-not-allowed items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-[#fff4e2]/55 opacity-75 sm:px-2.5 sm:text-xs lg:h-9 lg:gap-1.5 lg:px-3 lg:text-sm"
+              >
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#fff4e2]/10 text-[#dcc18a] lg:h-6 lg:w-6">
+                  <Coins className="h-3 w-3 lg:h-3.5 lg:w-3.5" />
+                </span>
+                {getMetalPricesNavLabel(lens.locale)}
+                <Lock className="h-3 w-3 text-[#dcc18a]/80" aria-hidden="true" />
+              </button>
+            </div>
+          </>
+        )}
 
         {lens.isTranslatingResult && (
           <div className="fixed inset-x-0 top-20 z-50 mx-auto flex w-fit items-center gap-3 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/92 px-5 py-3 text-[12px] font-medium text-[#735f4b] shadow-[0_16px_38px_rgba(62,39,22,0.12)] backdrop-blur-2xl">

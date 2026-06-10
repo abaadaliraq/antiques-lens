@@ -83,7 +83,7 @@ function getUserNoteLabel(locale: Locale) {
 }
 
 function looksMojibake(value: string) {
-  return /(?:\u00d8|\u00d9|\u00da|\u00db|\u00d0|\u00d1|\u00c3|\u00c2|\u00e0\u00a4|\u00e0\u00a5|Ã˜|Ã™|Ãš|Ã›|Ãƒ|Ã‚|Ð|Ñ)/.test(
+  return /(?:\u00d8|\u00d9|\u00da|\u00db|\u00c3|\u00c2|Ø|Ù|Û|Ã|Â|Ð|Ñ|�)/.test(
     value,
   );
 }
@@ -91,7 +91,7 @@ function looksMojibake(value: string) {
 function mojibakeScore(value: string) {
   return (
     value.match(
-      /(?:\u00d8|\u00d9|\u00da|\u00db|\u00d0|\u00d1|\u00c3|\u00c2|\u00e0\u00a4|\u00e0\u00a5|Ã˜|Ã™|Ãš|Ã›|Ãƒ|Ã‚|Ð|Ñ)/g,
+      /(?:\u00d8|\u00d9|\u00da|\u00db|\u00c3|\u00c2|Ø|Ù|Û|Ã|Â|Ð|Ñ|�)/g,
     )?.length || 0
   );
 }
@@ -129,6 +129,11 @@ function getReportLabels(locale: Locale) {
       open: "Open report",
       print: "PDF / Print",
       close: "Close",
+      back: "Back",
+      share: "Share",
+      printable: "Printable Report",
+      auction: "Auction Report — Soon",
+      sale: "Sale Report — Soon",
     };
   }
 
@@ -140,6 +145,11 @@ function getReportLabels(locale: Locale) {
       open: "Ouvrir",
       print: "PDF / Imprimer",
       close: "Fermer",
+      back: "Retour",
+      share: "Partager",
+      printable: "Rapport imprimable",
+      auction: "Rapport d'enchères — bientôt",
+      sale: "Rapport de vente — bientôt",
     };
   }
 
@@ -151,6 +161,11 @@ function getReportLabels(locale: Locale) {
       open: "Ú©Ø±Ø¯Ù†Û•ÙˆÛ•",
       print: "PDF / Ú†Ø§Ù¾",
       close: "Ø¯Ø§Ø®Ø³ØªÙ†",
+      back: "گەڕانەوە",
+      share: "هاوبەشکردن",
+      printable: "ڕاپۆرتی چاپکراو",
+      auction: "ڕاپۆرتی مزایدە — بەم زووانە",
+      sale: "ڕاپۆرتی فرۆشتن — بەم زووانە",
     };
   }
 
@@ -161,6 +176,11 @@ function getReportLabels(locale: Locale) {
     open: "فتح التقرير",
     print: "PDF / طباعة",
     close: "إغلاق",
+    back: "رجوع",
+    share: "مشاركة",
+    printable: "تقرير قابل للطباعة",
+    auction: "تقرير مزاد — قريبًا",
+    sale: "تقرير بيع — قريبًا",
   };
 }
 
@@ -400,8 +420,6 @@ function shouldShowBrandAssessment(result: AnalysisResult) {
     result.material,
     result.history,
     result.description,
-    result.brandAssessment.category,
-    result.brandAssessment.possibleBrand,
   ]
     .filter(Boolean)
     .join(" ")
@@ -549,7 +567,13 @@ export default function ResultView({
     similarImages.length > 0 ? similarImages : getSimilarItems(result);
   const cleanUserNote = cleanDisplayText(userNote);
   const cleanTitle = cleanDisplayText(result.title) || labels.result;
-  const canShowBrandAssessment = shouldShowBrandAssessment(result);
+  const canShowBrandAssessment =
+    shouldShowBrandAssessment(result) &&
+    Boolean(
+      cleanDisplayText(result.brandAssessment?.possibleBrand) ||
+        cleanDisplayText(result.brandAssessment?.authenticityStatus) ||
+        cleanDisplayText(result.brandAssessment?.priceScenario),
+    );
   const metalScenarios = result.metalValue?.scenarios || [];
   const shouldShowMetalValue =
     isPreciousMetalItem(result) && metalScenarios.length > 0;
@@ -867,17 +891,21 @@ export default function ResultView({
                     </div>
 
                     <div className="p-3">
-                      <p className="text-[12px] font-normal leading-5 text-[#241913]">
-                        {item.title || "Similar result"}
-                      </p>
-                      {item.price ? (
-                        <p className="mt-2 text-[10.5px] font-medium text-[#735f4b]">
-                          {item.price}
+                      {cleanDisplayText(item.title) ? (
+                        <p className="text-[12px] font-normal leading-5 text-[#241913]">
+                          {cleanDisplayText(item.title)}
                         </p>
                       ) : null}
-                      <p className="mt-2 text-[10.5px] font-medium text-[#986f2e]">
-                        {item.source || "Google Lens"}
-                      </p>
+                      {cleanDisplayText(item.price) ? (
+                        <p className="mt-2 text-[10.5px] font-medium text-[#735f4b]">
+                          {cleanDisplayText(item.price)}
+                        </p>
+                      ) : null}
+                      {cleanDisplayText(item.source) || item.source === undefined ? (
+                        <p className="mt-2 text-[10.5px] font-medium text-[#986f2e]">
+                          {cleanDisplayText(item.source) || "Google Lens"}
+                        </p>
+                      ) : null}
                     </div>
                   </a>
                 ))}
@@ -920,7 +948,7 @@ export default function ResultView({
         ) : null}
 
         <section className="mt-9 border-y border-[#c7b99e] py-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-5">
             <div>
               <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#986f2e]">
                 {reportLabels.eyebrow}
@@ -935,14 +963,34 @@ export default function ResultView({
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setIsReportOpen(true)}
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/80 px-4 text-[12px] font-medium text-[#735f4b] transition hover:bg-[#fff4e2] hover:text-[#233f32]"
-            >
-              <FileText className="h-4 w-4" />
-              {reportLabels.open}
-            </button>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <button
+                type="button"
+                onClick={() => setIsReportOpen(true)}
+                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/86 px-4 text-[12px] font-semibold text-[#233f32] transition hover:bg-[#fff4e2] hover:text-[#6d241d]"
+              >
+                <FileText className="h-4 w-4" />
+                {reportLabels.printable}
+              </button>
+
+              <button
+                type="button"
+                disabled
+                className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 rounded-[12px] border border-[#d2b98f] bg-[#efe3cf]/70 px-4 text-[12px] font-semibold text-[#735f4b]/75"
+              >
+                <FileText className="h-4 w-4" />
+                {reportLabels.auction}
+              </button>
+
+              <button
+                type="button"
+                disabled
+                className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 rounded-[12px] border border-[#d2b98f] bg-[#efe3cf]/70 px-4 text-[12px] font-semibold text-[#735f4b]/75"
+              >
+                <FileText className="h-4 w-4" />
+                {reportLabels.sale}
+              </button>
+            </div>
           </div>
         </section>
       </div>
@@ -1015,57 +1063,56 @@ export default function ResultView({
 
       {isReportOpen && (
         <div
-          className="fixed inset-0 z-[99998] bg-black/94 p-3 backdrop-blur-xl"
+          className="fixed inset-0 z-[99998] overflow-x-hidden bg-[#efe3cf] text-[#241913]"
           role="dialog"
           aria-modal="true"
-          onClick={() => setIsReportOpen(false)}
         >
-          <div
-            className="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden border border-[#22D3EE]/15 bg-[#020617]"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-3 py-3 sm:px-4">
-              <div className="min-w-0">
-                <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-[#22D3EE]/70">
-                  {reportLabels.eyebrow}
-                </p>
-                <h3 className="mt-1 truncate text-[16px] font-medium text-white/90">
-                  {reportLabels.title}
-                </h3>
-              </div>
+          <div className="flex h-dvh w-full flex-col overflow-hidden">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#d2b98f] bg-[#fff4e2]/92 px-3 py-3 shadow-[0_12px_36px_rgba(62,39,22,0.10)] backdrop-blur-xl sm:px-4">
+              <button
+                type="button"
+                onClick={() => setIsReportOpen(false)}
+                className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-[12px] border border-[#d2b98f] bg-[#efe3cf]/70 px-3 text-[12px] font-semibold text-[#735f4b]"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                {reportLabels.back}
+              </button>
 
-              <div className="flex shrink-0 items-center gap-2">
+              <h3 className="min-w-0 flex-1 truncate text-center text-[16px] font-bold text-[#233f32]">
+                {locale === "ar" ? "تقرير KISHIB" : "KISHIB Report"}
+              </h3>
+
+              <div className="flex shrink-0 items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[#22D3EE]/22 bg-[#2563EB]/10 px-3 text-[11.5px] font-medium text-[#BAE6FD] transition hover:bg-[#2563EB]/16"
+                  onClick={onShare}
+                  className="grid h-10 w-10 place-items-center rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/80 text-[#735f4b]"
+                  aria-label={reportLabels.share}
                 >
-                  <Printer className="h-3.5 w-3.5" />
-                  {reportLabels.print}
+                  <Share2 className="h-4 w-4" />
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setIsReportOpen(false)}
-                  className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-white/10 text-white/75 transition hover:bg-white/15 hover:text-white"
-                  aria-label={reportLabels.close}
+                  onClick={() => window.print()}
+                  className="grid h-10 w-10 place-items-center rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/80 text-[#735f4b]"
+                  aria-label={reportLabels.print}
                 >
-                  <X className="h-4 w-4" />
+                  <Printer className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
-            <div className="report-preview-scroll min-h-0 flex-1 overflow-auto bg-[#050302] p-4">
-              <div className="report-preview-shell">
-                <div className="report-preview-inner">
-                  <AntiqueReportDocument
-                    locale={locale}
-                    result={result}
-                    imageUrl={mainImage || undefined}
-                    reportId={reportId}
-                    variant="print"
-                  />
-                </div>
+            <div className="report-preview-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#efe3cf] px-3 py-4 sm:px-5">
+              <div className="report-preview-shell mx-auto w-full max-w-4xl">
+                <AntiqueReportDocument
+                  locale={locale}
+                  result={result}
+                  imageUrl={mainImage || undefined}
+                  imageUrls={galleryImages}
+                  reportId={reportId}
+                  variant="preview"
+                />
               </div>
             </div>
           </div>
@@ -1077,6 +1124,7 @@ export default function ResultView({
           locale={locale}
           result={result}
           imageUrl={mainImage || undefined}
+          imageUrls={galleryImages}
           reportId={reportId}
           variant="print"
         />
@@ -1115,56 +1163,39 @@ export default function ResultView({
           max-height: 150px !important;
         }
 
-        .report-preview-shell {
-          --report-scale: 0.42;
-          width: calc(210mm * var(--report-scale));
-          height: calc(297mm * var(--report-scale));
-          margin: 0 auto;
-          overflow: visible;
+        .report-preview-scroll {
+          overscroll-behavior: contain;
         }
 
-        .report-preview-inner {
-          width: 210mm;
-          height: 297mm;
-          transform: scale(var(--report-scale));
-          transform-origin: top left;
-          overflow: visible;
-        }
-
-        .report-preview-inner .antique-report-document {
-          width: 210mm !important;
-          max-width: none !important;
-          margin: 0 !important;
+        .report-preview-shell .antique-report-document {
+          width: 100% !important;
+          max-width: 794px !important;
           overflow: visible !important;
         }
 
-        .report-preview-inner .report-page {
-          width: 210mm !important;
-          height: 297mm !important;
-          overflow: hidden !important;
+        .report-preview-shell .report-page {
+          width: 100% !important;
+          height: auto !important;
+          min-height: auto !important;
+          overflow: visible !important;
+          border-radius: 20px;
+          box-shadow: 0 18px 56px rgba(62, 39, 22, 0.12);
         }
 
-        @media (min-width: 430px) {
-          .report-preview-shell {
-            --report-scale: 0.48;
+        @media (max-width: 720px) {
+          .report-preview-shell .report-page {
+            padding: 18px !important;
           }
-        }
 
-        @media (min-width: 640px) {
-          .report-preview-shell {
-            --report-scale: 0.62;
+          .report-preview-shell .report-page header,
+          .report-preview-shell .report-page section,
+          .report-preview-shell .report-page footer {
+            position: relative !important;
           }
-        }
 
-        @media (min-width: 900px) {
-          .report-preview-shell {
-            --report-scale: 0.78;
-          }
-        }
-
-        @media (min-width: 1200px) {
-          .report-preview-shell {
-            --report-scale: 0.9;
+          .report-preview-shell .report-page .report-main-grid,
+          .report-preview-shell .report-page .report-two-grid {
+            grid-template-columns: 1fr !important;
           }
         }
 
