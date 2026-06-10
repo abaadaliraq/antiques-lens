@@ -626,7 +626,7 @@ useEffect(() => {
   const canShowAddInfoButton = Boolean(onAddInfo && !followUpPanel && !hasOpenedFollowUp);
 
   return (
-    <article className="relative pb-12 text-[#241913]">
+    <article className="kishib-result-view relative pb-12 text-[#241913]">
       <div className="mx-auto w-full max-w-6xl px-3 pt-2 sm:px-5 md:pt-5">
         <header className="kishib-primary-result-card">
           {mainImage ? (
@@ -1078,7 +1078,7 @@ useEffect(() => {
           aria-modal="true"
         >
           <div className="flex h-dvh w-full flex-col overflow-hidden">
-            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[#d2b98f] bg-[#fff4e2]/92 px-3 py-3 shadow-[0_12px_36px_rgba(62,39,22,0.10)] backdrop-blur-xl sm:px-4">
+            <div className="no-print flex shrink-0 items-center justify-between gap-2 border-b border-[#d2b98f] bg-[#fff4e2]/92 px-3 py-3 shadow-[0_12px_36px_rgba(62,39,22,0.10)] backdrop-blur-xl sm:px-4">
               <button
                 type="button"
                 onClick={() => setIsReportOpen(false)}
@@ -1113,15 +1113,16 @@ useEffect(() => {
               </div>
             </div>
 
-            <div className="report-preview-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#efe3cf] px-3 py-4 sm:px-5">
-              <div className="report-preview-shell mx-auto w-full max-w-4xl">
-               <AntiqueReportDocument
-  locale={locale}
-  result={result}
-  imageUrl={mainImage || undefined}
-  reportId={reportId}
-  variant="preview"
-/>
+            <div className="report-preview-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#efe3cf] p-0">
+              <div className="report-preview-shell mx-auto w-full max-w-[794px]">
+                <AntiqueReportDocument
+                  locale={locale}
+                  result={result}
+                  imageUrl={mainImage || undefined}
+                  imageUrls={galleryImages}
+                  reportId={reportId}
+                  variant="preview"
+                />
               </div>
             </div>
           </div>
@@ -1190,13 +1191,13 @@ useEffect(() => {
           height: auto !important;
           min-height: auto !important;
           overflow: visible !important;
-          border-radius: 20px;
-          box-shadow: 0 18px 56px rgba(62, 39, 22, 0.12);
+          border-radius: 0 !important;
+          box-shadow: none !important;
         }
 
         @media (max-width: 720px) {
           .report-preview-shell .report-page {
-            padding: 18px !important;
+            padding: 14px !important;
           }
 
           .report-preview-shell .report-page header,
@@ -1225,13 +1226,30 @@ useEffect(() => {
         @media print {
           html,
           body {
+            width: 210mm !important;
             margin: 0 !important;
             padding: 0 !important;
             background: white !important;
+            overflow: visible !important;
           }
 
           body * {
             visibility: hidden !important;
+          }
+
+          .no-print,
+          .kishib-app-chrome {
+            display: none !important;
+          }
+
+          .kishib-result-view {
+            display: block !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          .kishib-result-view > :not(.report-print-area) {
+            display: none !important;
           }
 
           .report-print-area,
@@ -1240,9 +1258,10 @@ useEffect(() => {
           }
 
           .report-print-area {
-            position: absolute !important;
-            inset: 0 auto auto 0 !important;
-            width: 210mm !important;
+            display: block !important;
+            position: static !important;
+            inset: auto !important;
+            width: 190mm !important;
             height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -1254,7 +1273,7 @@ useEffect(() => {
           }
 
           .report-print-area .antique-report-document {
-            width: 210mm !important;
+            width: 190mm !important;
             max-width: none !important;
             margin: 0 !important;
             border-radius: 0 !important;
@@ -1263,12 +1282,37 @@ useEffect(() => {
           }
 
           .report-print-area .report-page {
-            width: 210mm !important;
-            height: 297mm !important;
+            width: 190mm !important;
+            height: auto !important;
+            min-height: 0 !important;
+            page-break-after: auto !important;
+            break-after: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+          }
+
+          .report-print-area .report-page > .relative {
+            height: auto !important;
+          }
+
+          .report-print-area .report-page footer,
+          .report-print-area .report-page > .relative > div:last-child {
+            position: static !important;
+            margin-top: 6mm !important;
+          }
+
+          .report-print-area .report-page header,
+          .report-print-area .report-page section,
+          .report-print-area .report-page footer,
+          .report-print-area .report-page img {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+
+          .report-print-area .report-page:not(:last-child) {
             page-break-after: always !important;
             break-after: page !important;
-            margin: 0 !important;
-            overflow: hidden !important;
           }
 
           .report-print-area .report-page:last-child {
@@ -1278,7 +1322,7 @@ useEffect(() => {
 
           @page {
             size: A4;
-            margin: 0;
+            margin: 10mm;
           }
         }
       `}</style>

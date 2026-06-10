@@ -393,7 +393,7 @@ function repairText(value: unknown): unknown {
 
 function text(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.trim()
-    ? repairMojibakeText(value)
+    ? rewriteRespectfulUserWording(repairMojibakeText(value))
     : fallback;
 }
 
@@ -402,7 +402,45 @@ function textArray(value: unknown): string[] {
     ? value
         .filter((item): item is string => typeof item === "string")
         .map((item) => repairMojibakeText(item))
+        .map((item) => rewriteRespectfulUserWording(item))
     : [];
+}
+
+function rewriteRespectfulUserWording(value: string) {
+  if (!value) return value;
+
+  return value
+    .replace(/\bthe user claims that\b/gi, "Based on the information you added")
+    .replace(/\bthe user claims\b/gi, "Based on the information you added")
+    .replace(/\buser claims that\b/gi, "Based on the information you added")
+    .replace(/\buser claims\b/gi, "Based on the information you added")
+    .replace(/\baccording to the user's claim\b/gi, "Based on the information you added")
+    .replace(/\ballegedly\b/gi, "if confirmed")
+    .replace(/المستخدم\s+يدعي\s+أن/gi, "ذكرت أن")
+    .replace(/يدعي\s+المستخدم\s+أن/gi, "ذكرت أن")
+    .replace(/المستخدم\s+يدعي/gi, "حسب المعلومة التي أضفتها")
+    .replace(/ادعى\s+المستخدم/gi, "ذكرت")
+    .replace(/يدّعي\s+المستخدم/gi, "ذكرت")
+    .replace(/فنان\s+غير\s+معروف/gi, "الاسم المذكور يحتاج مطابقة التوقيع أو وثائق داعمة للتأكيد")
+    .replace(/unknown artist/gi, "the mentioned artist attribution needs signature or document verification");
+}
+
+function cleanBrandAssessment(value: AnalysisResult["brandAssessment"]) {
+  if (!value) return value;
+
+  return {
+    ...value,
+    possibleBrand: rewriteRespectfulUserWording(value.possibleBrand || ""),
+    category: rewriteRespectfulUserWording(value.category || ""),
+    authenticityStatus: rewriteRespectfulUserWording(value.authenticityStatus || ""),
+    priceScenario: rewriteRespectfulUserWording(value.priceScenario || ""),
+    missingEvidence: Array.isArray(value.missingEvidence)
+      ? value.missingEvidence.map((item) => rewriteRespectfulUserWording(item))
+      : value.missingEvidence,
+    requiredPhotos: Array.isArray(value.requiredPhotos)
+      ? value.requiredPhotos.map((item) => rewriteRespectfulUserWording(item))
+      : value.requiredPhotos,
+  };
 }
 
 export function normalizeResult(data: Partial<AnalysisResult>): AnalysisResult {
@@ -471,7 +509,7 @@ export function normalizeResult(data: Partial<AnalysisResult>): AnalysisResult {
     storeMatches: repairedData.storeMatches,
     matches: repairedData.matches,
     houseOfAntiques: repairedData.houseOfAntiques,
-    brandAssessment: repairedData.brandAssessment,
+    brandAssessment: cleanBrandAssessment(repairedData.brandAssessment),
     metalValue: repairedData.metalValue,
   };
 }

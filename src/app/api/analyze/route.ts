@@ -933,9 +933,9 @@ You are NOT:
 The visitor language is: ${language}
 ${languageInstruction}
 
-User provided:
+Visitor provided:
 - Notes: ${fields.notes || "Not provided"}
-- User-provided follow-up claim: ${fields.followUpClaim || "Not provided"}
+- Additional information added after the first evaluation: ${fields.followUpClaim || "Not provided"}
 - Item type: ${fields.itemType || "Not provided"}
 - Material: ${fields.material || "Not provided"}
 - Dimensions: ${fields.dimensions || "Not provided"}
@@ -958,10 +958,33 @@ If the user provides a local name, cultural use, family history, market term, ra
 Do not ignore it and replace it with a generic label.
 If the visual evidence and the user's notes disagree, explain the disagreement carefully and lower confidence.
 If the user says the item is heavy, rare, handmade, old, regional, or used in a traditional craft, this must affect the valuation logic.
-If a User-provided follow-up claim is present, treat it as a claim added by the user after the first analysis, not as visual evidence.
-When using a follow-up claim, explicitly say "according to the information added by the user" in the selected language.
+If additional information is present after the first analysis, treat it as information the visitor added, not as visual proof from the image.
+When using additional information, address the visitor directly and respectfully in the selected language.
 For Arabic locale, use this phrasing naturally: "حسب المعلومة التي أضافها المستخدم".
 Do not write English user-facing output when locale is Arabic.
+
+RESPECTFUL USER-PROVIDED INFORMATION WORDING:
+Never use suspicious or adversarial wording in user-facing JSON, including:
+- "user claims", "the user claims", "according to the user's claim", "allegedly"
+- "المستخدم يدعي", "يدعي المستخدم", "ادعى المستخدم"
+Use direct respectful wording instead:
+- English: "Based on the information you added...", "If this material/weight/attribution is confirmed...", "This needs direct verification..."
+- Arabic: "بناءً على المعلومة التي أضفتها...", "ذكرت أن...", "إذا ثبت أن المادة/الوزن/النسبة صحيحة...", "يحتاج ذلك تأكيدًا مباشرًا..."
+
+RESPECTFUL METAL / WEIGHT / MATERIAL HANDLING:
+If the visitor adds that the item is silver, gold, copper, bronze, platinum, palladium, or gives a scale/weight photo:
+- Do not write "user claims".
+- Do not ignore the information.
+- Treat it as a conditional valuation scenario unless the hallmark, exact weight, and purity are visibly/documentarily confirmed.
+- Explain separately: raw metal value if confirmed; added value from craftsmanship/age/rarity/decoration/condition; and what direct confirmation is still needed.
+- Never make the final price only scrap metal value when the item has antique, artistic, handmade, or decorative value.
+
+RESPECTFUL ARTIST / SIGNATURE / MAKER HANDLING:
+If the visitor mentions an artist, craftsperson, maker, signature, or attribution:
+- Do not say "unknown artist" or "فنان غير معروف" merely because the model does not know them globally.
+- Say the mentioned name needs matching to the signature, label, provenance, or supporting documents.
+- If the artist is local or regional, say global references may be limited and the attribution cannot be confirmed from photos alone.
+- Separate what the visitor added, what is visible in the images, what needs documentation, and how confirmed attribution could affect value.
 
 Relevant internal antique knowledge base:
 ${knowledgeContext}
@@ -1475,7 +1498,31 @@ function normalizeArray(value: unknown, fallback: string[]) {
   return clean.length ? clean : fallback;
 }
 
-function normalizeBrandAssessment(value: unknown) {
+function rewriteRespectfulUserWording(value: string, locale: Locale) {
+  if (!value) return value;
+
+  const prefix =
+    locale === "en"
+      ? "Based on the information you added"
+      : "بناءً على المعلومة التي أضفتها";
+
+  return value
+    .replace(/\bthe user claims that\b/gi, prefix)
+    .replace(/\bthe user claims\b/gi, prefix)
+    .replace(/\buser claims that\b/gi, prefix)
+    .replace(/\buser claims\b/gi, prefix)
+    .replace(/\baccording to the user's claim\b/gi, prefix)
+    .replace(/\ballegedly\b/gi, locale === "en" ? "if confirmed" : "إذا ثبت ذلك")
+    .replace(/المستخدم\s+يدعي\s+أن/gi, "ذكرت أن")
+    .replace(/يدعي\s+المستخدم\s+أن/gi, "ذكرت أن")
+    .replace(/المستخدم\s+يدعي/gi, "حسب المعلومة التي أضفتها")
+    .replace(/ادعى\s+المستخدم/gi, "ذكرت")
+    .replace(/يدّعي\s+المستخدم/gi, "ذكرت")
+    .replace(/فنان\s+غير\s+معروف/gi, "الاسم المذكور يحتاج مطابقة التوقيع أو وثائق داعمة للتأكيد")
+    .replace(/unknown artist/gi, "the mentioned artist attribution needs signature or document verification");
+}
+
+function normalizeBrandAssessment(value: unknown, locale: Locale) {
   if (!value || typeof value !== "object") return undefined;
 
   const data = value as Partial<NonNullable<AnalysisResult["brandAssessment"]>>;
@@ -1487,19 +1534,24 @@ function normalizeBrandAssessment(value: unknown) {
       : "low";
 
   return {
-    possibleBrand: normalizeString(data.possibleBrand, ""),
-    category: normalizeString(data.category, ""),
+    possibleBrand: rewriteRespectfulUserWording(normalizeString(data.possibleBrand, ""), locale),
+    category: rewriteRespectfulUserWording(normalizeString(data.category, ""), locale),
     confidence,
-    authenticityStatus: normalizeString(data.authenticityStatus, ""),
-    missingEvidence: normalizeArray(data.missingEvidence, []),
-    requiredPhotos: normalizeArray(data.requiredPhotos, []),
-    priceScenario: normalizeString(data.priceScenario, ""),
+    authenticityStatus: rewriteRespectfulUserWording(normalizeString(data.authenticityStatus, ""), locale),
+    missingEvidence: normalizeArray(data.missingEvidence, []).map((item) =>
+      rewriteRespectfulUserWording(item, locale),
+    ),
+    requiredPhotos: normalizeArray(data.requiredPhotos, []).map((item) =>
+      rewriteRespectfulUserWording(item, locale),
+    ),
+    priceScenario: rewriteRespectfulUserWording(normalizeString(data.priceScenario, ""), locale),
   };
 }
 
 function normalizeResult(
   parsed: Partial<AnalysisResult>,
-  fallback: AnalysisResult
+  fallback: AnalysisResult,
+  locale: Locale,
 ): AnalysisResult {
   const confidence =
     typeof parsed.confidence === "number"
@@ -1507,34 +1559,46 @@ function normalizeResult(
       : fallback.confidence;
 
   return {
-    title: normalizeString(parsed.title, fallback.title),
-    itemType: normalizeString(parsed.itemType, fallback.itemType),
-    lookup: normalizeString(parsed.lookup, fallback.lookup),
-    timePeriod: normalizeString(parsed.timePeriod, fallback.timePeriod),
-    origin: normalizeString(parsed.origin, fallback.origin),
-    material: normalizeString(parsed.material, fallback.material),
-    style: normalizeString(parsed.style, fallback.style),
-    condition: normalizeString(parsed.condition, fallback.condition),
-    authenticity: normalizeString(parsed.authenticity, fallback.authenticity),
-    estimatedValue: normalizeString(parsed.estimatedValue, fallback.estimatedValue),
-    priceReasoning: normalizeString(parsed.priceReasoning, fallback.priceReasoning),
-    history: normalizeString(parsed.history, fallback.history),
-    valueDrivers: normalizeArray(parsed.valueDrivers, fallback.valueDrivers),
-    valueReducers: normalizeArray(parsed.valueReducers, fallback.valueReducers),
+    title: rewriteRespectfulUserWording(normalizeString(parsed.title, fallback.title), locale),
+    itemType: rewriteRespectfulUserWording(normalizeString(parsed.itemType, fallback.itemType), locale),
+    lookup: rewriteRespectfulUserWording(normalizeString(parsed.lookup, fallback.lookup), locale),
+    timePeriod: rewriteRespectfulUserWording(normalizeString(parsed.timePeriod, fallback.timePeriod), locale),
+    origin: rewriteRespectfulUserWording(normalizeString(parsed.origin, fallback.origin), locale),
+    material: rewriteRespectfulUserWording(normalizeString(parsed.material, fallback.material), locale),
+    style: rewriteRespectfulUserWording(normalizeString(parsed.style, fallback.style), locale),
+    condition: rewriteRespectfulUserWording(normalizeString(parsed.condition, fallback.condition), locale),
+    authenticity: rewriteRespectfulUserWording(normalizeString(parsed.authenticity, fallback.authenticity), locale),
+    estimatedValue: rewriteRespectfulUserWording(normalizeString(parsed.estimatedValue, fallback.estimatedValue), locale),
+    priceReasoning: rewriteRespectfulUserWording(normalizeString(parsed.priceReasoning, fallback.priceReasoning), locale),
+    history: rewriteRespectfulUserWording(normalizeString(parsed.history, fallback.history), locale),
+    valueDrivers: normalizeArray(parsed.valueDrivers, fallback.valueDrivers).map((item) =>
+      rewriteRespectfulUserWording(item, locale),
+    ),
+    valueReducers: normalizeArray(parsed.valueReducers, fallback.valueReducers).map((item) =>
+      rewriteRespectfulUserWording(item, locale),
+    ),
     visualSearchKeywords: normalizeArray(
       parsed.visualSearchKeywords,
       fallback.visualSearchKeywords
     ),
-    neededPhotos: normalizeArray(parsed.neededPhotos, fallback.neededPhotos),
-    followUpQuestion: normalizeString(
-      parsed.followUpQuestion,
-      fallback.followUpQuestion
+    neededPhotos: normalizeArray(parsed.neededPhotos, fallback.neededPhotos).map((item) =>
+      rewriteRespectfulUserWording(item, locale),
+    ),
+    followUpQuestion: rewriteRespectfulUserWording(
+      normalizeString(parsed.followUpQuestion, fallback.followUpQuestion),
+      locale,
     ),
     confidence,
-    confidenceNote: normalizeString(parsed.confidenceNote, fallback.confidenceNote),
-    disclaimer: normalizeString(parsed.disclaimer, fallback.disclaimer),
+    confidenceNote: rewriteRespectfulUserWording(
+      normalizeString(parsed.confidenceNote, fallback.confidenceNote),
+      locale,
+    ),
+    disclaimer: rewriteRespectfulUserWording(
+      normalizeString(parsed.disclaimer, fallback.disclaimer),
+      locale,
+    ),
         metalValue: parsed.metalValue,
-    brandAssessment: normalizeBrandAssessment(parsed.brandAssessment),
+    brandAssessment: normalizeBrandAssessment(parsed.brandAssessment, locale),
   };
 }
 
@@ -1667,8 +1731,8 @@ The item appears to contain ${metalLabel}.
 Precious metal confidence classification:
 - Classification category: confirmed_precious_metal
 - Can use spot price for direct valuation: yes
-- Evidence source: ${hasFollowUpClaim ? "user-provided follow-up claim, not image-only proof" : "provided fields and available evidence"}
-${hasFollowUpClaim ? `- User-provided claim: ${followUpClaim}` : ""}
+- Evidence source: ${hasFollowUpClaim ? "additional visitor information, not image-only proof" : "provided fields and available evidence"}
+${hasFollowUpClaim ? `- Additional visitor information: ${followUpClaim}` : ""}
 
 Live precious metal spot prices from Gold API:
 - Gold XAU USD/troy ounce: ${spotPrices.goldOunceUSD}
@@ -1717,8 +1781,8 @@ Precious metal confidence classification:
 - Confidence level: ${metalClassification.confidenceLevel}
 - Can use spot price for direct valuation: no
 - Required evidence: ${metalClassification.requiredEvidence.join("; ")}
-- Evidence source: ${hasFollowUpClaim ? "user-provided follow-up claim, not image-only proof" : "provided fields and available evidence"}
-${hasFollowUpClaim ? `- User-provided claim: ${followUpClaim}` : ""}
+- Evidence source: ${hasFollowUpClaim ? "additional visitor information, not image-only proof" : "provided fields and available evidence"}
+${hasFollowUpClaim ? `- Additional visitor information: ${followUpClaim}` : ""}
 
 Live precious metal spot prices from Gold API:
 - Gold XAU USD/troy ounce: ${spotPrices.goldOunceUSD}
@@ -1875,7 +1939,7 @@ text: buildPrompt({
     }
 
     const fallback = buildFallbackResult(locale);
-const normalized = normalizeResult(parsed, fallback);
+const normalized = normalizeResult(parsed, fallback, locale);
 
 if (!shouldUseBrandLayer) {
   normalized.brandAssessment = undefined;

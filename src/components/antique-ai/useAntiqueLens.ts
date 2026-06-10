@@ -95,21 +95,38 @@ async function cameraPhotoToFile(photoPath: string) {
   });
 }
 
-function buildShareSummary(result: AnalysisResult) {
+function getUsefulShareUrl() {
+  if (typeof window === "undefined" || !window.location?.href) return "";
+
+  try {
+    const currentUrl = new URL(window.location.href);
+    const localHosts = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
+
+    if (localHosts.has(currentUrl.hostname)) return "";
+
+    return currentUrl.href;
+  } catch {
+    return "";
+  }
+}
+
+function isCanceledShare(error: unknown) {
+  if (!(error instanceof DOMException)) return false;
+
+  return error.name === "AbortError" || error.name === "NotAllowedError";
+}
+
+function buildShareSummary(result: AnalysisResult, shareUrl = "") {
   const title = result.title || result.itemType || "KISHIB Evaluation";
   const category = result.itemType || result.lookup || "";
   const value = result.estimatedValue || result.priceRange || "";
-  const pageUrl =
-    typeof window !== "undefined" && window.location?.href
-      ? window.location.href
-      : "";
 
   return [
-    "KISHIB Evaluation",
+    "KISHIB Evaluation Report",
     title,
     category ? `Category: ${category}` : "",
     value ? `Estimated value: ${value}` : "",
-    pageUrl,
+    shareUrl,
   ]
     .filter(Boolean)
     .join("\n");
@@ -801,12 +818,12 @@ async function changeLocale(nextLocale: Locale) {
     event.target.value = "";
   }
 
-  async function handleTakePhoto() {
+  async function handleTakePhoto(source: "camera" | "gallery" = "camera") {
     try {
       setError("");
 
       const photo = await Camera.getPhoto({
-        source: CameraSource.Prompt,
+        source: source === "gallery" ? CameraSource.Photos : CameraSource.Camera,
         resultType: CameraResultType.Uri,
         quality: 85,
         allowEditing: false,
@@ -1424,8 +1441,13 @@ await saveEvaluationToSupabase({
 async function handleShare() {
   if (!result) return;
 
-  const shareText = buildShareSummary(result);
-  const shareTitle = result.title || result.itemType || "KISHIB Evaluation";
+  const shareUrl = getUsefulShareUrl();
+  const shareText = buildShareSummary(result, shareUrl);
+  const shareTitle = "KISHIB Evaluation Report";
+  const fallbackMessage =
+    locale === "en"
+      ? "Sharing is not supported here, summary copied."
+      : "المشاركة غير مدعومة هنا، تم نسخ الملخص";
 
   try {
     const labels = {
@@ -1474,27 +1496,35 @@ async function handleShare() {
       return;
     }
   } catch (err) {
-    console.error("Failed to share report image:", err);
+    if (isCanceledShare(err)) return;
+    console.warn("Image share is not available, falling back to text share.", err);
   }
 
   try {
     if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-      await navigator.share({
+      const shareData: ShareData = {
         title: shareTitle,
         text: shareText,
-        url:
-          typeof window !== "undefined" && window.location?.href
-            ? window.location.href
-            : undefined,
-      });
+      };
+
+      if (shareUrl) {
+        shareData.url = shareUrl;
+      }
+
+      await navigator.share(shareData);
       return;
     }
+  } catch (err) {
+    if (isCanceledShare(err)) return;
+    console.warn("Text share is not available, falling back to clipboard.", err);
+  }
 
+  try {
     await copyTextToClipboard(shareText);
-    alert(locale === "en" ? "Report summary copied." : "تم نسخ ملخص التقرير.");
+    alert(fallbackMessage);
   } catch (err) {
     console.error("Failed to share or copy report summary:", err);
-    alert(locale === "en" ? "Sharing is not available right now." : "تعذرت المشاركة الآن.");
+    alert(locale === "en" ? "Sharing is not available right now." : "تعذرت المشاركة والنسخ الآن.");
   }
 }
 

@@ -341,6 +341,18 @@ function cleanReportText(value?: string) {
   return /(?:Ø|Ù|Û|Ã|Â|Ð|Ñ|�)/.test(candidate) ? "" : candidate;
 }
 
+function compactReportText(value: string, maxLength = 170) {
+  const cleanValue = cleanReportText(value);
+
+  if (!cleanValue) return "";
+
+  const firstSentence = cleanValue.split(/(?<=[.!؟])\s+/)[0] || cleanValue;
+
+  if (firstSentence.length <= maxLength) return firstSentence;
+
+  return `${firstSentence.slice(0, maxLength).trim()}...`;
+}
+
 function getDefaultDisclaimer(locale: Locale) {
   if (locale === "en") {
     return "This report is a preliminary visual evaluation based on the provided image and information. It is not an authenticity certificate, legal valuation, insurance appraisal, or auction guarantee.";
@@ -482,8 +494,7 @@ function ReportPage({
   labels: { generatedBy: string; page: string };
 }) {
   return (
-    <div className="report-page relative h-[1123px] w-[794px] shrink-0 overflow-hidden bg-[#f7f0e6] p-[30px] print:h-[297mm] print:w-[210mm]">
-      <div className="pointer-events-none absolute inset-[18px] rounded-[24px] border border-[#d8c5a8]" />
+    <div className="report-page relative h-[1123px] w-[794px] shrink-0 overflow-hidden bg-[#f7f0e6] p-[28px]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,#fffaf2_0%,rgba(255,255,255,0)_36%),linear-gradient(135deg,rgba(154,116,65,0.12),rgba(255,255,255,0)_35%)]" />
 
       <div className="relative z-10 h-full">
@@ -525,6 +536,10 @@ export default function AntiqueReportDocument({
   const primaryImage = reportImages[0];
   const secondaryImages = reportImages.slice(1, 7);
   const cleanTitle = cleanReportText(result.title) || "KISHIB Evaluation";
+  const disclaimerText = compactReportText(
+    result.disclaimer || getDefaultDisclaimer(locale),
+    165,
+  );
 
   return (
     <article
@@ -533,7 +548,7 @@ export default function AntiqueReportDocument({
         "antique-report-document mx-auto text-[#211a15]",
         variant === "print"
           ? "w-[794px]"
-          : "w-full max-w-[794px] overflow-visible rounded-[2rem] shadow-2xl shadow-black/20",
+          : "w-full max-w-[794px] overflow-visible",
       ].join(" ")}
     >
       <div className={variant === "print" ? "" : "space-y-6"}>
@@ -662,44 +677,12 @@ export default function AntiqueReportDocument({
             <ListSection title={labels.valueReducers} items={result.valueReducers} />
           </section>
 
-          <section className="report-two-grid mb-4 grid grid-cols-2 gap-3">
-            <ListSection title={labels.neededPhotos} items={result.neededPhotos} />
-
-            <section className="rounded-[16px] border border-[#e5d4ba] bg-white/64 p-4">
-              <h3 className="mb-2 text-[9px] font-black uppercase tracking-[0.16em] text-[#9a7441]">
-                {labels.confidence}
-              </h3>
-
-              <div className="mb-2 flex items-end gap-2">
-                <span className="text-[30px] font-black leading-none text-[#9a5f18]">
-                  {typeof result.confidence === "number" ? result.confidence : "—"}
-                </span>
-                <span className="pb-1 text-[11px] font-bold text-[#745f4b]">/ 10</span>
-              </div>
-
-              <p className="whitespace-pre-line break-words text-[10.3px] font-semibold leading-[1.65] text-[#33251b]">
-                {cleanReportText(result.confidenceNote)}
-              </p>
-
-              {cleanReportText(result.followUpQuestion) ? (
-                <div className="mt-3 rounded-[12px] bg-[#f8f1e8] p-3">
-                  <p className="mb-1 text-[8.5px] font-black uppercase tracking-[0.16em] text-[#9a7441]">
-                    {labels.nextQuestion}
-                  </p>
-                  <p className="whitespace-pre-line break-words text-[10.2px] font-semibold leading-[1.65] text-[#2a2119]">
-                    {cleanReportText(result.followUpQuestion)}
-                  </p>
-                </div>
-              ) : null}
-            </section>
-          </section>
-
-          <footer className="absolute bottom-[34px] left-0 right-0 overflow-hidden rounded-[18px] bg-[#1f1711] p-4 text-center text-[#f8ead5]">
-            <p className="mb-1 text-[9px] font-black uppercase tracking-[0.22em] text-[#d6a45d]">
+          <footer className="absolute bottom-[34px] left-0 right-0 border-t border-[#dfcfb7] pt-3 text-center">
+            <p className="mb-1 text-[8px] font-black uppercase tracking-[0.16em] text-[#a1763e]">
               {labels.disclaimerTitle}
             </p>
-            <p className="mx-auto max-w-[650px] whitespace-pre-line break-words text-[10px] font-semibold leading-[1.65] text-[#f8ead5]/86">
-              {cleanReportText(result.disclaimer) || cleanReportText(getDefaultDisclaimer(locale))}
+            <p className="mx-auto max-w-[620px] break-words text-[8.5px] font-medium leading-[1.45] text-[#6f5b47]">
+              {disclaimerText}
             </p>
           </footer>
         </ReportPage>
@@ -712,11 +695,6 @@ export default function AntiqueReportDocument({
         }
 
         .report-page {
-          page-break-after: always;
-          break-after: page;
-        }
-
-        .report-page:last-child {
           page-break-after: auto;
           break-after: auto;
         }
@@ -724,9 +702,11 @@ export default function AntiqueReportDocument({
         @media print {
           html,
           body {
+            width: 210mm !important;
             margin: 0 !important;
             padding: 0 !important;
             background: white !important;
+            overflow: visible !important;
           }
 
           body * {
@@ -739,9 +719,11 @@ export default function AntiqueReportDocument({
           }
 
           .report-print-area {
-            position: absolute !important;
-            inset: 0 auto auto 0 !important;
-            width: 210mm !important;
+            display: block !important;
+            position: static !important;
+            inset: auto !important;
+            width: 190mm !important;
+            height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
             border: none !important;
@@ -752,7 +734,7 @@ export default function AntiqueReportDocument({
           }
 
           .report-print-area .antique-report-document {
-            width: 210mm !important;
+            width: 190mm !important;
             max-width: none !important;
             margin: 0 !important;
             border-radius: 0 !important;
@@ -761,16 +743,42 @@ export default function AntiqueReportDocument({
           }
 
           .report-print-area .report-page {
-            width: 210mm !important;
-            height: 297mm !important;
+            width: 190mm !important;
+            height: auto !important;
+            min-height: 0 !important;
             margin: 0 !important;
-            padding: 8mm !important;
-            overflow: hidden !important;
+            padding: 0 !important;
+            overflow: visible !important;
+            page-break-after: auto !important;
+            break-after: auto !important;
+          }
+
+          .report-print-area .report-page > .relative {
+            height: auto !important;
+          }
+
+          .report-print-area .report-page footer,
+          .report-print-area .report-page > .relative > div:last-child {
+            position: static !important;
+            margin-top: 6mm !important;
+          }
+
+          .report-print-area .report-page header,
+          .report-print-area .report-page section,
+          .report-print-area .report-page footer,
+          .report-print-area .report-page img {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+
+          .report-print-area .report-page:not(:last-child) {
+            page-break-after: always !important;
+            break-after: page !important;
           }
 
           @page {
             size: A4;
-            margin: 0;
+            margin: 10mm;
           }
         }
       `}</style>

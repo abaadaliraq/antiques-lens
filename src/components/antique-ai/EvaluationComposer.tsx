@@ -1,9 +1,9 @@
 "use client";
 
 import { Capacitor } from "@capacitor/core";
-import { Camera, Send, Sparkles, X } from "lucide-react";
+import { Camera, Image as ImageIcon, Send, Sparkles, X } from "lucide-react";
 import type { ChangeEvent, MouseEvent } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import GemstoneFields, {
   buildGemstoneContext,
   emptyGemstoneFormData,
@@ -33,7 +33,7 @@ type Props = {
   imagePreview?: string | null;
   error: string;
   handleImageChange: (event: ChangeEvent<HTMLInputElement>) => void;
-  handleTakePhoto?: () => void | Promise<void>;
+  handleTakePhoto?: (source?: "camera" | "gallery") => void | Promise<void>;
   removeImage: () => void;
   removeImageAt?: (index: number) => void;
   handleAnalyze: () => void;
@@ -61,7 +61,7 @@ function isRtl(locale: AppLocale) {
   return locale === "ar" || locale === "fa" || locale === "ku";
 }
 
-function copy(locale: AppLocale) {
+function copy(locale: AppLocale): Record<string, string> {
   const text = {
     ar: {
       uploadBox: "ارفع أو التقط صورة",
@@ -129,7 +129,66 @@ function copy(locale: AppLocale) {
     },
   } satisfies Record<AppLocale, Record<string, string>>;
 
-  return text[locale];
+  const pickerText: Record<AppLocale, Record<string, string>> = {
+    ar: {
+      sheetTitle: "إضافة صورة",
+      sheetHint: "اختر طريقة إضافة الصورة إلى تقييم KISHIB",
+      takePhoto: "التقط صورة",
+      chooseGallery: "اختر من المعرض",
+      close: "إغلاق",
+    },
+    en: {
+      sheetTitle: "Add an image",
+      sheetHint: "Choose how to add an image to your KISHIB evaluation",
+      takePhoto: "Take a photo",
+      chooseGallery: "Choose from gallery",
+      close: "Close",
+    },
+    fr: {
+      sheetTitle: "Ajouter une image",
+      sheetHint: "Choisissez comment ajouter une image",
+      takePhoto: "Prendre une photo",
+      chooseGallery: "Choisir depuis la galerie",
+      close: "Fermer",
+    },
+    hi: {
+      sheetTitle: "छवि जोड़ें",
+      sheetHint: "KISHIB मूल्यांकन में छवि जोड़ने का तरीका चुनें",
+      takePhoto: "फ़ोटो लें",
+      chooseGallery: "गैलरी से चुनें",
+      close: "बंद करें",
+    },
+    fa: {
+      sheetTitle: "افزودن تصویر",
+      sheetHint: "روش افزودن تصویر به ارزیابی KISHIB را انتخاب کنید",
+      takePhoto: "گرفتن عکس",
+      chooseGallery: "انتخاب از گالری",
+      close: "بستن",
+    },
+    tr: {
+      sheetTitle: "Görsel ekle",
+      sheetHint: "KISHIB değerlendirmesine görsel ekleme yöntemini seçin",
+      takePhoto: "Fotoğraf çek",
+      chooseGallery: "Galeriden seç",
+      close: "Kapat",
+    },
+    ru: {
+      sheetTitle: "Добавить изображение",
+      sheetHint: "Выберите способ добавления изображения",
+      takePhoto: "Сделать фото",
+      chooseGallery: "Выбрать из галереи",
+      close: "Закрыть",
+    },
+    ku: {
+      sheetTitle: "زیادکردنی وێنە",
+      sheetHint: "شێوازی زیادکردنی وێنە بۆ هەڵسەنگاندنی KISHIB هەڵبژێرە",
+      takePhoto: "وێنە بگرە",
+      chooseGallery: "لە گەلەری هەڵبژێرە",
+      close: "داخستن",
+    },
+  };
+
+  return { ...text[locale], ...pickerText[locale] };
 }
 
 export default function EvaluationComposer({
@@ -155,6 +214,9 @@ export default function EvaluationComposer({
   const dir = isRtl(safeLocale) ? "rtl" : "ltr";
   const t = copy(safeLocale);
   const [gemstoneData, setGemstoneData] = useState(emptyGemstoneFormData);
+  const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const previews =
     imagePreviews.length > 0 ? imagePreviews : imagePreview ? [imagePreview] : [];
@@ -195,18 +257,34 @@ export default function EvaluationComposer({
     console.log("Upload button clicked");
     console.log("Platform:", Capacitor.getPlatform());
 
-    if (
-      Capacitor.isNativePlatform() &&
-      Capacitor.getPlatform() === "android" &&
-      handleTakePhoto
-    ) {
-      event.preventDefault();
-      console.log("Using native CameraSource.Prompt");
-      void handleTakePhoto();
+    event.preventDefault();
+    setIsImagePickerOpen(true);
+  }
+
+  function closeImagePicker() {
+    setIsImagePickerOpen(false);
+  }
+
+  function chooseCamera() {
+    closeImagePicker();
+
+    if (Capacitor.isNativePlatform() && handleTakePhoto) {
+      void handleTakePhoto("camera");
       return;
     }
 
-    console.log("Using web file input fallback");
+    cameraInputRef.current?.click();
+  }
+
+  function chooseGallery() {
+    closeImagePicker();
+
+    if (Capacitor.isNativePlatform() && handleTakePhoto) {
+      void handleTakePhoto("gallery");
+      return;
+    }
+
+    galleryInputRef.current?.click();
   }
 
   return (
@@ -240,9 +318,18 @@ export default function EvaluationComposer({
             <p className="relative mt-1 text-xs text-[#735f4b]">{t.ready}</p>
           ) : null}
           <input
+            ref={galleryInputRef}
             type="file"
             accept="image/*"
             multiple
+            onChange={handleImageChange}
+            className="hidden"
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
             onChange={handleImageChange}
             className="hidden"
           />
@@ -333,6 +420,68 @@ export default function EvaluationComposer({
           )}
         </button>
       </div>
+
+      {isImagePickerOpen ? (
+        <div
+          className="fixed inset-0 z-[99999] flex items-end bg-[#241913]/35 px-3 pb-3 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          onClick={closeImagePicker}
+        >
+          <div
+            className="w-full rounded-t-[28px] border border-[#d2b98f]/80 bg-[#fff4e2]/94 p-4 text-[#241913] shadow-[0_-20px_60px_rgba(36,25,19,0.28)] backdrop-blur-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-[#b88a3d]/45" />
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-[18px] font-bold text-[#233f32]">
+                  {t.sheetTitle}
+                </h3>
+                <p className="mt-1 text-[13px] leading-5 text-[#735f4b]">
+                  {t.sheetHint}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeImagePicker}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#d2b98f] bg-[#efe3cf]/70 text-[#735f4b]"
+                aria-label={t.close}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid gap-2.5">
+              <button
+                type="button"
+                onClick={chooseCamera}
+                className="flex w-full items-center gap-3 rounded-[18px] border border-[#d2b98f] bg-[#f8edda] px-4 py-3.5 text-start shadow-[0_10px_24px_rgba(62,39,22,0.08)] transition active:scale-[0.99]"
+              >
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[15px] bg-[#e8d1ad] text-[#8b3a2b]">
+                  <Camera className="h-5 w-5" />
+                </span>
+                <span className="text-[16px] font-semibold text-[#241913]">
+                  {t.takePhoto}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={chooseGallery}
+                className="flex w-full items-center gap-3 rounded-[18px] border border-[#d2b98f] bg-[#f8edda] px-4 py-3.5 text-start shadow-[0_10px_24px_rgba(62,39,22,0.08)] transition active:scale-[0.99]"
+              >
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[15px] bg-[#e8d1ad] text-[#8b3a2b]">
+                  <ImageIcon className="h-5 w-5" />
+                </span>
+                <span className="text-[16px] font-semibold text-[#241913]">
+                  {t.chooseGallery}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
