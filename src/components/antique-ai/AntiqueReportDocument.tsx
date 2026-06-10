@@ -30,6 +30,7 @@ type AntiqueReportDocumentProps = {
   locale: Locale;
   result: ReportResult;
   imageUrl?: string;
+  imageUrls?: string[];
   reportId?: string;
   generatedAt?: string;
   variant?: "preview" | "print";
@@ -330,9 +331,14 @@ function repairLabels<T extends Record<string, string>>(labels: T): T {
     Object.entries(labels).map(([key, value]) => [key, repairMojibakeText(value)]),
   ) as T;
 }
-function cleanText(value?: string) {
-  if (!value || !value.trim()) return "-";
-  return repairMojibakeText(value.trim());
+function cleanReportText(value?: string) {
+  if (!value || !value.trim()) return "";
+
+  const raw = value.trim();
+  const repaired = repairMojibakeText(raw).trim();
+  const candidate = repaired || raw;
+
+  return /(?:Ø|Ù|Û|Ã|Â|Ð|Ñ|�)/.test(candidate) ? "" : candidate;
 }
 
 function getDefaultDisclaimer(locale: Locale) {
@@ -373,6 +379,10 @@ function InfoBlock({
   value?: string;
   strong?: boolean;
 }) {
+  const cleanValue = cleanReportText(value);
+
+  if (!cleanValue) return null;
+
   return (
     <div className="rounded-[14px] border border-[#e5d4ba] bg-white/64 p-3">
       <p className="mb-1 text-[8.5px] font-black uppercase tracking-[0.14em] text-[#9a7441]">
@@ -386,7 +396,7 @@ function InfoBlock({
             : "text-[11.2px] font-semibold",
         ].join(" ")}
       >
-        {cleanText(value)}
+        {cleanValue}
       </p>
     </div>
   );
@@ -401,6 +411,10 @@ function TextBox({
   body?: string;
   compact?: boolean;
 }) {
+  const cleanBody = cleanReportText(body);
+
+  if (!cleanBody) return null;
+
   return (
     <section className="rounded-[16px] border border-[#e5d4ba] bg-white/64 p-4">
       <h3 className="mb-2 text-[9px] font-black uppercase tracking-[0.16em] text-[#9a7441]">
@@ -412,7 +426,7 @@ function TextBox({
           compact ? "text-[10.2px] leading-[1.72]" : "text-[11px] leading-[1.82]",
         ].join(" ")}
       >
-        {cleanText(body)}
+        {cleanBody}
       </p>
     </section>
   );
@@ -425,7 +439,11 @@ function ListSection({
   title: string;
   items?: string[];
 }) {
-  const safeItems = Array.isArray(items) ? items.filter(Boolean) : [];
+  const safeItems = Array.isArray(items)
+    ? items.map((item) => cleanReportText(item)).filter(Boolean)
+    : [];
+
+  if (safeItems.length === 0) return null;
 
   if (safeItems.length === 0) {
     return <TextBox title={title} body="—" compact />;
@@ -486,6 +504,7 @@ export default function AntiqueReportDocument({
   locale,
   result,
   imageUrl,
+  imageUrls = [],
   reportId,
   generatedAt,
   variant = "preview",
@@ -497,6 +516,15 @@ export default function AntiqueReportDocument({
   const period = result.timePeriod || result.period;
   const value = result.estimatedValue || result.priceRange;
   const history = result.history || result.description;
+  const reportImages = [
+    imageUrl,
+    ...imageUrls,
+  ].filter((src, index, list): src is string =>
+    typeof src === "string" && src.trim().length > 0 && list.indexOf(src) === index,
+  );
+  const primaryImage = reportImages[0];
+  const secondaryImages = reportImages.slice(1, 7);
+  const cleanTitle = cleanReportText(result.title) || "KISHIB Evaluation";
 
   return (
     <article
@@ -545,21 +573,21 @@ export default function AntiqueReportDocument({
 
           <section className="mb-5 text-center">
             <h2 className="mx-auto max-w-[670px] break-words text-[23px] font-black leading-[1.28] text-[#1e1712]">
-              {cleanText(result.title)}
+              {cleanTitle}
             </h2>
           </section>
 
-          <section className="mb-5 grid grid-cols-[245px_1fr] gap-4">
+          <section className="report-main-grid mb-5 grid grid-cols-[245px_1fr] gap-4">
             <div className="rounded-[18px] border border-[#dfcfb7] bg-[#efe3d2] p-3">
               <p className="mb-2 text-[8.5px] font-black uppercase tracking-[0.18em] text-[#9a7441]">
                 {labels.objectImage}
               </p>
 
-              {imageUrl ? (
+              {primaryImage ? (
                 <div className="flex h-[250px] items-center justify-center rounded-[14px] bg-[#1f1711] p-2">
                   <img
-                    src={imageUrl}
-                    alt={result.title || labels.objectImage}
+                    src={primaryImage}
+                    alt={cleanTitle || labels.objectImage}
                     className="max-h-full max-w-full rounded-[10px] object-contain"
                   />
                 </div>
@@ -568,6 +596,23 @@ export default function AntiqueReportDocument({
                   {labels.noImage}
                 </div>
               )}
+
+              {secondaryImages.length > 0 ? (
+                <div className="mt-2 grid grid-cols-4 gap-1.5">
+                  {secondaryImages.map((src, index) => (
+                    <div
+                      key={`${src}-${index}`}
+                      className="flex aspect-square items-center justify-center overflow-hidden rounded-[9px] border border-[#d8c5a8] bg-[#fff8ed]"
+                    >
+                      <img
+                        src={src}
+                        alt={`${cleanTitle} ${index + 2}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
 
             <div className="grid gap-2.5">
@@ -584,7 +629,7 @@ export default function AntiqueReportDocument({
             </div>
           </section>
 
-          <section className="mb-5 grid grid-cols-2 gap-3">
+          <section className="report-two-grid mb-5 grid grid-cols-2 gap-3">
             <TextBox title={labels.condition} body={result.condition} compact />
             <TextBox title={labels.authenticity} body={result.authenticity} compact />
           </section>
@@ -599,7 +644,7 @@ export default function AntiqueReportDocument({
                 {labels.report}
               </p>
               <h2 className="mt-1 max-w-[640px] break-words text-[21px] font-black leading-[1.25] text-[#1c1713]">
-                {cleanText(result.title)}
+                {cleanTitle}
               </h2>
             </div>
 
@@ -612,12 +657,12 @@ export default function AntiqueReportDocument({
             <TextBox title={labels.historicalContext} body={history} />
           </section>
 
-          <section className="mb-4 grid grid-cols-2 gap-3">
+          <section className="report-two-grid mb-4 grid grid-cols-2 gap-3">
             <ListSection title={labels.valueDrivers} items={result.valueDrivers} />
             <ListSection title={labels.valueReducers} items={result.valueReducers} />
           </section>
 
-          <section className="mb-4 grid grid-cols-2 gap-3">
+          <section className="report-two-grid mb-4 grid grid-cols-2 gap-3">
             <ListSection title={labels.neededPhotos} items={result.neededPhotos} />
 
             <section className="rounded-[16px] border border-[#e5d4ba] bg-white/64 p-4">
@@ -633,16 +678,16 @@ export default function AntiqueReportDocument({
               </div>
 
               <p className="whitespace-pre-line break-words text-[10.3px] font-semibold leading-[1.65] text-[#33251b]">
-                {cleanText(result.confidenceNote)}
+                {cleanReportText(result.confidenceNote)}
               </p>
 
-              {result.followUpQuestion ? (
+              {cleanReportText(result.followUpQuestion) ? (
                 <div className="mt-3 rounded-[12px] bg-[#f8f1e8] p-3">
                   <p className="mb-1 text-[8.5px] font-black uppercase tracking-[0.16em] text-[#9a7441]">
                     {labels.nextQuestion}
                   </p>
                   <p className="whitespace-pre-line break-words text-[10.2px] font-semibold leading-[1.65] text-[#2a2119]">
-                    {result.followUpQuestion}
+                    {cleanReportText(result.followUpQuestion)}
                   </p>
                 </div>
               ) : null}
@@ -654,7 +699,7 @@ export default function AntiqueReportDocument({
               {labels.disclaimerTitle}
             </p>
             <p className="mx-auto max-w-[650px] whitespace-pre-line break-words text-[10px] font-semibold leading-[1.65] text-[#f8ead5]/86">
-              {result.disclaimer || getDefaultDisclaimer(locale)}
+              {cleanReportText(result.disclaimer) || cleanReportText(getDefaultDisclaimer(locale))}
             </p>
           </footer>
         </ReportPage>

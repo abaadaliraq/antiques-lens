@@ -1105,14 +1105,13 @@ export default function ResultView({
 
             <div className="report-preview-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#efe3cf] px-3 py-4 sm:px-5">
               <div className="report-preview-shell mx-auto w-full max-w-4xl">
-                <AntiqueReportDocument
-                  locale={locale}
-                  result={result}
-                  imageUrl={mainImage || undefined}
-                  imageUrls={galleryImages}
-                  reportId={reportId}
-                  variant="preview"
-                />
+               <AntiqueReportDocument
+  locale={locale}
+  result={result}
+  imageUrl={mainImage || undefined}
+  reportId={reportId}
+  variant="preview"
+/>
               </div>
             </div>
           </div>
