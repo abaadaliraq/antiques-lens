@@ -461,7 +461,17 @@ export default function ResultView({
   const [failedImageSources, setFailedImageSources] = useState<Set<string>>(
     () => new Set(),
   );
+useEffect(() => {
+  if (isReportOpen) {
+    document.body.classList.add("kishib-report-open");
+  } else {
+    document.body.classList.remove("kishib-report-open");
+  }
 
+  return () => {
+    document.body.classList.remove("kishib-report-open");
+  };
+}, [isReportOpen]);
   const reportId = useMemo(() => buildReportId(), []);
   const fallbackText = getFallbackText(locale);
   const reportLabels = getReportLabels(locale);
@@ -1130,6 +1140,9 @@ export default function ResultView({
       </div>
 
       <style jsx global>{`
+      body.kishib-report-open .kishib-app-chrome {
+  display: none !important;
+}
         .compact-followup-panel h1,
         .compact-followup-panel h2,
         .compact-followup-panel h3 {

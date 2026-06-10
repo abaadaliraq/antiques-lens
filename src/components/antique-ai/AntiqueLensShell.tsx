@@ -542,16 +542,20 @@ export default function AntiqueLensShell() {
         {appRestoring ? <KishibLoader overlay /> : null}
 
         {showHomeTicker ? (
-          <div className="fixed inset-x-0 top-0 z-50">
+<div className="kishib-app-chrome fixed inset-x-0 top-0 z-50">
             <PlatformNewsTicker locale={lens.locale} />
           </div>
         ) : null}
-        {showHomeTicker ? <ExpertContactButton locale={lens.locale} /> : null}
+{showHomeTicker ? (
+  <div className="kishib-app-chrome">
+    <ExpertContactButton locale={lens.locale} />
+  </div>
+) : null}
 
         {showHomeTicker ? (
           <div
             dir="ltr"
-            className="fixed inset-x-0 top-[34px] z-40 flex items-center gap-2 border-y border-white/10 bg-[#241913]/18 px-2 py-1 shadow-[0_8px_22px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:top-[34px] sm:px-3"
+            className="kishib-app-chrome fixed inset-x-0 top-[34px] z-40 flex items-center gap-2 border-y ... border-white/10 bg-[#241913]/18 px-2 py-1 shadow-[0_8px_22px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:top-[34px] sm:px-3"
           >
             <UserMenu locale={lens.locale} setLocale={lens.changeLocale} compact />
 
@@ -591,11 +595,11 @@ export default function AntiqueLensShell() {
           </div>
         ) : (
           <>
-            <div className="fixed right-4 top-4 z-40 lg:right-8 lg:top-8">
+           <div className="kishib-app-chrome fixed right-4 top-4 z-40 lg:right-8 lg:top-8">
               <UserMenu locale={lens.locale} setLocale={lens.changeLocale} />
             </div>
 
-            <div className="fixed left-3 top-3 z-40 flex max-w-[calc(100vw-7.25rem)] items-center gap-0.5 rounded-full border border-[#d2b98f]/20 bg-[#11100f]/28 p-0.5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] backdrop-blur-2xl lg:left-8 lg:top-8 lg:gap-1 lg:p-1">
+           <div className="kishib-app-chrome fixed left-3 top-3 z-40 flex max-w-[calc(100vw-7.25rem)] items-center gap-0.5 rounded-full border border-[#d2b98f]/20 bg-[#11100f]/28 p-0.5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] backdrop-blur-2xl lg:left-8 lg:top-8 lg:gap-1 lg:p-1">
               <button
                 type="button"
                 disabled
@@ -743,16 +747,18 @@ export default function AntiqueLensShell() {
           )}
         </section>
 
-        <BottomBar
-          theme={lens.theme}
-          labels={{
-            new: lens.t.new,
-            share: lens.t.share,
-          }}
-          hasResult={Boolean(lens.result)}
-          onNew={lens.resetEvaluation}
-          onShare={lens.handleShare}
-        />
+       <div className="kishib-app-chrome">
+  <BottomBar
+    theme={lens.theme}
+    labels={{
+      new: lens.t.new,
+      share: lens.t.share,
+    }}
+    hasResult={Boolean(lens.result)}
+    onNew={lens.resetEvaluation}
+    onShare={lens.handleShare}
+  />
+</div>
 
         <CookieBar />
       </div>
