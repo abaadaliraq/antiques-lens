@@ -372,9 +372,9 @@ function repairMojibakeText(value: string): string {
       if (score === 0) break;
     }
 
-    return best;
+    return bestScore === 0 ? best : "";
   } catch {
-    return value;
+    return "";
   }
 }
 

@@ -6,6 +6,7 @@ import {
   ChevronDown,
   Cookie,
   Crown,
+  ExternalLink,
   FileText,
   Globe2,
   LifeBuoy,
@@ -36,6 +37,7 @@ type UserMenuProps = {
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
 const PROFILE_CACHE_PREFIX = "kishib:user-profile:";
 const SUPPORT_EMAIL = "support@kishib.com";
+const KISHIB_WEBSITE_URL = "https://kishib-website.vercel.app/";
 
 type EditableProfile = {
   name: string;
@@ -61,6 +63,7 @@ type MenuCopy = {
   language: string;
   subscriptions: string;
   support: string;
+  website: string;
   cookies: string;
   terms: string;
   privacy: string;
@@ -92,6 +95,7 @@ const COPY: Record<Locale, MenuCopy> = {
     language: "اللغة",
     subscriptions: "الاشتراكات",
     support: "الدعم",
+    website: "موقع KISHIB",
     cookies: "الكوكيز",
     terms: "الشروط والأحكام",
     privacy: "سياسة الخصوصية",
@@ -121,6 +125,7 @@ const COPY: Record<Locale, MenuCopy> = {
     language: "Language",
     subscriptions: "Subscriptions",
     support: "Support",
+    website: "KISHIB Website",
     cookies: "Cookies",
     terms: "Terms & Conditions",
     privacy: "Privacy Policy",
@@ -150,6 +155,7 @@ const COPY: Record<Locale, MenuCopy> = {
     language: "Langue",
     subscriptions: "Abonnements",
     support: "Support",
+    website: "Site KISHIB",
     cookies: "Cookies",
     terms: "Conditions",
     privacy: "Confidentialité",
@@ -179,6 +185,7 @@ const COPY: Record<Locale, MenuCopy> = {
     language: "भाषा",
     subscriptions: "सदस्यता",
     support: "Support",
+    website: "KISHIB Website",
     cookies: "कुकीज़",
     terms: "नियम और शर्तें",
     privacy: "गोपनीयता नीति",
@@ -208,6 +215,7 @@ const COPY: Record<Locale, MenuCopy> = {
     language: "زبان",
     subscriptions: "اشتراک‌ها",
     support: "پشتیبانی",
+    website: "وب‌سایت KISHIB",
     cookies: "کوکی‌ها",
     terms: "شرایط و قوانین",
     privacy: "حریم خصوصی",
@@ -237,6 +245,7 @@ const COPY: Record<Locale, MenuCopy> = {
     language: "Dil",
     subscriptions: "Abonelikler",
     support: "Destek",
+    website: "KISHIB Website",
     cookies: "Çerezler",
     terms: "Şartlar ve Koşullar",
     privacy: "Gizlilik Politikası",
@@ -266,6 +275,7 @@ const COPY: Record<Locale, MenuCopy> = {
     language: "Язык",
     subscriptions: "Подписки",
     support: "Поддержка",
+    website: "KISHIB Website",
     cookies: "Cookies",
     terms: "Условия",
     privacy: "Политика конфиденциальности",
@@ -295,6 +305,7 @@ const COPY: Record<Locale, MenuCopy> = {
     language: "زمان",
     subscriptions: "بەشداربوونەکان",
     support: "پاڵپشتی",
+    website: "ماڵپەڕی KISHIB",
     cookies: "کوکیز",
     terms: "مەرج و ڕێساکان",
     privacy: "تایبەتمەندی",
@@ -645,6 +656,11 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
     setPlansOpen(panel === "plans");
   }
 
+  function openKishibWebsite() {
+    setIsOpen(false);
+    window.open(KISHIB_WEBSITE_URL, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <div ref={menuRef} dir={rtl ? "rtl" : "ltr"} className="relative z-50">
       <button
@@ -888,6 +904,11 @@ export default function UserMenu({ locale, setLocale }: UserMenuProps) {
               </div>
 
               <div className="mt-2 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/55 p-1.5">
+                <MenuExternalButton
+                  icon={<ExternalLink className="h-4 w-4" />}
+                  label={copy.website}
+                  onClick={openKishibWebsite}
+                />
                 <MenuLink
                   href="/cookies"
                   icon={<Cookie className="h-4 w-4" />}
@@ -1144,5 +1165,29 @@ function MenuLink({
       </span>
       <BadgeCheck className="h-3.5 w-3.5 text-[#735f4b]/45" />
     </Link>
+  );
+}
+
+function MenuExternalButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-9 w-full items-center gap-3 rounded-[12px] px-2.5 text-start transition hover:bg-[#d9b59e]/55"
+    >
+      <span className="text-[#986f2e]">{icon}</span>
+      <span className="flex-1 text-[12px] font-medium text-[#241913]">
+        {label}
+      </span>
+      <ExternalLink className="h-3.5 w-3.5 text-[#735f4b]/45" />
+    </button>
   );
 }

@@ -57,7 +57,7 @@ function getFallbackText(locale: Locale) {
   if (locale === "fa") return "Ù†Ø§Ù…Ø´Ø®Øµ";
   if (locale === "tr") return "Net deÄŸil";
   if (locale === "ru") return "ÐÐµ ÑÑÐ½Ð¾";
-  return "ØºÙŠØ± ÙˆØ§Ø¶Ø­";
+  return "غير واضح";
 }
 
 function getAddInfoText(locale: Locale) {
@@ -68,7 +68,7 @@ function getAddInfoText(locale: Locale) {
   if (locale === "fa") return "Ø§ÙØ²ÙˆØ¯Ù† Ø§Ø·Ù„Ø§Ø¹Ø§Øª";
   if (locale === "tr") return "Bilgi ekle";
   if (locale === "ru") return "Ð”Ð¾Ð±Ð°Ð²Ð¸Ñ‚ÑŒ Ð¸Ð½Ñ„Ð¾Ñ€Ð¼Ð°Ñ†Ð¸ÑŽ";
-  return "Ø£Ø¶Ù Ù…Ø¹Ù„ÙˆÙ…Ø§Øª";
+  return "أضف معلومات";
 }
 
 function getUserNoteLabel(locale: Locale) {
@@ -79,7 +79,45 @@ function getUserNoteLabel(locale: Locale) {
   if (locale === "fa") return "ÛŒØ§Ø¯Ø¯Ø§Ø´Øª Ø´Ù…Ø§ Ø¯Ø±Ø¨Ø§Ø±Ù‡ Ø´ÛŒØ¡";
   if (locale === "ku") return "ØªÛŽØ¨ÛŒÙ†ÛŒÛŒÛ•Ú©Û•Øª Ø¯Û•Ø±Ø¨Ø§Ø±Û•ÛŒ Ù¾Ø§Ø±Ú†Û•Ú©Û•";
   if (locale === "hi") return "Your note about the item";
-  return "Ù…Ù„Ø§Ø­Ø¸ØªÙƒ Ø¹Ù† Ø§Ù„Ù‚Ø·Ø¹Ø©";
+  return "ملاحظتك عن القطعة";
+}
+
+function looksMojibake(value: string) {
+  return /(?:\u00d8|\u00d9|\u00da|\u00db|\u00d0|\u00d1|\u00c3|\u00c2|\u00e0\u00a4|\u00e0\u00a5|Ã˜|Ã™|Ãš|Ã›|Ãƒ|Ã‚|Ð|Ñ)/.test(
+    value,
+  );
+}
+
+function mojibakeScore(value: string) {
+  return (
+    value.match(
+      /(?:\u00d8|\u00d9|\u00da|\u00db|\u00d0|\u00d1|\u00c3|\u00c2|\u00e0\u00a4|\u00e0\u00a5|Ã˜|Ã™|Ãš|Ã›|Ãƒ|Ã‚|Ð|Ñ)/g,
+    )?.length || 0
+  );
+}
+
+function cleanDisplayText(value?: string | null) {
+  if (!value || !value.trim()) return "";
+
+  let best = value.trim();
+  let bestScore = mojibakeScore(best);
+
+  try {
+    for (let attempt = 0; attempt < 3 && bestScore > 0; attempt += 1) {
+      const bytes = Uint8Array.from(best, (char) => char.charCodeAt(0) & 0xff);
+      const repaired = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+      const score = mojibakeScore(repaired);
+
+      if (score >= bestScore) break;
+
+      best = repaired.trim();
+      bestScore = score;
+    }
+  } catch {
+    return looksMojibake(best) ? "" : best;
+  }
+
+  return looksMojibake(best) ? "" : best;
 }
 
 function getReportLabels(locale: Locale) {
@@ -290,6 +328,95 @@ function isPreciousMetalItem(result: AnalysisResult) {
   return hasPreciousMetal && !hasExcludedMaterial;
 }
 
+const luxuryCategoryKeywords = [
+  "watch",
+  "watches",
+  "handbag",
+  "bag",
+  "jewelry",
+  "jewellery",
+  "ring",
+  "bracelet",
+  "necklace",
+  "earring",
+  "accessory",
+  "accessories",
+  "fashion",
+  "shoe",
+  "shoes",
+  "clothing",
+  "luxury",
+  "brand",
+  "serial",
+  "invoice",
+  "authenticity card",
+  "audemars",
+  "rolex",
+  "cartier",
+  "chanel",
+  "hermes",
+  "louis vuitton",
+  "gucci",
+  "prada",
+  "dior",
+  "tiffany",
+  "bvlgari",
+];
+
+const nonLuxuryObjectKeywords = [
+  "art",
+  "artwork",
+  "wooden artwork",
+  "painting",
+  "sculpture",
+  "carving",
+  "craft",
+  "furniture",
+  "wood",
+  "wooden",
+  "antique wood",
+  "chair",
+  "table",
+  "cabinet",
+  "box",
+  "panel",
+  "relief",
+  "statue",
+  "ceramic",
+  "pottery",
+  "rug",
+  "carpet",
+  "textile",
+  "manuscript",
+];
+
+function shouldShowBrandAssessment(result: AnalysisResult) {
+  if (!result.brandAssessment) return false;
+
+  const text = [
+    result.itemType,
+    result.title,
+    result.lookup,
+    result.material,
+    result.history,
+    result.description,
+    result.brandAssessment.category,
+    result.brandAssessment.possibleBrand,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const hasLuxuryCategory = luxuryCategoryKeywords.some((word) =>
+    text.includes(word),
+  );
+  const hasNonLuxuryCategory = nonLuxuryObjectKeywords.some((word) =>
+    text.includes(word),
+  );
+
+  return hasLuxuryCategory && !hasNonLuxuryCategory;
+}
+
 function buildReportId() {
   const now = new Date();
   const year = now.getFullYear();
@@ -420,7 +547,9 @@ export default function ResultView({
 
   const resolvedSimilarImages =
     similarImages.length > 0 ? similarImages : getSimilarItems(result);
-  const cleanUserNote = userNote.trim();
+  const cleanUserNote = cleanDisplayText(userNote);
+  const cleanTitle = cleanDisplayText(result.title) || labels.result;
+  const canShowBrandAssessment = shouldShowBrandAssessment(result);
   const metalScenarios = result.metalValue?.scenarios || [];
   const shouldShowMetalValue =
     isPreciousMetalItem(result) && metalScenarios.length > 0;
@@ -539,7 +668,7 @@ export default function ResultView({
                 </p>
 
                 <h1 className="max-w-4xl text-[25px] font-medium leading-[1.22] tracking-[-0.035em] text-[#fff4e2] sm:text-[32px] md:text-[42px]">
-                  {result.title || labels.result}
+                  {cleanTitle}
                 </h1>
 
                 {canShowAddInfoButton && (
@@ -561,7 +690,7 @@ export default function ResultView({
               </p>
 
               <h1 className="max-w-4xl text-[25px] font-medium leading-[1.22] tracking-[-0.035em] text-[#fff4e2] sm:text-[32px] md:text-[42px]">
-                {result.title || labels.result}
+                  {cleanTitle}
               </h1>
 
               {canShowAddInfoButton && (
@@ -670,7 +799,9 @@ export default function ResultView({
           </section>
         ) : null}
 
-        {result.lookup && <TextSection title={labels.lookup} body={result.lookup} />}
+        {cleanDisplayText(result.lookup) ? (
+          <TextSection title={labels.lookup} body={result.lookup} />
+        ) : null}
 
         <TextSection
           title={labels.description}
@@ -755,31 +886,32 @@ export default function ResultView({
           </section>
         )}
 
-        {result.brandAssessment ? (
+        {canShowBrandAssessment ? (
           <section className="mt-8 border-t border-[#c7b99e] pt-6">
             <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#986f2e]">
-              {locale === "ar" ? "ØªÙ‚ÙŠÙŠÙ… Ø§Ù„Ø¨Ø±Ø§Ù†Ø¯" : "Brand assessment"}
+              {locale === "ar" ? "تقييم البراند" : "Brand assessment"}
             </p>
 
             <div className="grid gap-3 md:grid-cols-2">
               <div className="rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/70 p-4">
                 <p className="text-[13px] font-medium text-[#233f32]">
-                  {result.brandAssessment.possibleBrand}
+                  {cleanDisplayText(result.brandAssessment?.possibleBrand)}
                 </p>
                 <p className="mt-2 text-[12px] leading-6 text-[#735f4b]">
-                  {result.brandAssessment.category} Â· {result.brandAssessment.confidence}
+                  {cleanDisplayText(result.brandAssessment?.category)} ·{" "}
+                  {result.brandAssessment?.confidence}
                 </p>
                 <p className="mt-3 text-[12px] leading-6 text-[#735f4b]">
-                  {result.brandAssessment.authenticityStatus}
+                  {cleanDisplayText(result.brandAssessment?.authenticityStatus)}
                 </p>
               </div>
 
               <div className="rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/70 p-4">
                 <p className="text-[12px] font-medium text-[#233f32]">
-                  {locale === "ar" ? "Ø³ÙŠÙ†Ø§Ø±ÙŠÙˆ Ø§Ù„Ø³Ø¹Ø± Ø§Ù„Ù…Ø´Ø±ÙˆØ·" : "Conditional price scenario"}
+                  {locale === "ar" ? "سيناريو السعر المشروط" : "Conditional price scenario"}
                 </p>
                 <p className="mt-2 text-[12px] leading-6 text-[#735f4b]">
-                  {result.brandAssessment.priceScenario}
+                  {cleanDisplayText(result.brandAssessment?.priceScenario)}
                 </p>
               </div>
             </div>
@@ -1122,6 +1254,8 @@ function MetricBlock({
   fallback: string;
   gold?: boolean;
 }) {
+  const cleanValue = cleanDisplayText(value);
+
   return (
     <div className="min-w-0">
       <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.22em] text-[#986f2e]">
@@ -1134,7 +1268,7 @@ function MetricBlock({
           gold ? "text-[#986f2e]" : "text-[#735f4b]",
         ].join(" ")}
       >
-        {value && value.trim() ? value : fallback}
+        {cleanValue || fallback}
       </p>
     </div>
   );
@@ -1151,7 +1285,9 @@ function TextSection({
   large?: boolean;
   compact?: boolean;
 }) {
-  if (!body || !body.trim()) return null;
+  const cleanBody = cleanDisplayText(body);
+
+  if (!cleanBody) return null;
 
   return (
     <section className={compact ? "" : "mt-8 border-t border-[#c7b99e] pt-6"}>
@@ -1170,14 +1306,16 @@ function TextSection({
           large ? "text-[16px] leading-9 md:text-[17px]" : "text-[14.5px] leading-8",
         ].join(" ")}
       >
-        {body}
+        {cleanBody}
       </p>
     </section>
   );
 }
 
 function SoftList({ title, items }: { title: string; items?: string[] }) {
-  const cleanItems = Array.isArray(items) ? items.filter(Boolean) : [];
+  const cleanItems = Array.isArray(items)
+    ? items.map((item) => cleanDisplayText(item)).filter(Boolean)
+    : [];
 
   if (cleanItems.length === 0) return null;
 

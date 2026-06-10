@@ -1025,30 +1025,49 @@ async function handleAnalyze() {
 
     let uploadedImageUrl = "";
     let cloudinaryPublicId = "";
+    const uploadedImageUrls: string[] = [];
+    const cloudinaryPublicIds: string[] = [];
     let googleLensContext = "";
     let houseContext = "";
     let googleLensItems: SimilarImageResult[] = [];
     let houseStoreContext: HouseOfAntiquesContext | null = null;
 
-    // 1) Upload first image to Cloudinary
-    if (selectedFiles[0]) {
-      const uploadFormData = new FormData();
-      uploadFormData.append("image", selectedFiles[0]);
+    // 1) Upload all selected images to Cloudinary for archive/search context.
+    if (selectedFiles.length) {
+      const uploadResults = await Promise.all(
+        selectedFiles.slice(0, 6).map(async (file) => {
+          const uploadFormData = new FormData();
+          uploadFormData.append("image", file);
 
-      const uploadResponse = await fetch("/api/upload-image", {
-        method: "POST",
-        body: uploadFormData,
+          const uploadResponse = await fetch("/api/upload-image", {
+            method: "POST",
+            body: uploadFormData,
+          });
+
+          const uploadData = await uploadResponse.json();
+
+          if (!uploadResponse.ok || !uploadData?.imageUrl) {
+            throw new Error(uploadData?.error || "Failed to upload image.");
+          }
+
+          return {
+            imageUrl: String(uploadData.imageUrl),
+            publicId:
+              typeof uploadData.publicId === "string" ? uploadData.publicId : "",
+          };
+        }),
+      );
+
+      uploadedImageUrls.push(...uploadResults.map((item) => item.imageUrl));
+      cloudinaryPublicIds.push(
+        ...uploadResults.map((item) => item.publicId).filter(Boolean),
+      );
+      uploadedImageUrl = uploadedImageUrls[0] || "";
+      cloudinaryPublicId = cloudinaryPublicIds[0] || "";
+
+      uploadedImageUrls.forEach((url) => {
+        formData.append("uploadedImageUrls", url);
       });
-
-      const uploadData = await uploadResponse.json();
-
-      if (!uploadResponse.ok || !uploadData?.imageUrl) {
-        throw new Error(uploadData?.error || "Failed to upload image.");
-      }
-
-      uploadedImageUrl = uploadData.imageUrl;
-      cloudinaryPublicId =
-        typeof uploadData.publicId === "string" ? uploadData.publicId : "";
       formData.append("uploadedImageUrl", uploadedImageUrl);
     }
 
@@ -1298,6 +1317,9 @@ if (uploadedImageUrl) {
     uploadedImageUrl,
     sourceImageUrl: uploadedImageUrl,
     imageUrl: uploadedImageUrl,
+    imagePreviews: uploadedImageUrls.length
+      ? uploadedImageUrls
+      : finalResult.imagePreviews,
   });
 }
 
@@ -1359,6 +1381,7 @@ const archiveItem: ArchiveItem = {
     userNote: prompt || "",
     cloudinaryPublicId: cloudinaryPublicId || undefined,
     uploadedImageUrl: uploadedImageUrl || finalResult.uploadedImageUrl,
+    uploadedImageUrls,
     sourceImageUrl: uploadedImageUrl || finalResult.sourceImageUrl,
     imageUrl: uploadedImageUrl || finalResult.imageUrl,
     imagePreview: stableImagePreview,

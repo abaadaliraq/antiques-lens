@@ -209,6 +209,58 @@ Rules for luxury brand evaluation:
 `;
 }
 
+function hasLuxuryCategoryEvidence(input?: string | null) {
+  const text = (input || "").toLowerCase();
+
+  return /\b(watch|watches|bag|handbag|purse|jewelry|jewellery|ring|bracelet|necklace|earring|accessory|accessories|shoe|shoes|clothing|fashion|luxury|brand|branded|serial|invoice|authenticity card|audemars|rolex|cartier|chanel|hermes|louis vuitton|gucci|prada|dior|tiffany|bvlgari)\b/.test(
+    text,
+  );
+}
+
+function canUseLuxuryBrandLayer(input?: string | null) {
+  return hasLuxuryCategoryEvidence(input);
+}
+
+function looksMojibake(value: string) {
+  return /(?:\u00d8|\u00d9|\u00da|\u00db|\u00d0|\u00d1|\u00c3|\u00c2|\u00e0\u00a4|\u00e0\u00a5|Ã˜|Ã™|Ãš|Ã›|Ãƒ|Ã‚|Ð|Ñ)/.test(
+    value,
+  );
+}
+
+function mojibakeScore(value: string) {
+  return (
+    value.match(
+      /(?:\u00d8|\u00d9|\u00da|\u00db|\u00d0|\u00d1|\u00c3|\u00c2|\u00e0\u00a4|\u00e0\u00a5|Ã˜|Ã™|Ãš|Ã›|Ãƒ|Ã‚|Ð|Ñ)/g,
+    )?.length || 0
+  );
+}
+
+function repairMojibakeText(value: string) {
+  if (!looksMojibake(value)) return value;
+
+  try {
+    let best = value;
+    let bestScore = mojibakeScore(value);
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const bytes = Uint8Array.from(best, (char) => char.charCodeAt(0) & 0xff);
+      const repaired = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+      const score = mojibakeScore(repaired);
+
+      if (score >= bestScore) break;
+
+      best = repaired;
+      bestScore = score;
+
+      if (score === 0) break;
+    }
+
+    return bestScore === 0 ? best : "";
+  } catch {
+    return "";
+  }
+}
+
 
 function safeString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
@@ -837,6 +889,7 @@ function buildPrompt(fields: {
   weight?: string;
   hasMark?: string;
   hasImage: boolean;
+  imageCount?: number;
   marketContext?: string;
   marketReferencesText?: string;
   preciousMetalMarketContext?: string;
@@ -889,6 +942,11 @@ User provided:
 - Weight: ${fields.weight || "Not provided"}
 - Mark / signature / stamp: ${fields.hasMark || "Not provided"}
 - Image provided: ${fields.hasImage ? "Yes" : "No"}
+- Number of uploaded images available to inspect: ${fields.imageCount || 0}
+
+MULTI-IMAGE INSPECTION RULE:
+You must inspect every provided image. Treat side images, back images, marks, signatures, stamps, hallmarks, labels, inscriptions, serials, and close-up details as essential evidence. Never say that no mark/stamp/extra image was provided if one appears in any uploaded image.
+Use all images together when identifying the item, checking condition, reading marks/signatures, and estimating value.
 
 ${objectTypeGuidance}
 
@@ -946,6 +1004,11 @@ PRECIOUS METAL SPOT PRICE CONTEXT:
 ${fields.preciousMetalMarketContext || "No live precious metal value context was provided."}
 
 ${fields.brandContext || "No luxury brand context was provided."}
+
+LUXURY / BRAND CATEGORY GATING:
+Only produce brandAssessment for watches, handbags, jewelry, luxury accessories, fashion items, shoes, clothing, or when the user explicitly mentions a brand, serial, invoice, authenticity card, or luxury maker.
+For art, wooden artwork, sculpture, painting, craft, furniture, antique wood objects, ceramic, pottery, carpets, textiles, manuscripts, or general antiques, keep brandAssessment null unless the user explicitly says the item is a watch, bag, accessory, fashion item, jewelry, or branded luxury object.
+Never mix artwork, wooden craft, furniture, or sculpture with watch/bag/accessory authentication.
 
 PRECIOUS METAL VALUATION RULE:
 Never decide that an item is solid gold, solid silver, platinum, or palladium from image color alone.
@@ -1394,7 +1457,11 @@ function buildFallbackResult(locale: Locale): AnalysisResult {
 }
 
 function normalizeString(value: unknown, fallback: string) {
-  return typeof value === "string" && value.trim() ? value.trim() : fallback;
+  if (typeof value !== "string") return fallback;
+
+  const repaired = repairMojibakeText(value.trim()).trim();
+
+  return repaired ? repaired : fallback;
 }
 
 function normalizeArray(value: unknown, fallback: string[]) {
@@ -1402,7 +1469,7 @@ function normalizeArray(value: unknown, fallback: string[]) {
 
   const clean = value
     .filter((item) => typeof item === "string")
-    .map((item) => item.trim())
+    .map((item) => repairMojibakeText(item.trim()).trim())
     .filter(Boolean);
 
   return clean.length ? clean : fallback;
@@ -1495,7 +1562,14 @@ export async function POST(request: Request) {
 
 const formData = await request.formData();
 
-const image = formData.get("image");
+const imageEntries = [...formData.getAll("images"), ...formData.getAll("image")];
+const images = imageEntries.filter(
+  (entry): entry is File => entry instanceof File && entry.size > 0,
+);
+const uploadedImageUrls = formData
+  .getAll("uploadedImageUrls")
+  .filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+  .map((entry) => entry.trim());
 const notes = safeString(formData.get("notes"));
 const followUpClaim = safeString(formData.get("followUpClaim"));
 const locale = normalizeLocale(safeString(formData.get("locale")));
@@ -1529,19 +1603,20 @@ const preciousMetalContextText = [
   .filter(Boolean)
   .join(" ");
 
-const brandAssessment = detectPossibleBrand(
-  [
-    followUpClaim,
-    notes,
-    itemType,
-    material,
-    dimensions,
-    hasMark,
-    marketContext,
-  ]
-    .filter(Boolean)
-    .join(" "),
-);
+const userBrandEvidenceText = [
+  followUpClaim,
+  notes,
+  itemType,
+  material,
+  dimensions,
+  hasMark,
+]
+  .filter(Boolean)
+  .join(" ");
+const shouldUseBrandLayer = canUseLuxuryBrandLayer(userBrandEvidenceText);
+const brandAssessment = shouldUseBrandLayer
+  ? detectPossibleBrand(userBrandEvidenceText)
+  : null;
 const brandContext = buildBrandEvaluationContext(brandAssessment);
 
 let preciousMetalMarketContext = "";
@@ -1701,7 +1776,7 @@ const marketReferencesText =
 console.log("marketReferences found:", marketReferences.length);
 console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
    
-    const hasImage = image instanceof File && image.size > 0;
+    const hasImage = images.length > 0 || uploadedImageUrls.length > 0;
 
     if (!hasImage && !notes) {
       return NextResponse.json(
@@ -1710,7 +1785,9 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
       );
     }
 
-    if (hasImage && image instanceof File && image.size > 8 * 1024 * 1024) {
+    const oversizedImage = images.find((file) => file.size > 8 * 1024 * 1024);
+
+    if (oversizedImage) {
       return NextResponse.json(
         { error: "Image is too large. Please upload an image smaller than 8MB." },
         { status: 400 }
@@ -1737,6 +1814,7 @@ text: buildPrompt({
   weight,
   hasMark,
   hasImage,
+  imageCount: images.length + uploadedImageUrls.length,
   marketContext,
   marketReferencesText,
   preciousMetalMarketContext,
@@ -1745,12 +1823,20 @@ text: buildPrompt({
       },
     ];
 
-    if (hasImage && image instanceof File) {
-      const dataUrl = await fileToDataUrl(image);
+    for (const file of images.slice(0, 6)) {
+      const dataUrl = await fileToDataUrl(file);
 
       inputContent.push({
         type: "input_image",
         image_url: dataUrl,
+        detail: "auto",
+      });
+    }
+
+    for (const imageUrl of uploadedImageUrls.slice(0, Math.max(0, 6 - images.length))) {
+      inputContent.push({
+        type: "input_image",
+        image_url: imageUrl,
         detail: "auto",
       });
     }
@@ -1790,6 +1876,10 @@ text: buildPrompt({
 
     const fallback = buildFallbackResult(locale);
 const normalized = normalizeResult(parsed, fallback);
+
+if (!shouldUseBrandLayer) {
+  normalized.brandAssessment = undefined;
+}
 
 if (brandAssessment && !normalized.brandAssessment) {
   normalized.brandAssessment = {

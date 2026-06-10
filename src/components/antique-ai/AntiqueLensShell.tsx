@@ -10,6 +10,7 @@ import CookieBar from "@/components/antique-ai/CookieBar";
 import EvaluationComposer from "@/components/antique-ai/EvaluationComposer";
 import ExpertContactButton from "@/components/antique-ai/ExpertContactButton";
 import FollowUpEvaluationPanel from "@/components/antique-ai/FollowUpEvaluationPanel";
+import KishibLoader from "@/components/antique-ai/KishibLoader";
 import PlatformNewsTicker from "@/components/antique-ai/PlatformNewsTicker";
 import ResultView from "@/components/antique-ai/ResultView";
 import ThinkingMotion from "@/components/antique-ai/ThinkingMotion";
@@ -21,8 +22,7 @@ import {
   type UserProfile,
 } from "@/lib/profilesSupabase";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
-import { Coins, ShoppingBag, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { Coins, Lock, ShoppingBag, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { formatArchiveDate, type ArchiveItem } from "./archiveStore";
@@ -231,6 +231,7 @@ export default function AntiqueLensShell() {
   const [profileReady, setProfileReady] = useState(false);
   const [profileComplete, setProfileComplete] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [appRestoring, setAppRestoring] = useState(false);
 
   async function refreshProfile() {
     try {
@@ -388,6 +389,62 @@ export default function AntiqueLensShell() {
   }, [router]);
 
   useEffect(() => {
+    let isRestoring = false;
+    let appStateSubscription: Promise<{ remove: () => Promise<void> }> | null = null;
+
+    async function restoreVisibleSession() {
+      if (isRestoring) return;
+
+      isRestoring = true;
+      setAppRestoring(true);
+
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const { data } = await supabase.auth.getSession();
+        const sessionIsActive = Boolean(data.session);
+
+        cacheAuthSession(sessionIsActive);
+        setHasSession(sessionIsActive);
+        setAuthReady(true);
+
+        if (sessionIsActive) {
+          await refreshProfile();
+        } else {
+          setProfile(null);
+          setProfileComplete(false);
+          setProfileReady(true);
+        }
+      } catch (error) {
+        console.error("Failed to restore visible app session", error);
+      } finally {
+        isRestoring = false;
+        setAppRestoring(false);
+      }
+    }
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void restoreVisibleSession();
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    if (Capacitor.isNativePlatform()) {
+      appStateSubscription = App.addListener("appStateChange", ({ isActive }) => {
+        if (isActive) {
+          void restoreVisibleSession();
+        }
+      });
+    }
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      void appStateSubscription?.then((listener) => listener.remove());
+    };
+  }, []);
+
+  useEffect(() => {
     function handleProfileUpdated() {
       void refreshProfile();
     }
@@ -398,7 +455,7 @@ export default function AntiqueLensShell() {
   }, []);
 
   if (!authReady) {
-    return <main className="min-h-dvh kishib-bg-auth" />;
+    return <KishibLoader />;
   }
 
   if (!hasSession) {
@@ -415,7 +472,7 @@ export default function AntiqueLensShell() {
   }
 
   if (!profileReady) {
-    return <main className="min-h-dvh kishib-bg-auth" />;
+    return <KishibLoader />;
   }
 
   if (!profileComplete) {
@@ -482,6 +539,8 @@ export default function AntiqueLensShell() {
       {!lens.result ? <AntiqueBackground /> : null}
 
       <div className="relative z-10 min-h-dvh">
+        {appRestoring ? <KishibLoader overlay /> : null}
+
         {showHomeTicker ? (
           <div className="fixed inset-x-0 top-0 z-50">
             <PlatformNewsTicker locale={lens.locale} />
@@ -504,25 +563,33 @@ export default function AntiqueLensShell() {
             showHomeTicker ? "top-[38px] lg:top-14" : "top-3 lg:top-8",
           ].join(" ")}
         >
-          <Link
-            href="/marketplace"
-            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-[#fff4e2]/92 transition hover:bg-[#fff4e2]/10 sm:px-2.5 sm:text-xs lg:h-9 lg:gap-1.5 lg:px-3 lg:text-sm"
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            title={lens.t.soon}
+            className="inline-flex h-8 shrink-0 cursor-not-allowed items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-[#fff4e2]/55 opacity-75 sm:px-2.5 sm:text-xs lg:h-9 lg:gap-1.5 lg:px-3 lg:text-sm"
           >
             <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#fff4e2]/10 text-[#dcc18a] lg:h-6 lg:w-6">
               <ShoppingBag className="h-3 w-3 lg:h-3.5 lg:w-3.5" />
             </span>
             {getMarketplaceNavLabel(lens.locale)}
-          </Link>
+            <Lock className="h-3 w-3 text-[#dcc18a]/80" aria-hidden="true" />
+          </button>
 
-          <Link
-            href="/metal-prices"
-            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-[#fff4e2]/92 transition hover:bg-[#fff4e2]/10 sm:px-2.5 sm:text-xs lg:h-9 lg:gap-1.5 lg:px-3 lg:text-sm"
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            title={lens.t.soon}
+            className="inline-flex h-8 shrink-0 cursor-not-allowed items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-[#fff4e2]/55 opacity-75 sm:px-2.5 sm:text-xs lg:h-9 lg:gap-1.5 lg:px-3 lg:text-sm"
           >
             <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#fff4e2]/10 text-[#dcc18a] lg:h-6 lg:w-6">
               <Coins className="h-3 w-3 lg:h-3.5 lg:w-3.5" />
             </span>
             {getMetalPricesNavLabel(lens.locale)}
-          </Link>
+            <Lock className="h-3 w-3 text-[#dcc18a]/80" aria-hidden="true" />
+          </button>
         </div>
 
         {lens.isTranslatingResult && (
