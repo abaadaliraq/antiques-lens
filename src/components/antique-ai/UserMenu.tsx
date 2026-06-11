@@ -2,13 +2,13 @@
 
 import {
   BadgeCheck,
+  AlertTriangle,
   Check,
   ChevronDown,
   Cookie,
   Crown,
   ExternalLink,
   FileText,
-  Fingerprint,
   Globe2,
   LifeBuoy,
   LogOut,
@@ -16,6 +16,7 @@ import {
   MapPin,
   Phone,
   ShieldCheck,
+  Trash2,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -34,15 +35,6 @@ type UserMenuProps = {
   locale: Locale;
   setLocale?: (locale: Locale) => void;
   compact?: boolean;
-  biometric?: {
-    available: boolean;
-    enabled: boolean;
-    enableLabel: string;
-    disableLabel: string;
-    unavailableLabel: string;
-    onEnable: () => Promise<boolean>;
-    onDisable: () => void;
-  };
 };
 
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
@@ -79,6 +71,14 @@ type MenuCopy = {
   terms: string;
   privacy: string;
   logout: string;
+  deleteAccount: string;
+  deleteAccountTitle: string;
+  deleteAccountWarning: string;
+  deleteAccountDataWarning: string;
+  deleteAccountConfirmHint: string;
+  deleteAccountConfirmButton: string;
+  deleteAccountSuccess: string;
+  deleteAccountFailed: string;
   comingSoon: string;
   paymentDisabled: string;
   unknown: string;
@@ -111,6 +111,14 @@ const COPY: Record<Locale, MenuCopy> = {
     terms: "الشروط والأحكام",
     privacy: "سياسة الخصوصية",
     logout: "تسجيل خروج",
+    deleteAccount: "حذف الحساب",
+    deleteAccountTitle: "حذف الحساب",
+    deleteAccountWarning: "هذا الإجراء نهائي ولا يمكن التراجع عنه.",
+    deleteAccountDataWarning: "سيتم حذف الحساب وبيانات الملف الشخصي وسجل التقييمات والصور والملاحظات المرتبطة بالحساب قدر الإمكان.",
+    deleteAccountConfirmHint: "اكتب DELETE أو حذف لتفعيل الحذف.",
+    deleteAccountConfirmButton: "حذف الحساب نهائيًا",
+    deleteAccountSuccess: "تم حذف الحساب وبياناته بنجاح.",
+    deleteAccountFailed: "تعذر حذف الحساب. حاولي مرة أخرى.",
     comingSoon: "قريباً",
     paymentDisabled: "الدفع غير مفعل حالياً",
     unknown: "غير مضاف",
@@ -141,6 +149,14 @@ const COPY: Record<Locale, MenuCopy> = {
     terms: "Terms & Conditions",
     privacy: "Privacy Policy",
     logout: "Log out",
+    deleteAccount: "Delete account",
+    deleteAccountTitle: "Delete account",
+    deleteAccountWarning: "This action is permanent and cannot be undone.",
+    deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
+    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
+    deleteAccountConfirmButton: "Delete account permanently",
+    deleteAccountSuccess: "Account and associated data were deleted successfully.",
+    deleteAccountFailed: "Unable to delete account. Please try again.",
     comingSoon: "Coming soon",
     paymentDisabled: "Payment is not enabled yet",
     unknown: "Not added",
@@ -171,6 +187,14 @@ const COPY: Record<Locale, MenuCopy> = {
     terms: "Conditions",
     privacy: "Confidentialité",
     logout: "Déconnexion",
+    deleteAccount: "Delete account",
+    deleteAccountTitle: "Delete account",
+    deleteAccountWarning: "This action is permanent and cannot be undone.",
+    deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
+    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
+    deleteAccountConfirmButton: "Delete account permanently",
+    deleteAccountSuccess: "Account and associated data were deleted successfully.",
+    deleteAccountFailed: "Unable to delete account. Please try again.",
     comingSoon: "Bientôt",
     paymentDisabled: "Paiement non activé",
     unknown: "Non ajouté",
@@ -201,6 +225,14 @@ const COPY: Record<Locale, MenuCopy> = {
     terms: "नियम और शर्तें",
     privacy: "गोपनीयता नीति",
     logout: "लॉग आउट",
+    deleteAccount: "Delete account",
+    deleteAccountTitle: "Delete account",
+    deleteAccountWarning: "This action is permanent and cannot be undone.",
+    deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
+    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
+    deleteAccountConfirmButton: "Delete account permanently",
+    deleteAccountSuccess: "Account and associated data were deleted successfully.",
+    deleteAccountFailed: "Unable to delete account. Please try again.",
     comingSoon: "जल्द",
     paymentDisabled: "भुगतान अभी सक्रिय नहीं है",
     unknown: "जोड़ा नहीं गया",
@@ -231,6 +263,14 @@ const COPY: Record<Locale, MenuCopy> = {
     terms: "شرایط و قوانین",
     privacy: "حریم خصوصی",
     logout: "خروج",
+    deleteAccount: "Delete account",
+    deleteAccountTitle: "Delete account",
+    deleteAccountWarning: "This action is permanent and cannot be undone.",
+    deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
+    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
+    deleteAccountConfirmButton: "Delete account permanently",
+    deleteAccountSuccess: "Account and associated data were deleted successfully.",
+    deleteAccountFailed: "Unable to delete account. Please try again.",
     comingSoon: "به‌زودی",
     paymentDisabled: "پرداخت فعلاً فعال نیست",
     unknown: "اضافه نشده",
@@ -261,6 +301,14 @@ const COPY: Record<Locale, MenuCopy> = {
     terms: "Şartlar ve Koşullar",
     privacy: "Gizlilik Politikası",
     logout: "Çıkış yap",
+    deleteAccount: "Delete account",
+    deleteAccountTitle: "Delete account",
+    deleteAccountWarning: "This action is permanent and cannot be undone.",
+    deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
+    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
+    deleteAccountConfirmButton: "Delete account permanently",
+    deleteAccountSuccess: "Account and associated data were deleted successfully.",
+    deleteAccountFailed: "Unable to delete account. Please try again.",
     comingSoon: "Yakında",
     paymentDisabled: "Ödeme şu anda etkin değil",
     unknown: "Eklenmedi",
@@ -291,6 +339,14 @@ const COPY: Record<Locale, MenuCopy> = {
     terms: "Условия",
     privacy: "Политика конфиденциальности",
     logout: "Выйти",
+    deleteAccount: "Delete account",
+    deleteAccountTitle: "Delete account",
+    deleteAccountWarning: "This action is permanent and cannot be undone.",
+    deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
+    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
+    deleteAccountConfirmButton: "Delete account permanently",
+    deleteAccountSuccess: "Account and associated data were deleted successfully.",
+    deleteAccountFailed: "Unable to delete account. Please try again.",
     comingSoon: "Скоро",
     paymentDisabled: "Оплата пока не включена",
     unknown: "Не добавлено",
@@ -321,6 +377,14 @@ const COPY: Record<Locale, MenuCopy> = {
     terms: "مەرج و ڕێساکان",
     privacy: "تایبەتمەندی",
     logout: "چوونەدەرەوە",
+    deleteAccount: "Delete account",
+    deleteAccountTitle: "Delete account",
+    deleteAccountWarning: "This action is permanent and cannot be undone.",
+    deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
+    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
+    deleteAccountConfirmButton: "Delete account permanently",
+    deleteAccountSuccess: "Account and associated data were deleted successfully.",
+    deleteAccountFailed: "Unable to delete account. Please try again.",
     comingSoon: "بەم زووانە",
     paymentDisabled: "پارەدان لە ئێستادا چالاک نییە",
     unknown: "زیاد نەکراوە",
@@ -492,14 +556,16 @@ export default function UserMenu({
   locale,
   setLocale,
   compact = false,
-  biometric,
 }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
-  const [biometricMessage, setBiometricMessage] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [profileInfo, setProfileInfo] = useState<ProfileInfo | null>(null);
@@ -522,6 +588,9 @@ const panelRef = useRef<HTMLDivElement | null>(null);
   const profileIncomplete = isProfileIncomplete(profileInfo);
   const provinceLabel =
     copy.province || (locale === "ar" ? "المدينة / المحافظة" : "City / Province");
+  const canConfirmAccountDeletion =
+    deleteConfirmation.trim().toUpperCase() === "DELETE" ||
+    deleteConfirmation.trim() === "حذف";
 
   useEffect(() => {
     let mounted = true;
@@ -614,6 +683,102 @@ const panelRef = useRef<HTMLDivElement | null>(null);
     window.location.reload();
   }
 
+  function clearLocalAccountData(userId?: string) {
+    if (typeof window === "undefined") return;
+
+    const keysToRemove = [
+      AUTH_CACHE_KEY,
+      "kishib:supabase-auth",
+      "antiques-lens:history-v2",
+      "antiques-lens:history",
+      "kishib-history",
+      "antique-history",
+      "antiqueLensHistory",
+      "history",
+      "archive",
+      "kishib:pending-oauth-locale",
+    ];
+
+    keysToRemove.forEach((key) => window.localStorage.removeItem(key));
+
+    if (userId) {
+      window.localStorage.removeItem(`${PROFILE_CACHE_PREFIX}${userId}`);
+    }
+
+    for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+      const key = window.localStorage.key(index);
+      if (key?.startsWith(PROFILE_CACHE_PREFIX)) {
+        window.localStorage.removeItem(key);
+      }
+    }
+
+    window.sessionStorage.clear();
+
+    if (typeof indexedDB !== "undefined") {
+      indexedDB.deleteDatabase("kishib-archive-images");
+    }
+  }
+
+  function closeDeleteDialog() {
+    if (deletingAccount) return;
+
+    setDeleteOpen(false);
+    setDeleteConfirmation("");
+    setDeleteError("");
+  }
+
+  async function handleDeleteAccount() {
+    const normalizedConfirmation = deleteConfirmation.trim().toUpperCase();
+
+    if (
+      normalizedConfirmation !== "DELETE" &&
+      deleteConfirmation.trim() !== "حذف"
+    ) {
+      return;
+    }
+
+    setDeletingAccount(true);
+    setDeleteError("");
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { data, error } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+      const userId = data.session?.user.id || profileInfo?.userId;
+
+      if (error || !accessToken) {
+        throw new Error("No active session.");
+      }
+
+      const response = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          typeof payload?.error === "string"
+            ? payload.error
+            : copy.deleteAccountFailed,
+        );
+      }
+
+      await supabase.auth.signOut();
+      clearLocalAccountData(userId);
+      window.alert(copy.deleteAccountSuccess);
+      window.location.href = "/";
+    } catch (error) {
+      console.error("delete account error:", error);
+      setDeleteError(copy.deleteAccountFailed);
+    } finally {
+      setDeletingAccount(false);
+    }
+  }
+
   async function handleProfileSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!profileInfo) return;
@@ -669,32 +834,18 @@ const panelRef = useRef<HTMLDivElement | null>(null);
     }
   }
 
-  function openPanel(panel: "support" | "plans") {
+  function openPanel(panel: "support" | "plans" | "delete") {
     setLanguageOpen(false);
     setSupportOpen(panel === "support");
     setPlansOpen(panel === "plans");
+    setDeleteOpen(panel === "delete");
+    setDeleteConfirmation("");
+    setDeleteError("");
   }
 
   function openKishibWebsite() {
     setIsOpen(false);
     window.open(KISHIB_WEBSITE_URL, "_blank", "noopener,noreferrer");
-  }
-
-  async function handleBiometricToggle() {
-    setBiometricMessage("");
-    if (!biometric) return;
-
-    if (biometric.enabled) {
-      biometric.onDisable();
-      return;
-    }
-
-    if (!biometric.available) {
-      setBiometricMessage(biometric.unavailableLabel);
-      return;
-    }
-
-    await biometric.onEnable();
   }
 
   return (
@@ -945,25 +1096,6 @@ const panelRef = useRef<HTMLDivElement | null>(null);
                   value={SUPPORT_EMAIL}
                   onClick={() => openPanel("support")}
                 />
-                {biometric?.available ? (
-                  <>
-                    <MenuButton
-                      icon={<Fingerprint className="h-4 w-4" />}
-                      label={
-                        biometric.enabled
-                          ? biometric.disableLabel
-                          : biometric.enableLabel
-                      }
-                      value=""
-                      onClick={() => void handleBiometricToggle()}
-                    />
-                    {biometricMessage ? (
-                      <p className="px-3 pb-2 text-[10.5px] font-semibold text-[#6d241d]">
-                        {biometricMessage}
-                      </p>
-                    ) : null}
-                  </>
-                ) : null}
               </div>
 
               <div className="mt-2 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/55 p-1.5">
@@ -986,6 +1118,16 @@ const panelRef = useRef<HTMLDivElement | null>(null);
                   href="/privacy"
                   icon={<ShieldCheck className="h-4 w-4" />}
                   label={copy.privacy}
+                />
+              </div>
+
+              <div className="mt-2 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/55 p-1.5">
+                <MenuButton
+                  icon={<Trash2 className="h-4 w-4" />}
+                  label={copy.deleteAccount}
+                  value=""
+                  danger
+                  onClick={() => openPanel("delete")}
                 />
               </div>
 
@@ -1037,6 +1179,68 @@ const panelRef = useRef<HTMLDivElement | null>(null);
                       "يمكن شراؤها بشكل منفصل عن الاشتراك",
                     ]}
                   />
+                </div>
+              </MenuModal>
+            ) : null}
+
+            {deleteOpen ? (
+              <MenuModal
+                title={copy.deleteAccountTitle}
+                closeLabel={copy.close}
+                onClose={closeDeleteDialog}
+              >
+                <div className="rounded-[14px] border border-[#a23b2a]/25 bg-[#fff2ed] p-3">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#a23b2a]" />
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-bold text-[#8f2e24]">
+                        {copy.deleteAccountWarning}
+                      </p>
+                      <p className="mt-2 text-[11.5px] leading-5 text-[#735f4b]">
+                        {copy.deleteAccountDataWarning}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <label className="mt-3 block">
+                  <span className="mb-1 block text-[10.5px] font-semibold text-[#735f4b]">
+                    {copy.deleteAccountConfirmHint}
+                  </span>
+                  <input
+                    value={deleteConfirmation}
+                    onChange={(event) => setDeleteConfirmation(event.target.value)}
+                    disabled={deletingAccount}
+                    autoCapitalize="characters"
+                    className="h-10 w-full rounded-[11px] border border-[#d2b98f] bg-[#fffaf0] px-3 text-[12px] font-semibold text-[#241913] outline-none transition focus:border-[#a23b2a] focus:ring-2 focus:ring-[#a23b2a]/18 disabled:opacity-60"
+                  />
+                </label>
+
+                {deleteError ? (
+                  <p className="mt-2 rounded-[10px] bg-[#fff2ed] px-3 py-2 text-[11px] font-semibold text-[#8f2e24]">
+                    {deleteError}
+                  </p>
+                ) : null}
+
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={closeDeleteDialog}
+                    disabled={deletingAccount}
+                    className="h-10 flex-1 rounded-[11px] border border-[#d2b98f] px-3 text-[11.5px] font-semibold text-[#735f4b] transition hover:bg-[#efe3cf] disabled:opacity-60"
+                  >
+                    {copy.cancel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteAccount()}
+                    disabled={!canConfirmAccountDeletion || deletingAccount}
+                    className="h-10 flex-1 rounded-[11px] bg-[#8f2e24] px-3 text-[11.5px] font-semibold text-[#fff4e2] transition hover:bg-[#a23b2a] disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    {deletingAccount
+                      ? `${copy.deleteAccountConfirmButton}...`
+                      : copy.deleteAccountConfirmButton}
+                  </button>
                 </div>
               </MenuModal>
             ) : null}
@@ -1103,11 +1307,13 @@ function MenuButton({
   label,
   value,
   onClick,
+  danger = false,
 }: {
   icon: ReactNode;
   label: string;
   value: string;
   onClick?: () => void;
+  danger?: boolean;
 }) {
   return (
     <button
@@ -1115,8 +1321,15 @@ function MenuButton({
       onClick={onClick}
       className="flex h-9 w-full items-center gap-3 rounded-[12px] px-2.5 text-start transition hover:bg-[#d9b59e]/55"
     >
-      <span className="text-[#986f2e]">{icon}</span>
-      <span className="flex-1 text-[12px] font-medium text-[#241913]">
+      <span className={danger ? "text-[#a23b2a]" : "text-[#986f2e]"}>
+        {icon}
+      </span>
+      <span
+        className={[
+          "flex-1 text-[12px] font-medium",
+          danger ? "text-[#8f2e24]" : "text-[#241913]",
+        ].join(" ")}
+      >
         {label}
       </span>
       <span className="max-w-[132px] truncate text-[10.5px] font-medium text-[#735f4b]">

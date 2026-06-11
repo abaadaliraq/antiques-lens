@@ -192,6 +192,17 @@ export default function PrivacyPage() {
           security, fraud prevention, dispute resolution, or operational reasons.
         </p>
 
+        <p className="mt-4 text-sm leading-8 text-[#4F4437]">
+          Account deletion instructions are also available at{" "}
+          <a
+            href="/account-deletion"
+            className="font-semibold text-[#8A5A24] underline-offset-4 hover:underline"
+          >
+            /account-deletion
+          </a>
+          .
+        </p>
+
         <h2 className="mt-8 font-serif text-xl font-semibold text-[#234236]">
           9. Security
         </h2>

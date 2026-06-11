@@ -85,6 +85,25 @@ type PreciousMetalConfidence = {
   purityFactor?: number;
 };
 
+type CompactFollowUpContext = {
+  title?: string;
+  category?: string;
+  material?: string;
+  agePeriod?: string;
+  origin?: string;
+  estimatedPriceRange?: string;
+  shortDescription?: string;
+  keyConditionNotes?: string;
+  analysis?: string;
+  priceReasoning?: string;
+  valueDrivers?: string[];
+  valueReducers?: string[];
+};
+
+const FOLLOW_UP_NOTE_MAX_CHARS = 1200;
+const FOLLOW_UP_HARD_NOTE_MAX_CHARS = 6000;
+const FOLLOW_UP_PROMPT_MAX_CHARS = 8500;
+
 function normalizeLocale(locale: string): Locale {
   if (
     locale === "ar" ||
@@ -264,6 +283,75 @@ function repairMojibakeText(value: string) {
 
 function safeString(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function cleanText(value: unknown, maxLength: number) {
+  if (typeof value !== "string") return "";
+
+  const clean = value.replace(/\s+/g, " ").trim();
+
+  if (clean.length <= maxLength) return clean;
+
+  return clean.slice(0, maxLength).trim();
+}
+
+function cleanList(value: unknown, maxItems: number, maxItemLength: number) {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => cleanText(item, maxItemLength))
+    .filter(Boolean)
+    .slice(0, maxItems);
+}
+
+function parseCompactFollowUpContext(value: string): CompactFollowUpContext | null {
+  if (!value) return null;
+
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+
+    if (!parsed || typeof parsed !== "object") return null;
+
+    return {
+      title: cleanText(parsed.title, 180),
+      category: cleanText(parsed.category, 120),
+      material: cleanText(parsed.material, 160),
+      agePeriod: cleanText(parsed.agePeriod, 160),
+      origin: cleanText(parsed.origin, 160),
+      estimatedPriceRange: cleanText(parsed.estimatedPriceRange, 180),
+      shortDescription: cleanText(parsed.shortDescription, 700),
+      keyConditionNotes: cleanText(parsed.keyConditionNotes, 700),
+      analysis: cleanText(parsed.analysis, 900),
+      priceReasoning: cleanText(parsed.priceReasoning, 700),
+      valueDrivers: cleanList(parsed.valueDrivers, 5, 180),
+      valueReducers: cleanList(parsed.valueReducers, 5, 180),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function getCleanTooLongMessage(locale: Locale) {
+  if (locale === "en") {
+    return "The added note or evaluation context is too long. Please shorten the note to the key detail and try again.";
+  }
+
+  return "\u0627\u0644\u0645\u0644\u0627\u062d\u0638\u0629 \u0623\u0648 \u0633\u064a\u0627\u0642 \u0627\u0644\u062a\u0642\u064a\u064a\u0645 \u0637\u0648\u064a\u0644 \u062c\u062f\u064b\u0627. \u0627\u062e\u062a\u0635\u0631\u064a \u0627\u0644\u0645\u0639\u0644\u0648\u0645\u0629 \u0625\u0644\u0649 \u0623\u0647\u0645 \u062a\u0641\u0635\u064a\u0644 \u062b\u0645 \u062d\u0627\u0648\u0644\u064a \u0645\u0631\u0629 \u0623\u062e\u0631\u0649.";
+}
+
+function sanitizeApiError(error: unknown, locale: Locale) {
+  const message = error instanceof Error ? error.message : "";
+
+  if (
+    /request too large|tokens?|context length|platform\.openai|gpt-4|openai/i.test(
+      message,
+    )
+  ) {
+    return getCleanTooLongMessage(locale);
+  }
+
+  return message || "Failed to analyze item";
 }
 
 function normalizeWeightFromNotes(input?: string | null) {
@@ -1312,6 +1400,124 @@ Important final self-check before returning JSON:
 - Is the price range defensible?
 `;
 }
+
+function buildCompactFollowUpPrompt(fields: {
+  locale: Locale;
+  followUpClaim: string;
+  followUpContext: CompactFollowUpContext;
+  hasImage: boolean;
+  imageCount: number;
+  preciousMetalMarketContext?: string;
+  brandContext?: string;
+}) {
+  const language = getLanguageName(fields.locale);
+  const languageInstruction = getLanguageInstruction(fields.locale);
+  const previousEvaluation = JSON.stringify(fields.followUpContext);
+  const metalContext = cleanText(fields.preciousMetalMarketContext, 1800);
+  const brandContext = cleanText(fields.brandContext, 900);
+
+  return `
+You are KISHIB's follow-up evaluation updater.
+
+The visitor language is: ${language}
+${languageInstruction}
+
+Update the previous KISHIB evaluation using the visitor's new note.
+Preserve useful previous findings. Address the visitor directly.
+Treat added information as conditional evidence if it is not visually confirmed.
+If the visitor adds material, artist, weight, origin, hallmark, brand, or age, incorporate it carefully as a conditional scenario and explain what confirmation is still needed.
+
+Previous compact evaluation context:
+${previousEvaluation}
+
+New visitor note:
+${fields.followUpClaim || "No text note; use only the additional images if provided."}
+
+Additional images provided: ${fields.hasImage ? "Yes" : "No"}
+Number of additional images: ${fields.imageCount}
+
+Metal context, if relevant:
+${metalContext || "No live metal context."}
+
+Brand context, if relevant:
+${brandContext || "No brand context."}
+
+KISHIB wording rules:
+- Use respectful direct wording.
+- English examples: "Based on the information you added...", "If this material/weight/attribution is confirmed...", "This needs direct verification..."
+- Arabic examples: "\u0628\u0646\u0627\u0621\u064b \u0639\u0644\u0649 \u0627\u0644\u0645\u0639\u0644\u0648\u0645\u0629 \u0627\u0644\u062a\u064a \u0623\u0636\u0641\u062a\u0650\u0647\u0627...", "\u0630\u0643\u0631\u062a\u0650 \u0623\u0646...", "\u0625\u0630\u0627 \u0643\u0627\u0646\u062a \u0627\u0644\u0642\u0637\u0639\u0629 \u0641\u0639\u0644\u064b\u0627...", "\u0625\u0630\u0627 \u062b\u0628\u062a\u062a \u0627\u0644\u0645\u0627\u062f\u0629/\u0627\u0644\u0646\u0633\u0628\u0629/\u0627\u0644\u0639\u064a\u0627\u0631..."
+- Never sound suspicious, dismissive, or adversarial about the added note.
+
+Metal handling:
+- If silver, gold, copper, bronze, platinum, palladium, purity, or weight is added, do not reject it.
+- Give a conditional raw metal value only when weight and metal/purity context allow it.
+- Keep raw metal value separate from craftsmanship, age, condition, antique value, and collector value.
+- Say confirmation needs hallmark, karat/purity, exact weight, jeweler/XRF test, or direct inspection.
+
+Artist, signature, and attribution handling:
+- If an artist or maker name is added, do not dismiss them just because global references are limited.
+- Say the attribution needs signature comparison, provenance, labels, invoices, or supporting documents.
+- Local or regional attribution may need local market or expert confirmation.
+
+Return JSON only, with this exact shape:
+{
+  "title": "short natural object title",
+  "itemType": "classified object type",
+  "lookup": "one or two sentence updated identification",
+  "timePeriod": "possible period or verification need",
+  "origin": "possible origin or verification need",
+  "material": "updated material view",
+  "style": "visual style or type",
+  "condition": "condition notes",
+  "authenticity": "authenticity or attribution notes without certainty",
+  "estimatedValue": "preliminary USD value range",
+  "priceReasoning": "short reason for the updated value",
+  "history": "short context",
+  "valueDrivers": ["up to five concise drivers"],
+  "valueReducers": ["up to five concise reducers"],
+  "visualSearchKeywords": ["short search keyword"],
+  "neededPhotos": ["specific next proof needed"],
+  "followUpQuestion": "one clear next question",
+  "confidence": 1,
+  "confidenceNote": "short confidence reason",
+  "metalValue": null,
+  "brandAssessment": null,
+  "disclaimer": "preliminary visual estimate, not an authenticity certificate or formal appraisal"
+}
+
+All user-facing JSON values must be in ${language}.
+Do not use markdown. Do not include explanations outside JSON.
+`;
+}
+
+function buildFollowUpFallbackResult(
+  context: CompactFollowUpContext | null,
+  locale: Locale,
+): AnalysisResult {
+  const fallback = buildFallbackResult(locale);
+
+  if (!context) return fallback;
+
+  return {
+    ...fallback,
+    title: context.title || fallback.title,
+    itemType: context.category || fallback.itemType,
+    lookup: context.analysis || context.shortDescription || fallback.lookup,
+    timePeriod: context.agePeriod || fallback.timePeriod,
+    origin: context.origin || fallback.origin,
+    material: context.material || fallback.material,
+    condition: context.keyConditionNotes || fallback.condition,
+    estimatedValue: context.estimatedPriceRange || fallback.estimatedValue,
+    priceReasoning: context.priceReasoning || fallback.priceReasoning,
+    history: context.shortDescription || fallback.history,
+    valueDrivers: context.valueDrivers?.length
+      ? context.valueDrivers
+      : fallback.valueDrivers,
+    valueReducers: context.valueReducers?.length
+      ? context.valueReducers
+      : fallback.valueReducers,
+  };
+}
 function buildFallbackResult(locale: Locale): AnalysisResult {
   if (locale === "en") {
     return {
@@ -1612,6 +1818,8 @@ async function fileToDataUrl(file: File) {
 }
 
 export async function POST(request: Request) {
+  let requestLocale: Locale = "ar";
+
   try {
     const apiKey = process.env.OPENAI_API_KEY;
 
@@ -1635,9 +1843,25 @@ const uploadedImageUrls = formData
   .filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
   .map((entry) => entry.trim());
 const notes = safeString(formData.get("notes"));
-const followUpClaim = safeString(formData.get("followUpClaim"));
+const rawFollowUpClaim = safeString(formData.get("followUpClaim"));
+const followUpClaim = cleanText(rawFollowUpClaim, FOLLOW_UP_NOTE_MAX_CHARS);
 const locale = normalizeLocale(safeString(formData.get("locale")));
+requestLocale = locale;
 const marketContext = safeString(formData.get("marketContext"));
+const followUpContext = parseCompactFollowUpContext(
+  safeString(formData.get("followUpContext")),
+);
+const isFollowUpUpdate = Boolean(followUpContext);
+
+if (
+  isFollowUpUpdate &&
+  rawFollowUpClaim.length > FOLLOW_UP_HARD_NOTE_MAX_CHARS
+) {
+  return NextResponse.json(
+    { error: getCleanTooLongMessage(locale) },
+    { status: 413 },
+  );
+}
 
 console.log("========== ANALYZE DEBUG ==========");
 console.log("marketContext exists:", Boolean(marketContext));
@@ -1819,7 +2043,21 @@ If locale is Arabic, write all of this naturally in Arabic.
   }
 }
 
-const marketReferences = await searchMarketReferences({
+const searchNotes = isFollowUpUpdate
+  ? [
+      followUpClaim,
+      followUpContext?.title,
+      followUpContext?.category,
+      followUpContext?.material,
+      followUpContext?.origin,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  : notes;
+
+const marketReferences = isFollowUpUpdate
+  ? []
+  : await searchMarketReferences({
   itemType,
   category: itemType,
   material,
@@ -1830,7 +2068,7 @@ const marketReferences = await searchMarketReferences({
     dimensions,
     weight,
     hasMark,
-    notes,
+    searchNotes,
   ].filter(Boolean) as string[],
 });
 
@@ -1858,6 +2096,62 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
       );
     }
 
+    let promptText = isFollowUpUpdate && followUpContext
+      ? buildCompactFollowUpPrompt({
+          locale,
+          followUpClaim,
+          followUpContext,
+          hasImage,
+          imageCount: images.length + uploadedImageUrls.length,
+          preciousMetalMarketContext,
+          brandContext,
+        })
+      : buildPrompt({
+          locale,
+          notes,
+          followUpClaim,
+          itemType,
+          material,
+          dimensions,
+          weight,
+          hasMark,
+          hasImage,
+          imageCount: images.length + uploadedImageUrls.length,
+          marketContext,
+          marketReferencesText,
+          preciousMetalMarketContext,
+          brandContext,
+        });
+
+    if (
+      isFollowUpUpdate &&
+      followUpContext &&
+      promptText.length > FOLLOW_UP_PROMPT_MAX_CHARS
+    ) {
+      promptText = buildCompactFollowUpPrompt({
+        locale,
+        followUpClaim: cleanText(followUpClaim, 600),
+        followUpContext,
+        hasImage,
+        imageCount: images.length + uploadedImageUrls.length,
+        preciousMetalMarketContext: cleanText(preciousMetalMarketContext, 900),
+        brandContext: cleanText(brandContext, 500),
+      });
+    }
+
+    if (
+      isFollowUpUpdate &&
+      JSON.stringify({
+        text: promptText,
+        imageCount: images.length + uploadedImageUrls.length,
+      }).length > FOLLOW_UP_PROMPT_MAX_CHARS
+    ) {
+      return NextResponse.json(
+        { error: getCleanTooLongMessage(locale) },
+        { status: 413 },
+      );
+    }
+
     const inputContent: Array<
       | { type: "input_text"; text: string }
       | {
@@ -1868,22 +2162,7 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
     > = [
       {
         type: "input_text",
-text: buildPrompt({
-  locale,
-  notes,
-  followUpClaim,
-  itemType,
-  material,
-  dimensions,
-  weight,
-  hasMark,
-  hasImage,
-  imageCount: images.length + uploadedImageUrls.length,
-  marketContext,
-  marketReferencesText,
-  preciousMetalMarketContext,
-  brandContext,
-}),
+        text: promptText,
       },
     ];
 
@@ -1893,7 +2172,7 @@ text: buildPrompt({
       inputContent.push({
         type: "input_image",
         image_url: dataUrl,
-        detail: "auto",
+        detail: isFollowUpUpdate ? "low" : "auto",
       });
     }
 
@@ -1901,7 +2180,7 @@ text: buildPrompt({
       inputContent.push({
         type: "input_image",
         image_url: imageUrl,
-        detail: "auto",
+        detail: isFollowUpUpdate ? "low" : "auto",
       });
     }
 
@@ -1938,7 +2217,9 @@ text: buildPrompt({
       );
     }
 
-    const fallback = buildFallbackResult(locale);
+    const fallback = isFollowUpUpdate
+      ? buildFollowUpFallbackResult(followUpContext, locale)
+      : buildFallbackResult(locale);
 const normalized = normalizeResult(parsed, fallback, locale);
 
 if (!shouldUseBrandLayer) {
@@ -1982,8 +2263,7 @@ return NextResponse.json(normalized);
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : "Failed to analyze item",
+        error: sanitizeApiError(error, requestLocale),
       },
       { status: 500 }
     );

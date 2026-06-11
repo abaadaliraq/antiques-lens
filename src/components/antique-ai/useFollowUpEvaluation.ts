@@ -3,6 +3,10 @@
 import { useState } from "react";
 import type { AnalysisResult, Locale } from "./types";
 
+const FOLLOW_UP_NOTE_MAX_CHARS = 1200;
+const FOLLOW_UP_PAYLOAD_MAX_CHARS = 6000;
+const FOLLOW_UP_HARD_NOTE_MAX_CHARS = 6000;
+
 type UseFollowUpEvaluationArgs = {
   result: AnalysisResult | null;
   locale: Locale;
@@ -54,6 +58,68 @@ function getMessage(locale: Locale, key: "used" | "empty" | "failed") {
   };
 
   return messages[key][locale] || messages[key].ar;
+}
+
+function getTooLongMessage(locale: Locale) {
+  if (locale === "en") {
+    return "The added note or evaluation context is too long. Please shorten the note to the key detail and try again.";
+  }
+
+  return "\u0627\u0644\u0645\u0644\u0627\u062d\u0638\u0629 \u0623\u0648 \u0633\u064a\u0627\u0642 \u0627\u0644\u062a\u0642\u064a\u064a\u0645 \u0637\u0648\u064a\u0644 \u062c\u062f\u064b\u0627. \u0627\u062e\u062a\u0635\u0631\u064a \u0627\u0644\u0645\u0639\u0644\u0648\u0645\u0629 \u0625\u0644\u0649 \u0623\u0647\u0645 \u062a\u0641\u0635\u064a\u0644 \u062b\u0645 \u062d\u0627\u0648\u0644\u064a \u0645\u0631\u0629 \u0623\u062e\u0631\u0649.";
+}
+
+function trimText(value: unknown, maxLength: number) {
+  if (typeof value !== "string") return "";
+
+  const clean = value.replace(/\s+/g, " ").trim();
+
+  if (clean.length <= maxLength) return clean;
+
+  return clean.slice(0, maxLength).trim();
+}
+
+function trimList(value: unknown, maxItems: number, maxItemLength: number) {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => trimText(item, maxItemLength))
+    .filter(Boolean)
+    .slice(0, maxItems);
+}
+
+export function buildCompactFollowUpContext(result: AnalysisResult) {
+  return {
+    title: trimText(result.title, 180),
+    category: trimText(result.itemType || result.lookup, 120),
+    material: trimText(result.material, 160),
+    agePeriod: trimText(result.timePeriod || result.period, 160),
+    origin: trimText(result.origin, 160),
+    estimatedPriceRange: trimText(
+      result.estimatedValue || result.priceRange,
+      180,
+    ),
+    shortDescription: trimText(result.description || result.history, 700),
+    keyConditionNotes: trimText(result.condition, 700),
+    analysis: trimText(result.lookup || result.authenticity, 900),
+    priceReasoning: trimText(result.priceReasoning, 700),
+    valueDrivers: trimList(result.valueDrivers, 5, 180),
+    valueReducers: trimList(result.valueReducers, 5, 180),
+  };
+}
+
+function sanitizeFollowUpError(error: unknown, locale: Locale) {
+  const message = error instanceof Error ? error.message : "";
+
+  if (
+    /request too large|tokens?|context length|platform\.openai|gpt-4|openai/i.test(
+      message,
+    )
+  ) {
+    return getTooLongMessage(locale);
+  }
+
+  return message || getMessage(locale, "failed");
 }
 
 export function useFollowUpEvaluation({
@@ -144,30 +210,41 @@ export function useFollowUpEvaluation({
       return;
     }
 
+    if (followUpText.trim().length > FOLLOW_UP_HARD_NOTE_MAX_CHARS) {
+      setError(getTooLongMessage(locale));
+      return;
+    }
+
     try {
       setIsFollowUpAnalyzing(true);
       setError("");
 
       const formData = new FormData();
+      const compactContext = buildCompactFollowUpContext(result);
+      let compactFollowUpText = trimText(followUpText, FOLLOW_UP_NOTE_MAX_CHARS);
+      let textPayload = {
+        locale,
+        followUpClaim: compactFollowUpText,
+        followUpContext: compactContext,
+      };
 
-      const combinedNotes = `
-Previous evaluation result:
-${JSON.stringify(result)}
+      if (JSON.stringify(textPayload).length > FOLLOW_UP_PAYLOAD_MAX_CHARS) {
+        compactFollowUpText = trimText(compactFollowUpText, 600);
+        textPayload = {
+          locale,
+          followUpClaim: compactFollowUpText,
+          followUpContext: compactContext,
+        };
+      }
 
-User-provided follow-up claim:
-${followUpText || "No extra text."}
+      if (JSON.stringify(textPayload).length > FOLLOW_UP_PAYLOAD_MAX_CHARS) {
+        setError(getTooLongMessage(locale));
+        return;
+      }
 
-Instruction:
-Update the evaluation using the previous result plus the new images/information.
-Treat the user-provided follow-up claim as a user claim, not as visual proof from the image.
-Phrase conclusions as "according to the information added by the user" unless the new image visibly confirms the claim.
-Do not restart from zero unless the new evidence clearly changes the identification.
-Mention if the new photos increased or reduced confidence.
-Keep the same JSON shape.
-`;
-
-      formData.append("notes", combinedNotes);
-      formData.append("followUpClaim", followUpText.trim());
+      formData.append("notes", compactFollowUpText || "Follow-up update.");
+      formData.append("followUpClaim", compactFollowUpText);
+      formData.append("followUpContext", JSON.stringify(compactContext));
       formData.append("locale", locale);
       formData.append("itemType", "");
       formData.append("material", "");
@@ -211,9 +288,7 @@ Keep the same JSON shape.
     } catch (error) {
       console.error("handleFollowUpAnalyze error:", error);
 
-      setError(
-        error instanceof Error ? error.message : getMessage(locale, "failed"),
-      );
+      setError(sanitizeFollowUpError(error, locale));
     } finally {
       setIsFollowUpAnalyzing(false);
     }
