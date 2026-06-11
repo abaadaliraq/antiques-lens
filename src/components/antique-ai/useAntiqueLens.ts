@@ -6,6 +6,7 @@ import {
   CameraSource,
 } from "@capacitor/camera";
 import { Capacitor } from "@capacitor/core";
+import { Share } from "@capacitor/share";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { useFollowUpEvaluation } from "./useFollowUpEvaluation";
@@ -29,7 +30,6 @@ import {
   type ArchiveItem,
 } from "./archiveStore";
 import { content, normalizeResult } from "./antiqueContent";
-import { createShareImage } from "./createShareImage";
 import type {
   AnalysisResult,
   Locale,
@@ -111,25 +111,55 @@ function getUsefulShareUrl() {
 }
 
 function isCanceledShare(error: unknown) {
-  if (!(error instanceof DOMException)) return false;
+  if (error instanceof DOMException) {
+    return error.name === "AbortError" || error.name === "NotAllowedError";
+  }
 
-  return error.name === "AbortError" || error.name === "NotAllowedError";
+  const record =
+    error && typeof error === "object" ? (error as Record<string, unknown>) : null;
+  const message = String(
+    record?.message ?? record?.errorMessage ?? record?.code ?? error ?? "",
+  ).toLowerCase();
+
+  return (
+    message.includes("cancel") ||
+    message.includes("abort") ||
+    message.includes("dismiss") ||
+    message.includes("canceled") ||
+    message.includes("cancelled")
+  );
 }
 
 function buildShareSummary(result: AnalysisResult, shareUrl = "") {
   const title = result.title || result.itemType || "KISHIB Evaluation";
   const category = result.itemType || result.lookup || "";
   const value = result.estimatedValue || result.priceRange || "";
+  const description = result.description || result.history || result.lookup || "";
+  const reportDate = new Intl.DateTimeFormat("ar-IQ", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).format(new Date());
 
   return [
-    "KISHIB Evaluation Report",
+    "تقرير KISHIB",
     title,
-    category ? `Category: ${category}` : "",
-    value ? `Estimated value: ${value}` : "",
+    category ? `الفئة: ${category}` : "",
+    description ? `الوصف: ${description}` : "",
+    value ? `السعر التقديري: ${value}` : "",
+    `تاريخ التقرير: ${reportDate}`,
     shareUrl,
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+function isAndroidNativeApp() {
+  return (
+    typeof window !== "undefined" &&
+    Capacitor.isNativePlatform() &&
+    Capacitor.getPlatform() === "android"
+  );
 }
 
 async function copyTextToClipboard(text: string) {
@@ -1443,61 +1473,32 @@ async function handleShare() {
 
   const shareUrl = getUsefulShareUrl();
   const shareText = buildShareSummary(result, shareUrl);
-  const shareTitle = "KISHIB Evaluation Report";
+  const shareTitle = locale === "en" ? "KISHIB Report" : "تقرير KISHIB";
   const fallbackMessage =
     locale === "en"
-      ? "Sharing is not supported here, summary copied."
-      : "المشاركة غير مدعومة هنا، تم نسخ الملخص";
+      ? "Report summary copied. You can paste and share it."
+      : "تم نسخ ملخص التقرير، يمكنك لصقه ومشاركته.";
+  const platform = Capacitor.getPlatform();
+
+  console.log("[KISHIB share] platform:", {
+    platform,
+    isNative: Capacitor.isNativePlatform(),
+    hasPublicUrl: Boolean(shareUrl),
+  });
 
   try {
-    const labels = {
-      result: t.result,
-      age: t.age,
-      value: t.value,
-      material: t.material,
-      origin: t.origin,
-      lookup: t.lookup,
-      description: t.description,
-      condition: t.condition,
-      authenticity: t.authenticity,
-      priceReason: t.priceReason,
-      valueDrivers: t.valueDrivers,
-      valueReducers: t.valueReducers,
-      similar: t.similar,
-      similarHint: t.similarHint,
-      soon: t.soon,
-      neededPhotos: t.neededPhotos,
-      followUp: t.followUp,
-      confidence: t.confidence,
-      notice: t.notice,
-      similarImages,
-    };
-
-    const file = await createShareImage({
-      result,
-      imagePreview: imagePreviews[0] || null,
-      labels,
-      locale,
-    });
-
-    const shareData = {
-      title: shareTitle,
-      text: shareText,
-      files: [file],
-    } as ShareData & { files: File[] };
-
-    if (
-      typeof navigator !== "undefined" &&
-      typeof navigator.share === "function" &&
-      typeof navigator.canShare === "function" &&
-      navigator.canShare(shareData)
-    ) {
-      await navigator.share(shareData);
+    if (isAndroidNativeApp()) {
+      await Share.share({
+        title: shareTitle,
+        text: shareText,
+        ...(shareUrl ? { url: shareUrl } : {}),
+        dialogTitle: locale === "en" ? "Share KISHIB Report" : "مشاركة تقرير KISHIB",
+      });
       return;
     }
   } catch (err) {
     if (isCanceledShare(err)) return;
-    console.warn("Image share is not available, falling back to text share.", err);
+    console.error("[KISHIB share failed]", err);
   }
 
   try {
@@ -1516,7 +1517,7 @@ async function handleShare() {
     }
   } catch (err) {
     if (isCanceledShare(err)) return;
-    console.warn("Text share is not available, falling back to clipboard.", err);
+    console.error("[KISHIB share failed]", err);
   }
 
   try {
