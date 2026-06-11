@@ -8,6 +8,7 @@ import {
   Crown,
   ExternalLink,
   FileText,
+  Fingerprint,
   Globe2,
   LifeBuoy,
   LogOut,
@@ -33,6 +34,15 @@ type UserMenuProps = {
   locale: Locale;
   setLocale?: (locale: Locale) => void;
   compact?: boolean;
+  biometric?: {
+    available: boolean;
+    enabled: boolean;
+    enableLabel: string;
+    disableLabel: string;
+    unavailableLabel: string;
+    onEnable: () => Promise<boolean>;
+    onDisable: () => void;
+  };
 };
 
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
@@ -478,12 +488,18 @@ function Avatar({
   return <span className={baseClass}>{initial}</span>;
 }
 
-export default function UserMenu({ locale, setLocale, compact = false }: UserMenuProps) {
+export default function UserMenu({
+  locale,
+  setLocale,
+  compact = false,
+  biometric,
+}: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
+  const [biometricMessage, setBiometricMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [profileInfo, setProfileInfo] = useState<ProfileInfo | null>(null);
@@ -662,6 +678,23 @@ const panelRef = useRef<HTMLDivElement | null>(null);
   function openKishibWebsite() {
     setIsOpen(false);
     window.open(KISHIB_WEBSITE_URL, "_blank", "noopener,noreferrer");
+  }
+
+  async function handleBiometricToggle() {
+    setBiometricMessage("");
+    if (!biometric) return;
+
+    if (biometric.enabled) {
+      biometric.onDisable();
+      return;
+    }
+
+    if (!biometric.available) {
+      setBiometricMessage(biometric.unavailableLabel);
+      return;
+    }
+
+    await biometric.onEnable();
   }
 
   return (
@@ -912,6 +945,25 @@ const panelRef = useRef<HTMLDivElement | null>(null);
                   value={SUPPORT_EMAIL}
                   onClick={() => openPanel("support")}
                 />
+                {biometric?.available ? (
+                  <>
+                    <MenuButton
+                      icon={<Fingerprint className="h-4 w-4" />}
+                      label={
+                        biometric.enabled
+                          ? biometric.disableLabel
+                          : biometric.enableLabel
+                      }
+                      value=""
+                      onClick={() => void handleBiometricToggle()}
+                    />
+                    {biometricMessage ? (
+                      <p className="px-3 pb-2 text-[10.5px] font-semibold text-[#6d241d]">
+                        {biometricMessage}
+                      </p>
+                    ) : null}
+                  </>
+                ) : null}
               </div>
 
               <div className="mt-2 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/55 p-1.5">

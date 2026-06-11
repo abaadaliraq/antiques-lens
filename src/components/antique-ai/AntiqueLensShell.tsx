@@ -22,12 +22,13 @@ import {
   type UserProfile,
 } from "@/lib/profilesSupabase";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
-import { Coins, Lock, ShoppingBag, Trash2 } from "lucide-react";
+import { Coins, Fingerprint, Lock, ShoppingBag, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { formatArchiveDate, type ArchiveItem } from "./archiveStore";
 import type { Locale, SimilarImageResult } from "./types";
 import { useAntiqueLens } from "./useAntiqueLens";
+import { useBiometricUnlock } from "./useBiometricUnlock";
 
 const SUPPORTED_AUTH_LOCALES: Locale[] = [
   "ar",
@@ -232,6 +233,7 @@ export default function AntiqueLensShell() {
   const [profileComplete, setProfileComplete] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [appRestoring, setAppRestoring] = useState(false);
+  const biometric = useBiometricUnlock(lens.locale, hasSession);
 
   async function refreshProfile() {
     try {
@@ -345,6 +347,18 @@ export default function AntiqueLensShell() {
     setHasSession(true);
     setAuthReady(true);
     void refreshProfile();
+  }
+
+  async function handleUseSignIn() {
+    try {
+      const supabase = getSupabaseBrowserClient();
+      await supabase.auth.signOut();
+    } finally {
+      cacheAuthSession(false);
+      setHasSession(false);
+      setAuthReady(true);
+      window.location.reload();
+    }
   }
 
   useEffect(() => {
@@ -475,6 +489,24 @@ export default function AntiqueLensShell() {
     return <KishibLoader />;
   }
 
+  if (biometric.shouldLock && biometric.unlockState === "checking") {
+    return <KishibLoader />;
+  }
+
+  if (biometric.shouldLock && biometric.unlockState === "locked") {
+    return (
+      <BiometricLockScreen
+        dir={lens.t.dir}
+        title={biometric.copy.unlockTitle}
+        description={biometric.copy.enableDescription}
+        tryAgain={biometric.copy.tryAgain}
+        useSignIn={biometric.copy.useSignIn}
+        onRetry={() => void biometric.retryUnlock()}
+        onUseSignIn={() => void handleUseSignIn()}
+      />
+    );
+  }
+
   if (!profileComplete) {
     return (
       <main className="relative min-h-dvh overflow-hidden kishib-bg-auth">
@@ -557,7 +589,20 @@ export default function AntiqueLensShell() {
             dir="ltr"
             className="kishib-app-chrome fixed inset-x-0 top-[34px] z-40 flex items-center gap-2 border-y ... border-white/10 bg-[#241913]/18 px-2 py-1 shadow-[0_8px_22px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:top-[34px] sm:px-3"
           >
-            <UserMenu locale={lens.locale} setLocale={lens.changeLocale} compact />
+            <UserMenu
+              locale={lens.locale}
+              setLocale={lens.changeLocale}
+              compact
+              biometric={{
+                available: biometric.available,
+                enabled: biometric.enabled,
+                enableLabel: biometric.copy.enableTitle,
+                disableLabel: biometric.copy.disable,
+                unavailableLabel: biometric.copy.unavailable,
+                onEnable: biometric.enableBiometric,
+                onDisable: biometric.disableBiometric,
+              }}
+            />
 
             <div
               dir={lens.t.dir}
@@ -596,7 +641,19 @@ export default function AntiqueLensShell() {
         ) : (
           <>
            <div className="kishib-app-chrome fixed right-4 top-4 z-40 lg:right-8 lg:top-8">
-              <UserMenu locale={lens.locale} setLocale={lens.changeLocale} />
+              <UserMenu
+                locale={lens.locale}
+                setLocale={lens.changeLocale}
+                biometric={{
+                  available: biometric.available,
+                  enabled: biometric.enabled,
+                  enableLabel: biometric.copy.enableTitle,
+                  disableLabel: biometric.copy.disable,
+                  unavailableLabel: biometric.copy.unavailable,
+                  onEnable: biometric.enableBiometric,
+                  onDisable: biometric.disableBiometric,
+                }}
+              />
             </div>
 
            <div className="kishib-app-chrome fixed left-3 top-3 z-40 flex max-w-[calc(100vw-7.25rem)] items-center gap-0.5 rounded-full border border-[#d2b98f]/20 bg-[#11100f]/28 p-0.5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] backdrop-blur-2xl lg:left-8 lg:top-8 lg:gap-1 lg:p-1">
@@ -652,6 +709,19 @@ export default function AntiqueLensShell() {
             showHomeTicker ? "pt-20 lg:pt-24" : "pt-10 lg:pt-10",
           ].join(" ")}
         >
+          {biometric.shouldOfferEnable ? (
+            <BiometricEnableCard
+              dir={lens.t.dir}
+              title={biometric.copy.enableTitle}
+              description={biometric.copy.enableDescription}
+              enable={biometric.copy.enable}
+              later={biometric.copy.later}
+              message={biometric.message}
+              onEnable={() => void biometric.enableBiometric()}
+              onLater={biometric.dismissPrompt}
+            />
+          ) : null}
+
           {!lens.result && !lens.isAnalyzing && (
             <div className="mx-auto flex w-full max-w-[520px] flex-col gap-5 lg:max-w-6xl lg:gap-10">
               <section className="mx-auto w-full lg:max-w-[720px]">
@@ -763,6 +833,114 @@ export default function AntiqueLensShell() {
         <CookieBar />
       </div>
     </main>
+  );
+}
+
+function BiometricLockScreen({
+  dir,
+  title,
+  description,
+  tryAgain,
+  useSignIn,
+  onRetry,
+  onUseSignIn,
+}: {
+  dir: string;
+  title: string;
+  description: string;
+  tryAgain: string;
+  useSignIn: string;
+  onRetry: () => void;
+  onUseSignIn: () => void;
+}) {
+  return (
+    <main
+      dir={dir}
+      className="relative grid min-h-dvh place-items-center overflow-hidden kishib-bg-auth px-5 text-[#241913]"
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(184,138,61,0.15),transparent_58%)]" />
+      <section className="relative z-10 w-full max-w-[360px] rounded-[24px] border border-[#d2b98f] bg-[#fff4e2]/92 p-5 text-center shadow-[0_26px_72px_rgba(62,39,22,0.16)] backdrop-blur-2xl">
+        <div className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-[#d2b98f] bg-[#efe3cf] text-[#6d241d] shadow-[0_12px_30px_rgba(62,39,22,0.1)]">
+          <Fingerprint className="h-8 w-8" />
+        </div>
+        <h1 className="mt-4 text-xl font-semibold text-[#214232]">{title}</h1>
+        <p className="mt-2 text-sm leading-6 text-[#735f4b]">{description}</p>
+        <div className="mt-5 grid gap-2">
+          <button
+            type="button"
+            onClick={onRetry}
+            className="h-11 rounded-[14px] bg-[#b88a3d] text-sm font-bold text-[#fff4e2] shadow-[0_12px_28px_rgba(62,39,22,0.14)] transition hover:bg-[#986f2e]"
+          >
+            {tryAgain}
+          </button>
+          <button
+            type="button"
+            onClick={onUseSignIn}
+            className="h-11 rounded-[14px] border border-[#d2b98f] bg-[#fffaf0]/80 text-sm font-bold text-[#6d241d] transition hover:bg-[#efe3cf]"
+          >
+            {useSignIn}
+          </button>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function BiometricEnableCard({
+  dir,
+  title,
+  description,
+  enable,
+  later,
+  message,
+  onEnable,
+  onLater,
+}: {
+  dir: string;
+  title: string;
+  description: string;
+  enable: string;
+  later: string;
+  message: string;
+  onEnable: () => void;
+  onLater: () => void;
+}) {
+  return (
+    <section
+      dir={dir}
+      className="mx-auto mb-4 flex w-full max-w-[520px] items-center gap-3 rounded-[18px] border border-[#d2b98f] bg-[#fff4e2]/88 p-3 text-[#241913] shadow-[0_14px_34px_rgba(62,39,22,0.12)] backdrop-blur-2xl"
+    >
+      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#efe3cf] text-[#6d241d]">
+        <Fingerprint className="h-5 w-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <h2 className="text-sm font-semibold text-[#214232]">{title}</h2>
+        <p className="mt-0.5 text-[11.5px] leading-5 text-[#735f4b]">
+          {description}
+        </p>
+        {message ? (
+          <p className="mt-1 text-[11px] font-semibold text-[#6d241d]">
+            {message}
+          </p>
+        ) : null}
+      </div>
+      <div className="grid shrink-0 gap-1.5">
+        <button
+          type="button"
+          onClick={onEnable}
+          className="h-8 rounded-[11px] bg-[#b88a3d] px-3 text-[11px] font-bold text-[#fff4e2] transition hover:bg-[#986f2e]"
+        >
+          {enable}
+        </button>
+        <button
+          type="button"
+          onClick={onLater}
+          className="h-8 rounded-[11px] px-3 text-[11px] font-bold text-[#735f4b] transition hover:bg-[#efe3cf]"
+        >
+          {later}
+        </button>
+      </div>
+    </section>
   );
 }
 
