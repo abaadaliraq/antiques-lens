@@ -33,7 +33,7 @@ type Props = {
   imagePreview?: string | null;
   error: string;
   handleImageChange: (event: ChangeEvent<HTMLInputElement>) => void;
-  handleTakePhoto?: (source?: "camera" | "gallery") => void | Promise<void>;
+  handleTakePhoto?: () => void | Promise<void>;
   removeImage: () => void;
   removeImageAt?: (index: number) => void;
   handleAnalyze: () => void;
@@ -266,29 +266,42 @@ export default function EvaluationComposer({
   }
 
   function chooseCamera() {
-    closeImagePicker();
-
     if (Capacitor.isNativePlatform() && handleTakePhoto) {
-      void handleTakePhoto("camera");
+      closeImagePicker();
+      void handleTakePhoto();
       return;
     }
 
     cameraInputRef.current?.click();
+    closeImagePicker();
   }
 
   function chooseGallery() {
-    closeImagePicker();
-
-    if (Capacitor.isNativePlatform() && handleTakePhoto) {
-      void handleTakePhoto("gallery");
-      return;
-    }
-
     galleryInputRef.current?.click();
+    closeImagePicker();
   }
 
   return (
     <section className="w-full" dir={dir}>
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={handleImageChange}
+        className="sr-only"
+        tabIndex={-1}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleImageChange}
+        className="sr-only"
+        tabIndex={-1}
+      />
+
       {error && (
         <div className="mb-4 rounded-[14px] border border-[#8b3a2b]/30 bg-[#d9b59e]/70 px-4 py-3 text-sm text-[#6d241d]">
           {error}
@@ -317,22 +330,6 @@ export default function EvaluationComposer({
           {previews.length > 0 ? (
             <p className="relative mt-1 text-xs text-[#735f4b]">{t.ready}</p>
           ) : null}
-          <input
-            ref={galleryInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleImageChange}
-            className="hidden"
-          />
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleImageChange}
-            className="hidden"
-          />
         </label>
 
         {previews.length > 0 && (

@@ -10,6 +10,7 @@ import { Share } from "@capacitor/share";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { useFollowUpEvaluation } from "./useFollowUpEvaluation";
+import { createShareImage } from "./createShareImage";
 import {
   loadEvaluationArchiveItemsFromSupabase,
   mergeEvaluationArchiveItems,
@@ -177,6 +178,17 @@ async function copyTextToClipboard(text: string) {
   textarea.select();
   document.execCommand("copy");
   document.body.removeChild(textarea);
+}
+
+function downloadFile(file: File) {
+  const url = URL.createObjectURL(file);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = file.name;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1200);
 }
 
 async function resizeImageForAnalysis(
@@ -848,12 +860,12 @@ async function changeLocale(nextLocale: Locale) {
     event.target.value = "";
   }
 
-  async function handleTakePhoto(source: "camera" | "gallery" = "camera") {
+  async function handleTakePhoto() {
     try {
       setError("");
 
       const photo = await Camera.getPhoto({
-        source: source === "gallery" ? CameraSource.Photos : CameraSource.Camera,
+        source: CameraSource.Camera,
         resultType: CameraResultType.Uri,
         quality: 85,
         allowEditing: false,
@@ -1474,6 +1486,10 @@ async function handleShare() {
   const shareUrl = getUsefulShareUrl();
   const shareText = buildShareSummary(result, shareUrl);
   const shareTitle = locale === "en" ? "KISHIB Report" : "تقرير KISHIB";
+  const shareImageMessage =
+    locale === "en"
+      ? "Report image was downloaded. You can share it from your downloads."
+      : "تم تنزيل صورة التقرير، يمكنك مشاركتها من التنزيلات.";
   const fallbackMessage =
     locale === "en"
       ? "Report summary copied. You can paste and share it."
@@ -1487,6 +1503,41 @@ async function handleShare() {
   });
 
   try {
+    const shareImage = await createShareImage({
+      result,
+      imagePreview:
+        imagePreviews[0] ||
+        result.imagePreview ||
+        result.imageUrl ||
+        result.uploadedImageUrl ||
+        null,
+      labels: t,
+      locale,
+    });
+    const shareData = {
+      title: shareTitle,
+      text: shareTitle,
+      files: [shareImage],
+    } as ShareData;
+
+    if (
+      typeof navigator !== "undefined" &&
+      typeof navigator.share === "function" &&
+      (!navigator.canShare || navigator.canShare(shareData))
+    ) {
+      await navigator.share(shareData);
+      return;
+    }
+
+    downloadFile(shareImage);
+    alert(shareImageMessage);
+    return;
+  } catch (err) {
+    if (isCanceledShare(err)) return;
+    console.error("[KISHIB image share failed]", err);
+  }
+
+  try {
     if (isAndroidNativeApp()) {
       await Share.share({
         title: shareTitle,
@@ -1496,12 +1547,7 @@ async function handleShare() {
       });
       return;
     }
-  } catch (err) {
-    if (isCanceledShare(err)) return;
-    console.error("[KISHIB share failed]", err);
-  }
 
-  try {
     if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
       const shareData: ShareData = {
         title: shareTitle,

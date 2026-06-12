@@ -20,10 +20,10 @@ export default function AccountDeletionPage() {
             If you can no longer access your account, you can request account
             deletion by contacting us at:{" "}
             <a
-              href="mailto:kishib.app@gmail.com"
+              href="mailto:support@kishibapp.com"
               className="font-semibold text-[#8A5A24] underline-offset-4 hover:underline"
             >
-              kishib.app@gmail.com
+              support@kishibapp.com
             </a>
           </p>
 
@@ -56,10 +56,10 @@ export default function AccountDeletionPage() {
               إذا لم تتمكن من الدخول إلى حسابك، يمكنك طلب حذف الحساب عبر
               البريد:{" "}
               <a
-                href="mailto:kishib.app@gmail.com"
+                href="mailto:support@kishibapp.com"
                 className="font-semibold text-[#8A5A24] underline-offset-4 hover:underline"
               >
-                kishib.app@gmail.com
+                support@kishibapp.com
               </a>
             </p>
 

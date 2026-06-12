@@ -722,10 +722,11 @@ export default function AntiqueReportDocument({
             display: block !important;
             position: static !important;
             inset: auto !important;
-            width: 190mm !important;
+            box-sizing: border-box !important;
+            width: 210mm !important;
             height: auto !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            margin: 0 auto !important;
+            padding: 10mm !important;
             border: none !important;
             background: white !important;
             overflow: visible !important;
@@ -736,7 +737,7 @@ export default function AntiqueReportDocument({
           .report-print-area .antique-report-document {
             width: 190mm !important;
             max-width: none !important;
-            margin: 0 !important;
+            margin: 0 auto !important;
             border-radius: 0 !important;
             box-shadow: none !important;
             overflow: visible !important;
@@ -746,7 +747,7 @@ export default function AntiqueReportDocument({
             width: 190mm !important;
             height: auto !important;
             min-height: 0 !important;
-            margin: 0 !important;
+            margin: 0 auto !important;
             padding: 0 !important;
             overflow: visible !important;
             page-break-after: auto !important;
@@ -778,7 +779,7 @@ export default function AntiqueReportDocument({
 
           @page {
             size: A4;
-            margin: 10mm;
+            margin: 0;
           }
         }
       `}</style>

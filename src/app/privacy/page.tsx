@@ -176,20 +176,32 @@ export default function PrivacyPage() {
         </p>
 
         <h2 className="mt-8 font-serif text-xl font-semibold text-[#234236]">
-          8. Account and Data Deletion
+          8. Account Deletion
         </h2>
 
         <p className="mt-3 text-sm leading-8 text-[#4F4437]">
-          You may request deletion of your account or personal data by contacting
-          KISHIB support through the contact method provided inside the app or on
-          the official KISHIB website.
+          Users may request deletion of their KISHIB account and associated
+          personal data at any time by contacting KISHIB support at{" "}
+          <a
+            href="mailto:support@kishibapp.com?subject=Delete%20Account%20Request%20-%20KISHIB"
+            className="font-semibold text-[#8A5A24] underline-offset-4 hover:underline"
+          >
+            support@kishibapp.com
+          </a>{" "}
+          with the subject line “Delete Account Request - KISHIB”.
         </p>
 
         <p className="mt-4 text-sm leading-8 text-[#4F4437]">
-          When we receive a valid deletion request, we will take reasonable steps
-          to delete or anonymize personal information connected to your account,
-          unless we are required or permitted to keep certain records for legal,
-          security, fraud prevention, dispute resolution, or operational reasons.
+          The request should include the email address used to create the KISHIB
+          account. After verification, KISHIB will delete or anonymize the user’s
+          account data, including profile information, uploaded images, saved
+          evaluations, evaluation history, and related user notes, unless
+          retention is required for legal, security, fraud-prevention, or
+          accounting purposes.
+        </p>
+
+        <p className="mt-4 text-sm leading-8 text-[#4F4437]">
+          Account deletion requests are processed within 30 days.
         </p>
 
         <p className="mt-4 text-sm leading-8 text-[#4F4437]">

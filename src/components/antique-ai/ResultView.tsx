@@ -1113,8 +1113,8 @@ useEffect(() => {
               </div>
             </div>
 
-            <div className="report-preview-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#efe3cf] p-0">
-              <div className="report-preview-shell mx-auto w-full max-w-[794px]">
+            <div className="report-preview-scroll min-h-0 flex-1 overflow-auto bg-[#efe3cf] p-4">
+              <div className="report-preview-shell mx-auto flex w-max max-w-full justify-center">
                 <AntiqueReportDocument
                   locale={locale}
                   result={result}
@@ -1177,12 +1177,14 @@ useEffect(() => {
         }
 
         .report-preview-scroll {
+          display: flex;
+          justify-content: center;
           overscroll-behavior: contain;
         }
 
         .report-preview-shell .antique-report-document {
-          width: 100% !important;
-          max-width: 794px !important;
+          width: 794px !important;
+          max-width: none !important;
           overflow: visible !important;
         }
 
@@ -1197,6 +1199,7 @@ useEffect(() => {
 
         @media (max-width: 720px) {
           .report-preview-shell .report-page {
+            width: min(100vw - 32px, 794px) !important;
             padding: 14px !important;
           }
 
@@ -1261,10 +1264,11 @@ useEffect(() => {
             display: block !important;
             position: static !important;
             inset: auto !important;
-            width: 190mm !important;
+            box-sizing: border-box !important;
+            width: 210mm !important;
             height: auto !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            margin: 0 auto !important;
+            padding: 10mm !important;
             border: none !important;
             background: white !important;
             overflow: visible !important;
@@ -1275,7 +1279,7 @@ useEffect(() => {
           .report-print-area .antique-report-document {
             width: 190mm !important;
             max-width: none !important;
-            margin: 0 !important;
+            margin: 0 auto !important;
             border-radius: 0 !important;
             box-shadow: none !important;
             overflow: visible !important;
@@ -1287,7 +1291,7 @@ useEffect(() => {
             min-height: 0 !important;
             page-break-after: auto !important;
             break-after: auto !important;
-            margin: 0 !important;
+            margin: 0 auto !important;
             padding: 0 !important;
             overflow: visible !important;
           }
@@ -1322,7 +1326,7 @@ useEffect(() => {
 
           @page {
             size: A4;
-            margin: 10mm;
+            margin: 0;
           }
         }
       `}</style>
