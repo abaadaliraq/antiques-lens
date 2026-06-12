@@ -40,7 +40,7 @@ type UserMenuProps = {
 const AUTH_CACHE_KEY = "kishib:auth-session-active";
 const PROFILE_CACHE_PREFIX = "kishib:user-profile:";
 const SUPPORT_EMAIL = "support@kishibapp.com";
-const KISHIB_WEBSITE_URL = "https://kishib-website.vercel.app/";
+const KISHIB_WEBSITE_URL = "https://kishibapp.com";
 
 type EditableProfile = {
   name: string;
