@@ -24,6 +24,29 @@ type ReportResult = {
   confidence?: number;
   confidenceNote?: string;
   disclaimer?: string;
+  markAnalysis?: {
+    hasMark: boolean;
+    markType:
+      | "hallmark"
+      | "signature"
+      | "maker_mark"
+      | "purity_mark"
+      | "serial_number"
+      | "unknown";
+    visibleText?: string;
+    symbolDescription?: string;
+    locationOnObject?: string;
+    clarity?: "clear" | "partial" | "unclear";
+    possibleMeaning?: string;
+    confidence?: "low" | "medium" | "high";
+    needsCloseup?: boolean;
+    referenceMatches?: {
+      id: string;
+      markText?: string;
+      possibleMeaning?: string;
+      confidenceNotes?: string;
+    }[];
+  } | null;
 };
 
 type AntiqueReportDocumentProps = {
@@ -484,6 +507,67 @@ function ListSection({
   );
 }
 
+function MarkReportSection({
+  locale,
+  mark,
+}: {
+  locale: Locale;
+  mark: ReportResult["markAnalysis"];
+}) {
+  if (!mark?.hasMark) return null;
+
+  const visibleText = cleanReportText(mark.visibleText);
+  const symbolDescription = cleanReportText(mark.symbolDescription);
+  const locationOnObject = cleanReportText(mark.locationOnObject);
+  const possibleMeaning = cleanReportText(mark.possibleMeaning);
+  const referenceMatches =
+    mark.referenceMatches
+      ?.map((match) =>
+        [
+          cleanReportText(match.markText),
+          cleanReportText(match.possibleMeaning),
+        ]
+          .filter(Boolean)
+          .join(" — "),
+      )
+      .filter(Boolean)
+      .slice(0, 2) || [];
+
+  if (
+    !visibleText &&
+    !symbolDescription &&
+    !locationOnObject &&
+    !possibleMeaning &&
+    referenceMatches.length === 0
+  ) {
+    return null;
+  }
+
+  const title = locale === "en" ? "Mark or signature" : "الختم أو التوقيع";
+  const caution =
+    locale === "en"
+      ? "Visual clue only. It does not prove authenticity, maker, material, or purity without close-up verification and direct inspection."
+      : "إشارة بصرية فقط، ولا تثبت الأصالة أو الصانع أو المادة أو العيار دون صورة مقرّبة وفحص مباشر.";
+  const rows = [
+    visibleText ? `${locale === "en" ? "Visible text" : "النص الظاهر"}: ${visibleText}` : "",
+    symbolDescription
+      ? `${locale === "en" ? "Description" : "الوصف"}: ${symbolDescription}`
+      : "",
+    locationOnObject
+      ? `${locale === "en" ? "Location" : "المكان"}: ${locationOnObject}`
+      : "",
+    possibleMeaning
+      ? `${locale === "en" ? "Possible meaning" : "المعنى المحتمل"}: ${possibleMeaning}`
+      : "",
+    ...referenceMatches.map(
+      (match) => `${locale === "en" ? "Reference hint" : "إشارة مرجعية"}: ${match}`,
+    ),
+    caution,
+  ].filter(Boolean);
+
+  return <ListSection title={title} items={rows} />;
+}
+
 function ReportPage({
   children,
   pageNumber,
@@ -670,6 +754,10 @@ export default function AntiqueReportDocument({
 
           <section className="mb-4">
             <TextBox title={labels.historicalContext} body={history} />
+          </section>
+
+          <section className="mb-4">
+            <MarkReportSection locale={locale} mark={result.markAnalysis} />
           </section>
 
           <section className="report-two-grid mb-4 grid grid-cols-2 gap-3">

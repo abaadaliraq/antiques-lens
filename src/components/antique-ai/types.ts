@@ -62,8 +62,9 @@ export type AnalysisResult = {
     requiredPhotos: string[];
     priceScenario: string;
   };
+  markAnalysis?: MarkAnalysis | null;
   metalValue?: {
-    metal: "silver" | "gold" | "platinum" | "palladium" | "unknown";
+    metal: "silver" | "gold" | "platinum" | "palladium" | "copper" | "unknown";
     weightGrams?: number;
     purityAssumption?: string;
     spotPricePerGramUsd?: number;
@@ -88,6 +89,34 @@ export type AnalysisResult = {
   };
 };
 
+export type MarkAnalysis = {
+  hasMark: boolean;
+  markType:
+    | "hallmark"
+    | "signature"
+    | "maker_mark"
+    | "purity_mark"
+    | "serial_number"
+    | "unknown";
+  visibleText: string;
+  symbolDescription: string;
+  locationOnObject: string;
+  clarity: "clear" | "partial" | "unclear";
+  possibleMeaning: string;
+  confidence: "low" | "medium" | "high";
+  needsCloseup: boolean;
+  referenceMatches?: {
+    id: string;
+    type: MarkAnalysis["markType"];
+    markText: string;
+    possibleMeaning: string;
+    material?: string;
+    period?: string;
+    confidence: number;
+    confidenceNotes: string;
+  }[];
+};
+
 export type SimilarImageResult = {
   title: string;
   imageUrl: string;
@@ -96,6 +125,8 @@ export type SimilarImageResult = {
   price?: string;
   description?: string;
   confidence?: HouseOfAntiquesConfidence;
+  confidenceScore?: number;
+  visualSimilarity?: number;
   matchReason?: string;
   isHouseOfAntiques?: boolean;
 };
@@ -125,6 +156,8 @@ export type HouseOfAntiquesMatch = {
   source?: string;
   score?: number;
   confidence?: HouseOfAntiquesConfidence;
+  confidenceScore?: number;
+  visualSimilarity?: number;
   matchReason?: string;
 };
 

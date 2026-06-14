@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
-import { houseSupabase } from "../../../lib/houseSupabase";
+import {
+  hasHouseSupabaseConfig,
+  houseSupabase,
+} from "../../../lib/houseSupabase";
 
 export const runtime = "nodejs";
+
+const STRONG_MATCH_CONFIDENCE_THRESHOLD = 0.88;
+const VISIBLE_IMAGE_SIMILARITY_THRESHOLD = 0.9;
 
 type MatchConfidence = "exact" | "strong" | "partial" | "weak" | "none";
 
@@ -23,6 +29,8 @@ type HouseComparable = {
   source: string;
   score: number;
   confidence: MatchConfidence;
+  confidenceScore: number;
+  visualSimilarity: number;
   matchReason: string;
 };
 
@@ -572,11 +580,47 @@ function getConfidence(
   product: ProductRow,
   terms: string[],
 ): MatchConfidence {
-  if (score >= 140 && hasExactProductIdentityMatch(product, terms)) return "exact";
+  const confidenceScore = getConfidenceScore(score, product, terms);
+  const visualSimilarity = getVisualSimilarity(score, product, terms);
+
+  if (
+    confidenceScore >= STRONG_MATCH_CONFIDENCE_THRESHOLD &&
+    visualSimilarity >= VISIBLE_IMAGE_SIMILARITY_THRESHOLD
+  ) {
+    return "exact";
+  }
+
   if (score >= 80) return "strong";
   if (score >= 35) return "partial";
   if (score > 0) return "weak";
   return "none";
+}
+
+function getConfidenceScore(
+  score: number,
+  product: ProductRow,
+  terms: string[],
+) {
+  const exactIdentityBoost = hasExactProductIdentityMatch(product, terms) ? 0.08 : 0;
+  const base = Math.min(0.96, score / 170);
+
+  return Math.round(Math.min(0.99, base + exactIdentityBoost) * 100) / 100;
+}
+
+function getVisualSimilarity(
+  score: number,
+  product: ProductRow,
+  terms: string[],
+) {
+  const titleText = productTitleText(product);
+  const attributeText = productAttributeText(product);
+  const titleHits = terms.filter((term) => term && titleText.includes(term)).length;
+  const attributeHits = terms.filter((term) => term && attributeText.includes(term)).length;
+  const hasIdentity = hasExactProductIdentityMatch(product, terms);
+  const base = Math.min(0.94, score / 180);
+  const boost = (titleHits >= 2 ? 0.04 : 0) + (attributeHits >= 3 ? 0.03 : 0) + (hasIdentity ? 0.08 : 0);
+
+  return Math.round(Math.min(0.99, base + boost) * 100) / 100;
 }
 
 function getBestConfidence(items: HouseComparable[]): MatchConfidence {
@@ -607,6 +651,8 @@ function toComparable(
   imageMap: Map<string, string[]>,
   terms: string[],
 ): HouseComparable {
+  const confidenceScore = getConfidenceScore(score, product, terms);
+  const visualSimilarity = getVisualSimilarity(score, product, terms);
   const title =
     safeText(product.name_ar) ||
     safeText(product.name_en) ||
@@ -652,6 +698,8 @@ function toComparable(
     source: "House of Antiques Store",
     score,
     confidence: getConfidence(score, product, terms),
+    confidenceScore,
+    visualSimilarity,
     matchReason: getMatchReason(product, terms),
   };
 }
@@ -676,7 +724,9 @@ Product URL: ${item.url}
 Image URL: ${item.imageUrl || "N/A"}
 Source: ${item.source}
 Match score: ${item.score}
-Match confidence: ${item.confidence}
+Match confidence score: ${item.confidenceScore}
+Visual similarity estimate: ${item.visualSimilarity}
+Strict match confidence: ${item.confidence}
 Match reason: ${item.matchReason}
 Description: ${item.description || "N/A"}
 `;
@@ -686,7 +736,9 @@ Description: ${item.description || "N/A"}
 
 function getHouseOfAntiquesContext(items: HouseComparable[]): HouseOfAntiquesContext {
   const matches = items.filter((item) =>
-    item.confidence === "exact",
+    item.confidence === "exact" &&
+    item.confidenceScore >= STRONG_MATCH_CONFIDENCE_THRESHOLD &&
+    item.visualSimilarity >= VISIBLE_IMAGE_SIMILARITY_THRESHOLD,
   );
 
   return {
@@ -722,6 +774,18 @@ function findHouseOfAntiquesMatches(
 
 export async function POST(request: Request) {
   try {
+    if (!hasHouseSupabaseConfig() || !houseSupabase) {
+      console.info("houseStoreReference: skipped no env");
+      return NextResponse.json({
+        found: false,
+        confidence: "none",
+        items: [],
+        matches: [],
+        contextText: "",
+        storeContext: "",
+      });
+    }
+
     const body = await request.json();
 
     const query = safeText(body?.query);
@@ -806,12 +870,15 @@ const expandedSearchText = searchText;
       .limit(2000);
 
     if (error) {
-      console.error("House comparables Supabase error:", error);
-
-      return NextResponse.json(
-        { error: "Failed to read House of Antiques products." },
-        { status: 500 },
-      );
+      console.warn("houseStoreReference: Supabase products read failed");
+      return NextResponse.json({
+        found: false,
+        confidence: "none",
+        items: [],
+        matches: [],
+        contextText: "",
+        storeContext: "",
+      });
     }
 
     const products = Array.isArray(data) ? data : [];
@@ -828,7 +895,7 @@ const expandedSearchText = searchText;
         .order("sort_order", { ascending: true });
 
       if (imageError) {
-        console.warn("House product_images read warning:", imageError);
+        console.warn("houseStoreReference: product images read skipped");
       }
 
       const rows = Array.isArray(imageRows) ? (imageRows as ProductImageRow[]) : [];
@@ -853,6 +920,12 @@ const expandedSearchText = searchText;
     );
     const items = houseContext.matches;
 
+    if (items.length > 0) {
+      console.info(`houseStoreReference: strong matches count ${items.length}`);
+    } else {
+      console.info("houseStoreReference: no strong match");
+    }
+
     return NextResponse.json({
       found: houseContext.found,
       confidence: houseContext.confidence,
@@ -863,17 +936,16 @@ const expandedSearchText = searchText;
       terms,
       knowledgeContext,
       storeContext: houseContext.contextText,
-      note:
-        houseContext.found
-          ? "An exact House of Antiques store match was found. Use it only as one internal pricing reference."
-          : "No exact House of Antiques store match was found.",
     });
   } catch (error) {
-    console.error("House comparables route error:", error);
-
-    return NextResponse.json(
-      { error: "Unexpected House comparables error." },
-      { status: 500 },
-    );
+    console.warn("houseStoreReference: route skipped after error");
+    return NextResponse.json({
+      found: false,
+      confidence: "none",
+      items: [],
+      matches: [],
+      contextText: "",
+      storeContext: "",
+    });
   }
 }

@@ -292,62 +292,6 @@ function getSilverScenarioLabels(locale: Locale) {
   };
 }
 
-const preciousMetalKeywords = [
-  "silver",
-  "sterling",
-  "925",
-  "ÙØ¶Ø©",
-  "Ø°Ù‡Ø¨",
-  "gold",
-];
-
-const excludedMaterialKeywords = [
-  "wood",
-  "Ø®Ø´Ø¨",
-  "wooden",
-  "furniture",
-  "chair",
-  "ÙƒØ±Ø³ÙŠ",
-  "Ø£Ø«Ø§Ø«",
-  "ceramic",
-  "Ø®Ø²Ù",
-  "pottery",
-  "ÙØ®Ø§Ø±",
-  "rug",
-  "carpet",
-  "Ø³Ø¬Ø§Ø¯",
-  "textile",
-  "painting",
-  "glass",
-  "crystal",
-  "bronze",
-  "copper",
-  "brass",
-];
-
-function isPreciousMetalItem(result: AnalysisResult) {
-  const text = [
-    result.material,
-    result.itemType,
-    result.title,
-    result.description,
-    result.lookup,
-    result.history,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  const hasPreciousMetal = preciousMetalKeywords.some((word) =>
-    text.includes(word.toLowerCase()),
-  );
-  const hasExcludedMaterial = excludedMaterialKeywords.some((word) =>
-    text.includes(word.toLowerCase()),
-  );
-
-  return hasPreciousMetal && !hasExcludedMaterial;
-}
-
 const luxuryCategoryKeywords = [
   "watch",
   "watches",
@@ -585,8 +529,23 @@ useEffect(() => {
         cleanDisplayText(result.brandAssessment?.priceScenario),
     );
   const metalScenarios = result.metalValue?.scenarios || [];
-  const shouldShowMetalValue =
-    isPreciousMetalItem(result) && metalScenarios.length > 0;
+  const shouldShowMetalValue = Boolean(result.metalValue);
+  const markAnalysis = result.markAnalysis?.hasMark ? result.markAnalysis : null;
+  const markReferenceMatches =
+    markAnalysis?.referenceMatches?.filter(
+      (match) =>
+        cleanDisplayText(match.markText) ||
+        cleanDisplayText(match.possibleMeaning) ||
+        cleanDisplayText(match.confidenceNotes),
+    ) || [];
+  const shouldShowMarkAnalysis = Boolean(
+    markAnalysis &&
+      (cleanDisplayText(markAnalysis.visibleText) ||
+        cleanDisplayText(markAnalysis.symbolDescription) ||
+        cleanDisplayText(markAnalysis.locationOnObject) ||
+        cleanDisplayText(markAnalysis.possibleMeaning) ||
+        markReferenceMatches.length > 0),
+  );
 
   function handleAddInfoClick() {
     setHasOpenedFollowUp(true);
@@ -797,39 +756,160 @@ useEffect(() => {
               {silverScenarioLabels.note}
             </p>
 
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              {metalScenarios.map((scenario) => (
-                <div
-                  key={scenario.label}
-                  className="rounded-[16px] border border-[#d2b98f] bg-[#efe3cf]/75 p-3"
-                >
-                  <p className="text-sm font-bold text-[#233f32]">
-                    {locale === "en" ? scenario.label : scenario.labelAr}
-                  </p>
+            {metalScenarios.length > 0 ? (
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {metalScenarios.map((scenario) => (
+                  <div
+                    key={scenario.label}
+                    className="rounded-[16px] border border-[#d2b98f] bg-[#efe3cf]/75 p-3"
+                  >
+                    <p className="text-sm font-bold text-[#233f32]">
+                      {locale === "en" ? scenario.label : scenario.labelAr}
+                    </p>
 
-                  <p className="mt-2 text-xs text-[#735f4b]">
-                    {silverScenarioLabels.weight}: {scenario.weightGrams}g
-                  </p>
+                    <p className="mt-2 text-xs text-[#735f4b]">
+                      {silverScenarioLabels.weight}: {scenario.weightGrams}g
+                    </p>
 
-                  <p className="mt-2 text-xs text-[#735f4b]">
-                    {silverScenarioLabels.melt}
-                  </p>
+                    <p className="mt-2 text-xs text-[#735f4b]">
+                      {silverScenarioLabels.melt}
+                    </p>
 
-                  <p className="text-sm font-bold text-[#8a642f]">
-                    ${scenario.meltValueUsdMid}
-                  </p>
+                    <p className="text-sm font-bold text-[#8a642f]">
+                      ${scenario.meltValueUsdMid}
+                    </p>
 
-                  <p className="mt-2 text-xs text-[#735f4b]">
-                    {silverScenarioLabels.antique}
-                  </p>
+                    <p className="mt-2 text-xs text-[#735f4b]">
+                      {silverScenarioLabels.antique}
+                    </p>
 
-                  <p className="text-sm font-bold text-[#233f32]">
-                    ${scenario.antiqueEstimateUsdLow} - $
-                    {scenario.antiqueEstimateUsdHigh}
+                    <p className="text-sm font-bold text-[#233f32]">
+                      ${scenario.antiqueEstimateUsdLow} - $
+                      {scenario.antiqueEstimateUsdHigh}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-4 rounded-[16px] border border-[#d2b98f] bg-[#efe3cf]/75 p-3 text-sm leading-6 text-[#735f4b]">
+                <p className="font-bold text-[#233f32]">
+                  {locale === "en" ? "Metal price indicator" : "مؤشر سعر المعدن"}
+                </p>
+                <p className="mt-2">
+                  {locale === "en" ? "Possible metal" : "المعدن المحتمل"}:{" "}
+                  {result.metalValue?.metal}
+                </p>
+                {result.metalValue?.spotPricePerGramUsd ? (
+                  <p>
+                    {locale === "en" ? "Market price" : "سعر السوق"}: $
+                    {result.metalValue.spotPricePerGramUsd} / g
+                  </p>
+                ) : null}
+                {result.metalValue?.weightGrams ? (
+                  <p>
+                    {locale === "en" ? "Weight used" : "الوزن المستخدم"}:{" "}
+                    {result.metalValue.weightGrams}g
+                  </p>
+                ) : null}
+                {result.metalValue?.meltValueUsdLow &&
+                result.metalValue?.meltValueUsdHigh ? (
+                  <p className="font-bold text-[#8a642f]">
+                    {locale === "en" ? "Raw metal estimate" : "تقدير المعدن الخام"}: $
+                    {result.metalValue.meltValueUsdLow} - $
+                    {result.metalValue.meltValueUsdHigh}
+                  </p>
+                ) : null}
+                {result.metalValue?.note ? (
+                  <p className="mt-2 text-xs">{result.metalValue.note}</p>
+                ) : null}
+              </div>
+            )}
+          </section>
+        ) : null}
+
+        {shouldShowMarkAnalysis && markAnalysis ? (
+          <section className="mt-5 rounded-[20px] border border-[#c7b99e] bg-[#fff4e2]/90 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-[#986f2e]">
+                {locale === "en" ? "Mark or signature" : "الختم أو التوقيع"}
+              </p>
+              <span className="rounded-full border border-[#d2b98f] bg-[#efe3cf]/80 px-2.5 py-1 text-[11px] font-bold text-[#735f4b]">
+                {markAnalysis.clarity}
+              </span>
+            </div>
+
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {cleanDisplayText(markAnalysis.visibleText) ? (
+                <div className="rounded-[16px] border border-[#d2b98f] bg-[#efe3cf]/70 p-3">
+                  <p className="text-[11px] font-bold text-[#986f2e]">
+                    {locale === "en" ? "Visible text" : "النص الظاهر"}
+                  </p>
+                  <p className="mt-1 text-sm font-bold leading-6 text-[#233f32]">
+                    {cleanDisplayText(markAnalysis.visibleText)}
                   </p>
                 </div>
-              ))}
+              ) : null}
+
+              {cleanDisplayText(markAnalysis.symbolDescription) ? (
+                <div className="rounded-[16px] border border-[#d2b98f] bg-[#efe3cf]/70 p-3">
+                  <p className="text-[11px] font-bold text-[#986f2e]">
+                    {locale === "en" ? "Visual description" : "الوصف البصري"}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-[#735f4b]">
+                    {cleanDisplayText(markAnalysis.symbolDescription)}
+                  </p>
+                </div>
+              ) : null}
+
+              {cleanDisplayText(markAnalysis.locationOnObject) ? (
+                <div className="rounded-[16px] border border-[#d2b98f] bg-[#efe3cf]/70 p-3">
+                  <p className="text-[11px] font-bold text-[#986f2e]">
+                    {locale === "en" ? "Location" : "مكان العلامة"}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-[#735f4b]">
+                    {cleanDisplayText(markAnalysis.locationOnObject)}
+                  </p>
+                </div>
+              ) : null}
+
+              {cleanDisplayText(markAnalysis.possibleMeaning) ? (
+                <div className="rounded-[16px] border border-[#d2b98f] bg-[#efe3cf]/70 p-3">
+                  <p className="text-[11px] font-bold text-[#986f2e]">
+                    {locale === "en" ? "Possible meaning" : "المعنى المحتمل"}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-[#735f4b]">
+                    {cleanDisplayText(markAnalysis.possibleMeaning)}
+                  </p>
+                </div>
+              ) : null}
             </div>
+
+            {markReferenceMatches.length > 0 ? (
+              <div className="mt-3 rounded-[16px] border border-[#d2b98f] bg-[#efe3cf]/70 p-3">
+                <p className="text-[11px] font-bold text-[#986f2e]">
+                  {locale === "en" ? "Reference hint" : "إشارة مرجعية"}
+                </p>
+                {markReferenceMatches.map((match) => (
+                  <p
+                    key={match.id}
+                    className="mt-2 text-xs leading-5 text-[#735f4b]"
+                  >
+                    <span className="font-bold text-[#233f32]">
+                      {cleanDisplayText(match.markText)}
+                    </span>
+                    {cleanDisplayText(match.possibleMeaning)
+                      ? ` — ${cleanDisplayText(match.possibleMeaning)}`
+                      : ""}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+
+            <p className="mt-3 text-xs leading-5 text-[#735f4b]">
+              {locale === "en"
+                ? "This is a visual clue only, not proof of authenticity, maker, material, or purity. A close-up and direct inspection are still needed."
+                : "هذه إشارة بصرية فقط، وليست إثباتًا للأصالة أو الصانع أو المادة أو العيار. تبقى صورة مقرّبة والفحص المباشر ضروريين."}
+            </p>
           </section>
         ) : null}
 

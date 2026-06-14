@@ -23,6 +23,7 @@ import {
 } from "@/lib/profilesSupabase";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { Coins, Lock, ShoppingBag, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { formatArchiveDate, type ArchiveItem } from "./archiveStore";
@@ -581,19 +582,15 @@ export default function AntiqueLensShell() {
                 <Lock className="h-2.5 w-2.5 text-white/65" aria-hidden="true" />
               </button>
 
-              <button
-                type="button"
-                disabled
-                aria-disabled="true"
-                title={lens.t.soon}
-                className="inline-flex h-7 shrink-0 cursor-not-allowed items-center gap-1 rounded-full px-1.5 text-[10.5px] font-normal text-white/90 opacity-90 sm:px-2 sm:text-[11px]"
+              <Link
+                href="/metal-prices"
+                className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full px-1.5 text-[10.5px] font-normal text-white/95 transition hover:bg-white/10 sm:px-2 sm:text-[11px]"
               >
                 <span className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-white/10 text-white/80">
                   <Coins className="h-2.5 w-2.5" />
                 </span>
                 {getMetalPricesNavLabel(lens.locale)}
-                <Lock className="h-2.5 w-2.5 text-white/65" aria-hidden="true" />
-              </button>
+              </Link>
             </div>
 
           </div>
@@ -621,19 +618,15 @@ export default function AntiqueLensShell() {
                 <Lock className="h-3 w-3 text-[#dcc18a]/80" aria-hidden="true" />
               </button>
 
-              <button
-                type="button"
-                disabled
-                aria-disabled="true"
-                title={lens.t.soon}
-                className="inline-flex h-8 shrink-0 cursor-not-allowed items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-[#fff4e2]/55 opacity-75 sm:px-2.5 sm:text-xs lg:h-9 lg:gap-1.5 lg:px-3 lg:text-sm"
+              <Link
+                href="/metal-prices"
+                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-[#fff4e2]/90 transition hover:bg-[#fff4e2]/10 sm:px-2.5 sm:text-xs lg:h-9 lg:gap-1.5 lg:px-3 lg:text-sm"
               >
                 <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#fff4e2]/10 text-[#dcc18a] lg:h-6 lg:w-6">
                   <Coins className="h-3 w-3 lg:h-3.5 lg:w-3.5" />
                 </span>
                 {getMetalPricesNavLabel(lens.locale)}
-                <Lock className="h-3 w-3 text-[#dcc18a]/80" aria-hidden="true" />
-              </button>
+              </Link>
             </div>
           </>
         )}

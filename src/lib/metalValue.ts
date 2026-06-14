@@ -81,6 +81,10 @@ export function detectSilver(text: string) {
     value.includes("silver") ||
     value.includes("sterling") ||
     value.includes("925") ||
+    value.includes("958") ||
+    value.includes("900") ||
+    value.includes("880") ||
+    value.includes("800") ||
     value.includes("999")
   );
 }
@@ -89,7 +93,10 @@ export function detectSilverPurity(text: string) {
   const value = text.toLowerCase();
 
   if (value.includes("999") || value.includes("pure silver")) return 0.999;
+  if (value.includes("958") || value.includes("britannia")) return 0.958;
   if (value.includes("925") || value.includes("sterling")) return 0.925;
+  if (value.includes("900") || value.includes("coin silver")) return 0.9;
+  if (value.includes("880")) return 0.88;
   if (value.includes("800")) return 0.8;
 
   return null;

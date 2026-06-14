@@ -2,21 +2,25 @@ import "server-only";
 import { TROY_OUNCE_GRAMS } from "@/lib/metalValue";
 
 export type MetalSymbol = "XAU" | "XAG" | "XCU" | "XPT" | "XPD";
-export type DisplayMetalKey = "gold" | "silver" | "copper" | "platinum";
+export type DisplayMetalKey =
+  | "gold"
+  | "silver"
+  | "platinum"
+  | "palladium"
+  | "copper";
 
 export type DisplayMetalPrice = {
-  symbol: Exclude<MetalSymbol, "XPD">;
+  symbol: MetalSymbol;
   name: string;
   priceUsdPerOunce: number;
   priceUsdPerGram: number;
   updatedAt: string;
-  changeUsdPerOunce?: number;
-  changePercent?: number;
 };
 
 export type MetalPricesResponse = Record<DisplayMetalKey, DisplayMetalPrice> & {
   updatedAt: string;
-  source: "metals-api" | "gold-api" | "fallback";
+  source: "metals.dev";
+  stale?: boolean;
   warning?: string;
 };
 
@@ -33,30 +37,32 @@ export type MetalSpotPrices = MetalPricesResponse & {
   palladiumGramUSD: number;
 };
 
-const CACHE_TTL_MS = 15 * 60 * 1000;
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 8000;
-const FALLBACK_WARNING = "Live metal price unavailable, using fallback estimate";
+const UNAVAILABLE_WARNING = "Live Metals.dev prices are unavailable";
 
 const DISPLAY_METALS: Array<{
   key: DisplayMetalKey;
-  symbol: Exclude<MetalSymbol, "XPD">;
+  symbol: MetalSymbol;
   name: string;
+  aliases: string[];
 }> = [
-  { key: "gold", symbol: "XAU", name: "Gold" },
-  { key: "silver", symbol: "XAG", name: "Silver" },
-  { key: "copper", symbol: "XCU", name: "Copper" },
-  { key: "platinum", symbol: "XPT", name: "Platinum" },
+  { key: "gold", symbol: "XAU", name: "Gold", aliases: ["gold", "XAU"] },
+  { key: "silver", symbol: "XAG", name: "Silver", aliases: ["silver", "XAG"] },
+  {
+    key: "platinum",
+    symbol: "XPT",
+    name: "Platinum",
+    aliases: ["platinum", "XPT"],
+  },
+  {
+    key: "palladium",
+    symbol: "XPD",
+    name: "Palladium",
+    aliases: ["palladium", "XPD"],
+  },
+  { key: "copper", symbol: "XCU", name: "Copper", aliases: ["copper", "XCU"] },
 ];
-
-const LEGACY_SYMBOLS: MetalSymbol[] = ["XAU", "XAG", "XCU", "XPT", "XPD"];
-
-const FALLBACK_OUNCE_USD: Record<MetalSymbol, number> = {
-  XAU: 2300,
-  XAG: 29,
-  XCU: 0.27,
-  XPT: 1000,
-  XPD: 950,
-};
 
 let cachedPrices:
   | {
@@ -78,99 +84,85 @@ function envValue(name: string) {
   return value && value !== "API_KEY" ? value : "";
 }
 
-function getMetalsApiUrl() {
-  const endpoint = envValue("METALS_API_URL");
-  const key = envValue("METALS_API_KEY");
+function getMetalsDevUrl() {
+  const apiKey = envValue("METALS_API_KEY");
 
-  if (endpoint) {
-    const url = new URL(endpoint);
-    if (key && !url.searchParams.has("access_key")) {
-      url.searchParams.set("access_key", key);
-    }
-    url.searchParams.set("base", "USD");
-    url.searchParams.set("symbols", "XAU,XAG,XCU,XPT");
-    return url.toString();
+  if (!apiKey || apiKey.startsWith("http")) {
+    return null;
   }
 
-  if (!key || key.startsWith("http") || key.includes("API_KEY")) return null;
-
-  const url = new URL("https://metals-api.com/api/latest");
-  url.searchParams.set("access_key", key);
-  url.searchParams.set("base", "USD");
-  url.searchParams.set("symbols", "XAU,XAG,XCU,XPT");
+  const url = new URL("https://api.metals.dev/v1/latest");
+  url.searchParams.set("api_key", apiKey);
+  url.searchParams.set("currency", "USD");
+  url.searchParams.set("unit", "toz");
   return url.toString();
 }
 
-async function fetchJson(url: string) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+function getNestedObject(
+  data: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> | null {
+  const value = data[key];
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : null;
+}
 
-  try {
-    const response = await fetch(url, {
-      cache: "no-store",
-      signal: controller.signal,
-    });
+function readMetalPrice(
+  data: Record<string, unknown>,
+  aliases: string[],
+): number | null {
+  const pools = [
+    data,
+    getNestedObject(data, "metals"),
+    getNestedObject(data, "rates"),
+    getNestedObject(data, "prices"),
+  ].filter((pool): pool is Record<string, unknown> => Boolean(pool));
 
-    if (!response.ok) {
-      throw new Error(`Metal price request failed: ${response.status}`);
+  for (const pool of pools) {
+    for (const alias of aliases) {
+      const direct = Number(pool[alias]);
+      if (isUsableNumber(direct)) return direct;
+
+      const lower = Number(pool[alias.toLowerCase()]);
+      if (isUsableNumber(lower)) return lower;
     }
-
-    return (await response.json()) as Record<string, unknown>;
-  } finally {
-    clearTimeout(timeout);
   }
+
+  return null;
 }
 
-function rateToUsdPerOunce(rate: unknown) {
-  const value = Number(rate);
-  if (!Number.isFinite(value) || value <= 0) return null;
-
-  return value < 1 ? 1 / value : value;
-}
-
-async function fetchMetalsApiPrices() {
-  const url = getMetalsApiUrl();
+async function fetchMetalsDevPrices() {
+  const url = getMetalsDevUrl();
   if (!url) return null;
 
-  const data = await fetchJson(url);
-  const rates =
-    data.rates && typeof data.rates === "object"
-      ? (data.rates as Record<string, unknown>)
-      : null;
+  const response = await fetch(url, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
 
-  if (!rates) {
-    throw new Error("Metals API response did not include rates");
+  if (!response.ok) {
+    throw new Error(`Metals.dev request failed: ${response.status}`);
   }
 
+  const data = (await response.json()) as Record<string, unknown>;
   const prices: Partial<Record<MetalSymbol, number>> = {};
 
   for (const metal of DISPLAY_METALS) {
-    const price = rateToUsdPerOunce(rates[metal.symbol]);
+    const price = readMetalPrice(data, metal.aliases);
     if (price) prices[metal.symbol] = price;
   }
 
   if (!DISPLAY_METALS.every((metal) => isUsableNumber(prices[metal.symbol]))) {
-    throw new Error("Metals API response did not include all required metals");
+    throw new Error("Metals.dev response did not include all required metals");
   }
 
-  return prices as Record<Exclude<MetalSymbol, "XPD">, number>;
-}
-
-async function fetchGoldApiPrice(symbol: MetalSymbol) {
-  const data = await fetchJson(`https://api.gold-api.com/price/${symbol}/USD`);
-  const price = Number(data?.price);
-
-  if (!Number.isFinite(price) || price <= 0) {
-    throw new Error(`Gold API returned invalid price for ${symbol}`);
-  }
-
-  return price;
+  return prices as Record<MetalSymbol, number>;
 }
 
 function buildSpotPrices(
   prices: Record<MetalSymbol, number>,
-  source: MetalSpotPrices["source"],
-  warning?: string,
+  options?: { stale?: boolean; warning?: string },
 ): MetalSpotPrices {
   const updatedAt = new Date().toISOString();
   const displayPrices = Object.fromEntries(
@@ -199,50 +191,13 @@ function buildSpotPrices(
     palladiumOunceUSD: roundMoney(prices.XPD),
     palladiumGramUSD: roundMoney(prices.XPD / TROY_OUNCE_GRAMS),
     updatedAt,
-    source,
-    warning,
+    source: "metals.dev",
+    stale: options?.stale,
+    warning: options?.warning,
   };
 }
 
-async function fetchLivePrices() {
-  const metalsApiPrices = await fetchMetalsApiPrices();
-
-  if (metalsApiPrices) {
-    return {
-      source: "metals-api" as const,
-      prices: {
-        ...FALLBACK_OUNCE_USD,
-        ...metalsApiPrices,
-      },
-    };
-  }
-
-  const results = await Promise.allSettled(
-    LEGACY_SYMBOLS.map((symbol) => fetchGoldApiPrice(symbol)),
-  );
-  const prices = { ...FALLBACK_OUNCE_USD };
-  const failedSymbols: string[] = [];
-
-  results.forEach((result, index) => {
-    const symbol = LEGACY_SYMBOLS[index];
-    if (!symbol) return;
-
-    if (result.status === "fulfilled") {
-      prices[symbol] = result.value;
-      return;
-    }
-
-    failedSymbols.push(symbol);
-  });
-
-  return {
-    source: failedSymbols.length ? ("fallback" as const) : ("gold-api" as const),
-    prices,
-    warning: failedSymbols.length ? FALLBACK_WARNING : undefined,
-  };
-}
-
-export async function getMetalSpotPrices(): Promise<MetalSpotPrices> {
+export async function getMetalSpotPrices(): Promise<MetalSpotPrices | null> {
   const now = Date.now();
 
   if (cachedPrices && cachedPrices.expiresAt > now) {
@@ -250,9 +205,20 @@ export async function getMetalSpotPrices(): Promise<MetalSpotPrices> {
   }
 
   try {
-    const live = await fetchLivePrices();
-    const value = buildSpotPrices(live.prices, live.source, live.warning);
+    const prices = await fetchMetalsDevPrices();
 
+    if (!prices) {
+      console.info("[Metals.dev skipped] METALS_API_KEY is not configured");
+      return cachedPrices?.value
+        ? {
+            ...cachedPrices.value,
+            stale: true,
+            warning: UNAVAILABLE_WARNING,
+          }
+        : null;
+    }
+
+    const value = buildSpotPrices(prices);
     cachedPrices = {
       expiresAt: now + CACHE_TTL_MS,
       value,
@@ -260,18 +226,19 @@ export async function getMetalSpotPrices(): Promise<MetalSpotPrices> {
 
     return value;
   } catch (error) {
-    console.warn(FALLBACK_WARNING, error);
-    const value = buildSpotPrices(
-      FALLBACK_OUNCE_USD,
-      "fallback",
-      FALLBACK_WARNING,
+    console.warn(
+      "[Metals.dev skipped]",
+      error instanceof Error ? error.message.replace(/\?.*$/, "") : "request failed",
     );
 
-    cachedPrices = {
-      expiresAt: now + CACHE_TTL_MS,
-      value,
-    };
+    if (cachedPrices?.value) {
+      return {
+        ...cachedPrices.value,
+        stale: true,
+        warning: UNAVAILABLE_WARNING,
+      };
+    }
 
-    return value;
+    return null;
   }
 }

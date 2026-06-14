@@ -19,6 +19,19 @@ import {
   searchMarketReferences,
   formatMarketReferencesForPrompt,
 } from "@/lib/marketReferences";
+import {
+  findMarkReferenceMatches,
+  type MarkAnalysis,
+} from "@/lib/marksReference";
+import {
+  getGeminiSecondOpinion,
+  type GeminiImageInput,
+  type GeminiSecondOpinion,
+} from "@/lib/gemini";
+import {
+  getDeepSeekLogicReview,
+  type DeepSeekLogicReview,
+} from "@/lib/deepseek";
 
 type Locale = "ar" | "en" | "fr" | "hi" | "fa" | "tr" | "ru" | "ku";
 
@@ -52,8 +65,9 @@ type AnalysisResult = {
     requiredPhotos: string[];
     priceScenario: string;
   };
+  markAnalysis?: MarkAnalysis | null;
     metalValue?: {
-    metal: "silver" | "gold" | "platinum" | "palladium" | "unknown";
+    metal: "silver" | "gold" | "platinum" | "palladium" | "copper" | "unknown";
     weightGrams?: number;
     purityAssumption?: string;
     spotPricePerGramUsd?: number;
@@ -66,7 +80,7 @@ type AnalysisResult = {
   };
 };
 
-type PreciousMetal = "gold" | "silver" | "platinum" | "palladium";
+type PreciousMetal = "gold" | "silver" | "platinum" | "palladium" | "copper";
 type PreciousMetalConfidenceLevel =
   | "confirmed"
   | "possible"
@@ -419,6 +433,16 @@ function detectPreciousMetal(text: string): PreciousMetal | null {
     return "silver";
   }
 
+  if (
+    value.includes("copper") ||
+    value.includes("xcu") ||
+    value.includes("نحاس") ||
+    value.includes("bronze") ||
+    value.includes("brass")
+  ) {
+    return "copper";
+  }
+
   return null;
 }
 
@@ -483,6 +507,12 @@ function detectMetalPurity(metal: PreciousMetal, text: string) {
     if (value.includes("999")) return 0.999;
     if (value.includes("950")) return 0.95;
     if (value.includes("900")) return 0.9;
+    return null;
+  }
+
+  if (metal === "copper") {
+    if (value.includes("pure copper") || value.includes("نحاس خالص")) return 1;
+    if (value.includes("999")) return 0.999;
     return null;
   }
 
@@ -611,6 +641,8 @@ function getMetalGramPrice(prices: MetalSpotPrices, metal: PreciousMetal) {
       return prices.platinumGramUSD;
     case "palladium":
       return prices.palladiumGramUSD;
+    case "copper":
+      return prices.copperGramUSD;
   }
 }
 
@@ -624,6 +656,8 @@ function getMetalOuncePrice(prices: MetalSpotPrices, metal: PreciousMetal) {
       return prices.platinumOunceUSD;
     case "palladium":
       return prices.palladiumOunceUSD;
+    case "copper":
+      return prices.copperOunceUSD;
   }
 }
 
@@ -637,6 +671,8 @@ function getMetalLabel(metal: PreciousMetal) {
       return "platinum / بلاتين";
     case "palladium":
       return "palladium / بلاديوم";
+    case "copper":
+      return "copper / نحاس";
   }
 }
 
@@ -651,6 +687,10 @@ function getPurityAssumption(metal: PreciousMetal, purity: number | null) {
 
   if (metal === "silver") {
     return "unknown purity; cautious range: 800 / 925 / 999";
+  }
+
+  if (metal === "copper") {
+    return "unknown purity; do not treat as confirmed raw copper value without weight and material testing";
   }
 
   return "unknown purity; cautious range: 900 / 950 / 999";
@@ -678,6 +718,14 @@ function getPurityRange(metal: PreciousMetal, purity: number | null) {
       low: 0.8,
       mid: 0.925,
       high: 0.999,
+    };
+  }
+
+  if (metal === "copper") {
+    return {
+      low: 1,
+      mid: 1,
+      high: 1,
     };
   }
 
@@ -1131,7 +1179,7 @@ Mention raw metal value separately inside priceReasoning.
 State that the live spot price was taken as USD per troy ounce and converted to USD per gram.
 If weight is missing or purity is unclear, do not give one exact metal value. Present cautious weight/purity scenarios and ask for exact weight and hallmark/karat/purity details.
 For gold with unknown karat, do not assume 24k; use a cautious range and ask for karat.
-For silver with 925 or sterling, use 0.925 purity. If purity is missing, use a cautious range.
+For silver with 999, 958, 925, 900, 880, or 800 marks, use the matching purity factor only as a conditional raw-metal reference when weight is available. If purity is missing, use a cautious range.
 If the item is only possible gold, say: "لا يمكن تأكيد أن القطعة ذهب صلب من الصورة فقط. نحتاج صورة قريبة للختم أو الوزن والعيار."
 Add this note for gold, silver, platinum, or palladium results: "تم استخدام سعر المعدن المباشر بالدولار للأونصة وتحويله إلى سعر الغرام. التقييم يبقى تقديرياً وقد يختلف حسب العيار والوزن والحالة."
 
@@ -1281,6 +1329,20 @@ Look carefully for:
 - possible production period
 - cultural or regional context
 
+Marks, hallmarks, signatures, purity numbers, maker marks, labels, serials:
+- If any mark/signature/stamp/number/label is visible in any provided image, extract a structured markAnalysis object.
+- Never certify authenticity, maker, artist, gold, silver, platinum, or material from an image alone.
+- For 925, say it may indicate sterling silver 92.5%, but direct testing is needed.
+- For 750 or 18K, say it may indicate 18K gold, but direct testing, weight, and stamp verification are needed.
+- For 916, say it may indicate 22K gold, but direct testing is needed.
+- For 585, say it may indicate 14K gold, but direct testing is needed.
+- If a signature is unclear, describe it only. Do not invent an artist or maker name.
+- If clarity is not clear, set needsCloseup true and ask for a close-up photo.
+- If a mark/signature may affect value, explain conditional ranges inside estimatedValue or priceReasoning only.
+- Do not create a separate section called price scenarios.
+- Use conditional language: if confirmed, if not confirmed, may indicate, preliminary range.
+- If no mark/signature/stamp/label/number is visible, set markAnalysis to null and do not mention a mark section.
+
 If the image is unclear, cropped, blurry, or only one angle:
 - lower confidence
 - avoid strong claims
@@ -1333,12 +1395,29 @@ Required JSON shape:
   "followUpQuestion": "one clear next question",
   "confidence": 1,
   "confidenceNote": "why confidence is low, medium, or high",
+  "markAnalysis": null,
     "metalValue": null,
     "brandAssessment": null,
 
+If a visible mark/signature/stamp/number/label exists, set "markAnalysis" as:
+{
+  "hasMark": true,
+  "markType": "hallmark | signature | maker_mark | purity_mark | serial_number | unknown",
+  "visibleText": "visible text or empty if only symbol",
+  "symbolDescription": "short visual description of symbol or mark",
+  "locationOnObject": "where it appears",
+  "clarity": "clear | partial | unclear",
+  "possibleMeaning": "careful possible meaning without certainty",
+  "confidence": "low | medium | high",
+  "needsCloseup": true
+}
+
+If no visible mark/signature/stamp/number/label exists, use:
+"markAnalysis": null
+
 If a precious metal value was provided, set "metalValue" as an object:
 {
-  "metal": "silver | gold | platinum | palladium",
+  "metal": "silver | gold | platinum | palladium | copper",
   "weightGrams": number,
   "purityAssumption": string,
   "spotPricePerGramUsd": number,
@@ -1480,10 +1559,26 @@ Return JSON only, with this exact shape:
   "followUpQuestion": "one clear next question",
   "confidence": 1,
   "confidenceNote": "short confidence reason",
+  "markAnalysis": null,
   "metalValue": null,
   "brandAssessment": null,
   "disclaimer": "preliminary visual estimate, not an authenticity certificate or formal appraisal"
 }
+
+If a visible mark/signature/stamp/number/label appears in the added images or the previous context, set "markAnalysis" as a cautious evidence object:
+{
+  "hasMark": true,
+  "markType": "hallmark | signature | maker_mark | purity_mark | serial_number | unknown",
+  "visibleText": "exact visible letters/numbers only, or empty if unreadable",
+  "symbolDescription": "short visual description",
+  "locationOnObject": "where it appears",
+  "clarity": "clear | partial | unclear",
+  "possibleMeaning": "possible meaning without certainty",
+  "confidence": "low | medium | high",
+  "needsCloseup": true
+}
+If no mark is visible, keep "markAnalysis": null.
+Do not treat a mark as final proof of maker, artist, material, purity, authenticity, or price.
 
 All user-facing JSON values must be in ${language}.
 Do not use markdown. Do not include explanations outside JSON.
@@ -1754,6 +1849,71 @@ function normalizeBrandAssessment(value: unknown, locale: Locale) {
   };
 }
 
+function normalizeMarkAnalysis(value: unknown, locale: Locale): MarkAnalysis | null {
+  if (!value || typeof value !== "object") return null;
+
+  const data = value as Partial<MarkAnalysis>;
+  if (!data.hasMark) return null;
+
+  const markType =
+    data.markType === "hallmark" ||
+    data.markType === "signature" ||
+    data.markType === "maker_mark" ||
+    data.markType === "purity_mark" ||
+    data.markType === "serial_number" ||
+    data.markType === "unknown"
+      ? data.markType
+      : "unknown";
+  const clarity =
+    data.clarity === "clear" ||
+    data.clarity === "partial" ||
+    data.clarity === "unclear"
+      ? data.clarity
+      : "unclear";
+  const confidence =
+    data.confidence === "high" ||
+    data.confidence === "medium" ||
+    data.confidence === "low"
+      ? data.confidence
+      : "low";
+
+  const normalized: MarkAnalysis = {
+    hasMark: true,
+    markType,
+    visibleText: rewriteRespectfulUserWording(
+      normalizeString(data.visibleText, ""),
+      locale,
+    ),
+    symbolDescription: rewriteRespectfulUserWording(
+      normalizeString(data.symbolDescription, ""),
+      locale,
+    ),
+    locationOnObject: rewriteRespectfulUserWording(
+      normalizeString(data.locationOnObject, ""),
+      locale,
+    ),
+    clarity,
+    possibleMeaning: rewriteRespectfulUserWording(
+      normalizeString(data.possibleMeaning, ""),
+      locale,
+    ),
+    confidence,
+    needsCloseup: Boolean(data.needsCloseup || clarity !== "clear"),
+  };
+
+  if (
+    !normalized.visibleText &&
+    !normalized.symbolDescription &&
+    !normalized.possibleMeaning
+  ) {
+    return null;
+  }
+
+  normalized.referenceMatches = findMarkReferenceMatches(normalized);
+
+  return normalized;
+}
+
 function normalizeResult(
   parsed: Partial<AnalysisResult>,
   fallback: AnalysisResult,
@@ -1805,7 +1965,186 @@ function normalizeResult(
     ),
         metalValue: parsed.metalValue,
     brandAssessment: normalizeBrandAssessment(parsed.brandAssessment, locale),
+    markAnalysis: normalizeMarkAnalysis(parsed.markAnalysis, locale),
   };
+}
+
+function appendGeminiNote(base: string, note: string, locale: Locale) {
+  if (!note) return base;
+
+  const prefix =
+    locale === "en"
+      ? "Additional review note:"
+      : "ملاحظة مراجعة إضافية:";
+  const cleanBase = base?.trim();
+  const addition = `${prefix} ${note}`;
+
+  return cleanBase ? `${cleanBase}\n${addition}` : addition;
+}
+
+function hasMeaningfulDisagreement(value: string) {
+  const clean = value.trim().toLowerCase();
+  if (!clean) return false;
+
+  return !/^(none|no|لا يوجد|لا توجد|لا|nothing|n\/a)$/i.test(clean);
+}
+
+function mergeGeminiSecondOpinion(
+  result: AnalysisResult,
+  secondOpinion: GeminiSecondOpinion | null,
+  locale: Locale,
+) {
+  if (!secondOpinion) return result;
+
+  const next: AnalysisResult = { ...result };
+  const disagreement = hasMeaningfulDisagreement(
+    secondOpinion.disagreementWithOpenAI,
+  );
+  const lowerConfidence =
+    disagreement ||
+    /lower|خفض|منخفض|low|decrease|قلل/i.test(
+      secondOpinion.confidenceAdjustment,
+    );
+  const raiseConfidence =
+    !lowerConfidence &&
+    /raise|رفع|increase|higher/i.test(secondOpinion.confidenceAdjustment);
+
+  if (lowerConfidence) {
+    next.confidence = Math.min(next.confidence, Math.max(1, next.confidence - 2));
+  } else if (raiseConfidence) {
+    next.confidence = Math.min(8, next.confidence + 1);
+  }
+
+  const confidenceNotes = [
+    secondOpinion.risksOrUncertainties,
+    disagreement ? secondOpinion.disagreementWithOpenAI : "",
+    secondOpinion.finalCautionNotes,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  next.confidenceNote = appendGeminiNote(
+    next.confidenceNote,
+    confidenceNotes,
+    locale,
+  );
+
+  next.priceReasoning = appendGeminiNote(
+    next.priceReasoning,
+    secondOpinion.priceLogicReview,
+    locale,
+  );
+
+  next.condition = appendGeminiNote(
+    next.condition,
+    secondOpinion.conditionNotes,
+    locale,
+  );
+
+  if (secondOpinion.possibleMaterial) {
+    next.material = appendGeminiNote(
+      next.material,
+      secondOpinion.possibleMaterial,
+      locale,
+    );
+  }
+
+  if (secondOpinion.possiblePeriod) {
+    next.timePeriod = appendGeminiNote(
+      next.timePeriod,
+      secondOpinion.possiblePeriod,
+      locale,
+    );
+  }
+
+  next.disclaimer = appendGeminiNote(
+    next.disclaimer,
+    locale === "en"
+      ? "This remains a preliminary visual estimate and needs direct inspection for authenticity, material, age, and market value."
+      : "يبقى هذا تقديرًا بصريًا أوليًا ويحتاج إلى فحص مباشر لتأكيد الأصالة والمادة والعمر والقيمة السوقية.",
+    locale,
+  );
+
+  return next;
+}
+
+function mergeDeepSeekLogicReview(
+  result: AnalysisResult,
+  review: DeepSeekLogicReview | null,
+  locale: Locale,
+) {
+  if (!review) return result;
+
+  const next: AnalysisResult = { ...result };
+  const highPricingRisk = review.pricingRisk === "high";
+  const mediumPricingRisk = review.pricingRisk === "medium";
+  const lowConfidenceRecommended =
+    review.confidenceRecommendation === "low" ||
+    review.shouldReduceConfidence ||
+    review.unsafeClaimsFound.length > 0 ||
+    review.mainDisagreements.length > 0;
+
+  if (lowConfidenceRecommended || highPricingRisk) {
+    next.confidence = Math.min(next.confidence, 5);
+  } else if (mediumPricingRisk) {
+    next.confidence = Math.min(next.confidence, 7);
+  }
+
+  const cautionNotes = [
+    ...review.recommendedCautionNotes,
+    ...review.unsafeClaimsFound,
+    review.finalReviewerSummary,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  next.confidenceNote = appendGeminiNote(
+    next.confidenceNote,
+    cautionNotes,
+    locale,
+  );
+
+  const pricingNote = [
+    review.pricingAdjustmentNotes,
+    highPricingRisk || mediumPricingRisk
+      ? locale === "en"
+        ? "Use the estimate as a cautious preliminary range, not a fixed value."
+        : "يجب التعامل مع السعر كنطاق تقديري أولي متحفظ وليس قيمة ثابتة."
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  next.priceReasoning = appendGeminiNote(
+    next.priceReasoning,
+    pricingNote,
+    locale,
+  );
+
+  if (review.logicReview || review.mainDisagreements.length > 0) {
+    next.authenticity = appendGeminiNote(
+      next.authenticity,
+      [
+        review.logicReview,
+        review.mainDisagreements.length
+          ? review.mainDisagreements.join("; ")
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" "),
+      locale,
+    );
+  }
+
+  next.disclaimer = appendGeminiNote(
+    next.disclaimer,
+    locale === "en"
+      ? "The final KISHIB report is a preliminary appraisal and should be verified by direct inspection, especially for authenticity, precious metals, stones, signatures, stamps, and high-value pricing."
+      : "تقرير KISHIB النهائي هو تقييم أولي ويجب التحقق منه بالفحص المباشر، خصوصًا في الأصالة والمعادن الثمينة والأحجار والتواقيع والأختام والأسعار العالية.",
+    locale,
+  );
+
+  return next;
 }
 
 async function fileToDataUrl(file: File) {
@@ -1926,6 +2265,14 @@ if (metalClassification.metal) {
     metalClassification.purityFactor ??
     detectMetalPurity(detectedMetal, preciousMetalContextText);
   const spotPrices = await getMetalSpotPrices();
+  if (!spotPrices) {
+    preciousMetalMarketContext = `
+The item may contain ${getMetalLabel(detectedMetal)}, but live Metals.dev prices are not available right now.
+Continue the appraisal without raw metal calculation.
+Do not use spot price as the final item value.
+If weight or purity is missing, state that raw metal value cannot be calculated without exact weight, purity, and direct material testing.
+`;
+  } else {
   const ouncePriceUsd = getMetalOuncePrice(spotPrices, detectedMetal);
   const pricePerGramUsd = getMetalGramPrice(spotPrices, detectedMetal);
   const metalLabel = getMetalLabel(detectedMetal);
@@ -1958,7 +2305,7 @@ Precious metal confidence classification:
 - Evidence source: ${hasFollowUpClaim ? "additional visitor information, not image-only proof" : "provided fields and available evidence"}
 ${hasFollowUpClaim ? `- Additional visitor information: ${followUpClaim}` : ""}
 
-Live precious metal spot prices from Gold API:
+Live metal spot prices from Metals.dev:
 - Gold XAU USD/troy ounce: ${spotPrices.goldOunceUSD}
 - Gold XAU USD/gram: ${spotPrices.goldGramUSD}
 - Silver XAG USD/troy ounce: ${spotPrices.silverOunceUSD}
@@ -1967,6 +2314,8 @@ Live precious metal spot prices from Gold API:
 - Platinum XPT USD/gram: ${spotPrices.platinumGramUSD}
 - Palladium XPD USD/troy ounce: ${spotPrices.palladiumOunceUSD}
 - Palladium XPD USD/gram: ${spotPrices.palladiumGramUSD}
+- Copper XCU USD/troy ounce: ${spotPrices.copperOunceUSD}
+- Copper XCU USD/gram: ${spotPrices.copperGramUSD}
 - Updated at: ${spotPrices.updatedAt}
 - Source: ${spotPrices.source}
 ${spotPrices.warning ? `- Internal warning: ${spotPrices.warning}` : ""}
@@ -2008,7 +2357,7 @@ Precious metal confidence classification:
 - Evidence source: ${hasFollowUpClaim ? "additional visitor information, not image-only proof" : "provided fields and available evidence"}
 ${hasFollowUpClaim ? `- Additional visitor information: ${followUpClaim}` : ""}
 
-Live precious metal spot prices from Gold API:
+Live metal spot prices from Metals.dev:
 - Gold XAU USD/troy ounce: ${spotPrices.goldOunceUSD}
 - Gold XAU USD/gram: ${spotPrices.goldGramUSD}
 - Silver XAG USD/troy ounce: ${spotPrices.silverOunceUSD}
@@ -2017,6 +2366,8 @@ Live precious metal spot prices from Gold API:
 - Platinum XPT USD/gram: ${spotPrices.platinumGramUSD}
 - Palladium XPD USD/troy ounce: ${spotPrices.palladiumOunceUSD}
 - Palladium XPD USD/gram: ${spotPrices.palladiumGramUSD}
+- Copper XCU USD/troy ounce: ${spotPrices.copperOunceUSD}
+- Copper XCU USD/gram: ${spotPrices.copperGramUSD}
 - Updated at: ${spotPrices.updatedAt}
 - Source: ${spotPrices.source}
 ${spotPrices.warning ? `- Internal warning: ${spotPrices.warning}` : ""}
@@ -2040,6 +2391,7 @@ Ask for close-up hallmark photos, gram weight, karat/purity, and jeweler/XRF tes
 If this came from Add info, begin the conditional scenario with: "حسب المعلومة التي أضافها المستخدم".
 If locale is Arabic, write all of this naturally in Arabic.
 `;
+  }
   }
 }
 
@@ -2165,6 +2517,7 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
         text: promptText,
       },
     ];
+    const geminiImages: GeminiImageInput[] = [];
 
     for (const file of images.slice(0, 6)) {
       const dataUrl = await fileToDataUrl(file);
@@ -2174,6 +2527,7 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
         image_url: dataUrl,
         detail: isFollowUpUpdate ? "low" : "auto",
       });
+      geminiImages.push({ dataUrl });
     }
 
     for (const imageUrl of uploadedImageUrls.slice(0, Math.max(0, 6 - images.length))) {
@@ -2182,6 +2536,7 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
         image_url: imageUrl,
         detail: isFollowUpUpdate ? "low" : "auto",
       });
+      geminiImages.push({ url: imageUrl });
     }
 
     const response = await client.responses.create({
@@ -2257,7 +2612,48 @@ if (preciousMetalValue) {
   }
 }
 
-return NextResponse.json(normalized);
+const geminiSecondOpinion = await getGeminiSecondOpinion({
+  locale,
+  notes: [notes, followUpClaim, itemType, material, dimensions, weight, hasMark]
+    .filter(Boolean)
+    .join("\n"),
+  openAiResult: normalized,
+  images: geminiImages,
+});
+
+if (!geminiSecondOpinion) {
+  console.info("[Gemini second opinion] continuing with OpenAI result only");
+}
+
+const reviewedResult = mergeGeminiSecondOpinion(
+  normalized,
+  geminiSecondOpinion,
+  locale,
+);
+
+const deepSeekReview = await getDeepSeekLogicReview({
+  locale,
+  notes: [notes, followUpClaim, itemType, material, dimensions, weight, hasMark]
+    .filter(Boolean)
+    .join("\n"),
+  openAiResult: normalized,
+  geminiSecondOpinion,
+  marketContext: [
+    marketContext,
+    marketReferencesText,
+    preciousMetalMarketContext,
+  ]
+    .filter(Boolean)
+    .join("\n\n"),
+});
+
+const finalReviewedResult = mergeDeepSeekLogicReview(
+  reviewedResult,
+  deepSeekReview,
+  locale,
+);
+
+return NextResponse.json(finalReviewedResult);
   } catch (error) {
     console.error("Analyze API error:", error);
 

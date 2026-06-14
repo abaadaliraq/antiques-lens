@@ -10,6 +10,14 @@ function roundMoney(value: number) {
 
 export async function GET() {
   const prices = await getMetalSpotPrices();
+
+  if (!prices) {
+    return NextResponse.json(
+      { error: "Silver price is not available right now." },
+      { status: 503 },
+    );
+  }
+
   const pricePerGram = prices.silverGramUSD;
 
   return NextResponse.json({

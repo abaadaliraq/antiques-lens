@@ -395,12 +395,40 @@ function buildPinterestSearchQuery(result: AnalysisResult) {
   return query;
 }
 
+const HOUSE_STRONG_MATCH_THRESHOLD = 0.88;
+const HOUSE_VISIBLE_IMAGE_THRESHOLD = 0.9;
+
 function isUsableHouseMatch(item: HouseOfAntiquesMatch) {
-  return item.confidence === "exact";
+  return (
+    item.confidence === "exact" &&
+    typeof item.confidenceScore === "number" &&
+    item.confidenceScore >= HOUSE_STRONG_MATCH_THRESHOLD &&
+    typeof item.visualSimilarity === "number" &&
+    item.visualSimilarity >= HOUSE_VISIBLE_IMAGE_THRESHOLD
+  );
 }
 
-function buildHouseSimilarImages(): SimilarImageResult[] {
-  return [];
+function buildHouseSimilarImages(matches: HouseOfAntiquesMatch[]): SimilarImageResult[] {
+  return matches
+    .filter(isUsableHouseMatch)
+    .filter((item) => (item.visualSimilarity ?? 0) >= HOUSE_VISIBLE_IMAGE_THRESHOLD)
+    .flatMap((item) => {
+      const urls = item.images?.length ? item.images : item.imageUrl ? [item.imageUrl] : [];
+
+      return urls.slice(0, 2).map((imageUrl) => ({
+        title: "قطعة مرجعية مشابهة",
+        imageUrl,
+        link: item.url || imageUrl,
+        source: "قطعة مرجعية مشابهة",
+        description: item.description,
+        confidence: item.confidence,
+        confidenceScore: item.confidenceScore,
+        visualSimilarity: item.visualSimilarity,
+        matchReason: item.matchReason,
+        isHouseOfAntiques: true,
+      }));
+    })
+    .slice(0, 3);
 }
 
 function isHouseOfAntiquesSimilarImage(item: SimilarImageResult) {
@@ -1196,14 +1224,14 @@ async function handleAnalyze() {
               : "",
         };
 
-        const houseSimilarImages = buildHouseSimilarImages();
+        const houseSimilarImages = buildHouseSimilarImages(matches);
 
         if (houseSimilarImages.length > 0) {
           setSimilarImages(mergeSimilarImages(houseSimilarImages, googleLensItems));
         }
 
         houseContext = matches
-          .slice(0, 8)
+          .slice(0, 3)
           .map((item: HouseOfAntiquesMatch, index: number) => {
             return [
               `${index + 1}. INTERNAL HOUSE OF ANTIQUES COMPARABLE`,
@@ -1216,6 +1244,8 @@ async function handleAnalyze() {
               `Origin: ${item.origin || "Unknown"}`,
               `Similarity score: ${item.score || 0}`,
               `Similarity confidence: ${item.confidence || "none"}`,
+              `Similarity confidence score: ${item.confidenceScore || 0}`,
+              `Visual similarity: ${item.visualSimilarity || 0}`,
               `Similarity reason: ${item.matchReason || "Text similarity"}`,
               `Image: ${item.imageUrl || "No image"}`,
               `URL: ${item.url || "No link"}`,
@@ -1233,7 +1263,9 @@ async function handleAnalyze() {
       googleLensContext
         ? `Google Lens visual matches:\n${googleLensContext}`
         : "",
-      houseContext && houseStoreContext?.confidence === "exact"
+      houseContext &&
+      houseStoreContext?.confidence === "exact" &&
+      houseStoreContext.matches.some(isUsableHouseMatch)
         ? `House of Antiques internal comparables:\n${houseContext}`
         : "",
     ]
@@ -1309,7 +1341,7 @@ async function handleAnalyze() {
             : "",
       };
 
-      const houseSimilarImages = buildHouseSimilarImages();
+      const houseSimilarImages = buildHouseSimilarImages(matches);
 
       if (houseSimilarImages.length > 0) {
         setSimilarImages(mergeSimilarImages(houseSimilarImages, googleLensItems));
@@ -1350,9 +1382,18 @@ if (locale !== "ar") {
   }
 }
 
-const finalSimilarImages = getSimilarItems(finalResult).length
-  ? getSimilarItems(finalResult)
-  : googleLensItems;
+const finalHouseSimilarImages = buildHouseSimilarImages(
+  houseStoreContext?.matches || [],
+);
+const finalExternalSimilarImages = filterExternalSimilarImages(
+  getSimilarItems(finalResult).length
+    ? getSimilarItems(finalResult)
+    : googleLensItems,
+);
+const finalSimilarImages = mergeSimilarImages(
+  finalHouseSimilarImages,
+  finalExternalSimilarImages,
+);
 
 if (finalSimilarImages.length > 0) {
   finalResult = normalizeResult({
