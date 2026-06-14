@@ -578,10 +578,10 @@ function ReportPage({
   labels: { generatedBy: string; page: string };
 }) {
   return (
-    <div className="report-page relative h-[1123px] w-[794px] shrink-0 overflow-hidden bg-[#f7f0e6] p-[28px]">
+    <div className="report-page relative min-h-[1123px] w-[794px] shrink-0 overflow-visible bg-[#f7f0e6] p-[28px]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,#fffaf2_0%,rgba(255,255,255,0)_36%),linear-gradient(135deg,rgba(154,116,65,0.12),rgba(255,255,255,0)_35%)]" />
 
-      <div className="relative z-10 h-full">
+      <div className="relative z-10 min-h-[1067px] pb-8">
         {children}
 
         <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between border-t border-[#dfcfb7] pt-2 text-[9px] font-bold text-[#9a7441]/70">
@@ -676,14 +676,14 @@ export default function AntiqueReportDocument({
             </h2>
           </section>
 
-          <section className="report-main-grid mb-5 grid grid-cols-[245px_1fr] gap-4">
+          <section className="report-main-grid mb-4 grid grid-cols-[275px_1fr] gap-4">
             <div className="rounded-[18px] border border-[#dfcfb7] bg-[#efe3d2] p-3">
               <p className="mb-2 text-[8.5px] font-black uppercase tracking-[0.18em] text-[#9a7441]">
                 {labels.objectImage}
               </p>
 
               {primaryImage ? (
-                <div className="flex h-[250px] items-center justify-center rounded-[14px] bg-[#1f1711] p-2">
+                <div className="flex h-[300px] items-center justify-center rounded-[14px] bg-[#1f1711] p-2">
                   <img
                     src={primaryImage}
                     alt={cleanTitle || labels.objectImage}
@@ -691,7 +691,7 @@ export default function AntiqueReportDocument({
                   />
                 </div>
               ) : (
-                <div className="flex h-[250px] items-center justify-center rounded-[14px] bg-[#d8c5a8] text-[11px] font-bold text-[#735b42]">
+                <div className="flex h-[300px] items-center justify-center rounded-[14px] bg-[#d8c5a8] text-[11px] font-bold text-[#735b42]">
                   {labels.noImage}
                 </div>
               )}
@@ -714,26 +714,14 @@ export default function AntiqueReportDocument({
               ) : null}
             </div>
 
-            <div className="grid gap-2.5">
-              <InfoBlock label={labels.identification} value={result.lookup} />
-              <div className="grid grid-cols-2 gap-2.5">
-                <InfoBlock label={labels.period} value={period} />
-                <InfoBlock label={labels.origin} value={result.origin} />
-              </div>
-              <div className="grid grid-cols-2 gap-2.5">
-                <InfoBlock label={labels.material} value={result.material} />
-                <InfoBlock label={labels.style} value={result.style} />
-              </div>
+            <div className="grid content-start gap-3">
+              <TextBox title={labels.identification} body={result.lookup || history} compact />
               <InfoBlock label={labels.value} value={value} strong />
+              <TextBox title={labels.priceReasoning} body={result.priceReasoning} compact />
             </div>
           </section>
 
-          <section className="report-two-grid mb-5 grid grid-cols-2 gap-3">
-            <TextBox title={labels.condition} body={result.condition} compact />
-            <TextBox title={labels.authenticity} body={result.authenticity} compact />
-          </section>
-
-          <TextBox title={labels.priceReasoning} body={result.priceReasoning} />
+          <TextBox title={labels.historicalContext} body={history} compact />
         </ReportPage>
 
         <ReportPage pageNumber="2 / 2" labels={labels}>
@@ -753,7 +741,17 @@ export default function AntiqueReportDocument({
           </header>
 
           <section className="mb-4">
-            <TextBox title={labels.historicalContext} body={history} />
+            <div className="grid grid-cols-2 gap-3">
+              <InfoBlock label={labels.period} value={period} />
+              <InfoBlock label={labels.origin} value={result.origin} />
+              <InfoBlock label={labels.material} value={result.material} />
+              <InfoBlock label={labels.style} value={result.style} />
+            </div>
+          </section>
+
+          <section className="report-two-grid mb-4 grid grid-cols-2 gap-3">
+            <TextBox title={labels.condition} body={result.condition} compact />
+            <TextBox title={labels.authenticity} body={result.authenticity} compact />
           </section>
 
           <section className="mb-4">
@@ -790,7 +788,7 @@ export default function AntiqueReportDocument({
         @media print {
           html,
           body {
-            width: 210mm !important;
+            width: 794px !important;
             margin: 0 !important;
             padding: 0 !important;
             background: white !important;
@@ -811,7 +809,7 @@ export default function AntiqueReportDocument({
             position: static !important;
             inset: auto !important;
             box-sizing: border-box !important;
-            width: 210mm !important;
+            width: 794px !important;
             height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -823,36 +821,37 @@ export default function AntiqueReportDocument({
           }
 
           .report-print-area .antique-report-document {
-            width: 210mm !important;
+            width: 794px !important;
             max-width: none !important;
-            margin: 0 auto !important;
+            margin: 0 !important;
             border-radius: 0 !important;
             box-shadow: none !important;
             overflow: visible !important;
           }
 
           .report-print-area .report-page {
-            width: 210mm !important;
-            height: 297mm !important;
+            width: 794px !important;
+            height: auto !important;
             min-height: 0 !important;
             margin: 0 !important;
-            padding: 10mm !important;
-            overflow: hidden !important;
+            padding: 0 !important;
+            overflow: visible !important;
             page-break-after: auto !important;
             break-after: auto !important;
+            page-break-before: auto !important;
+            break-before: auto !important;
           }
 
           .report-print-area .report-page > .relative {
-            height: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            padding-bottom: 8mm !important;
           }
 
           .report-print-area .report-page footer,
           .report-print-area .report-page > .relative > div:last-child {
-            position: absolute !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            margin-top: 0 !important;
+            position: static !important;
+            margin-top: 5mm !important;
           }
 
           .report-print-area .report-page header,
@@ -863,9 +862,9 @@ export default function AntiqueReportDocument({
             page-break-inside: avoid !important;
           }
 
-          .report-print-area .report-page:not(:last-child) {
-            page-break-after: always !important;
-            break-after: page !important;
+          .report-print-area .report-page + .report-page {
+            page-break-before: always !important;
+            break-before: page !important;
           }
 
           @page {

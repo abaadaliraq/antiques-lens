@@ -30,8 +30,8 @@ type CreateShareImageArgs = {
 };
 
 const REPORT_WIDTH = 1200;
-const REPORT_HEIGHT = 1700;
-const DETAIL_REPORT_HEIGHT = 2200;
+const REPORT_HEIGHT = 2000;
+const DETAIL_REPORT_HEIGHT = 2000;
 const PADDING = 64;
 
 const FONT =
@@ -160,7 +160,7 @@ function drawWrappedText(
 
   const finalLines = lines.slice(0, maxLines);
 
-  if (lines.length >= maxLines && finalLines.length) {
+  if (false && lines.length >= maxLines && finalLines.length) {
     const lastIndex = finalLines.length - 1;
     finalLines[lastIndex] = `${finalLines[lastIndex]
       .replace(/[،,.؛:\s]+$/, "")
@@ -310,6 +310,59 @@ function drawSectionCard({
   );
 }
 
+function drawPlainSection({
+  ctx,
+  title,
+  body,
+  x,
+  y,
+  width,
+  rtl,
+  maxLines,
+  bodySize = 25,
+  lineHeight = 38,
+}: {
+  ctx: CanvasRenderingContext2D;
+  title: string;
+  body: string;
+  x: number;
+  y: number;
+  width: number;
+  rtl: boolean;
+  maxLines: number;
+  bodySize?: number;
+  lineHeight?: number;
+}) {
+  const textX = rtl ? x + width : x;
+
+  ctx.textAlign = rtl ? "right" : "left";
+  ctx.fillStyle = "#9a7447";
+  ctx.font = `700 22px ${FONT}`;
+  ctx.fillText(title, textX, y);
+
+  ctx.fillStyle = "#241912";
+  ctx.font = `400 ${bodySize}px ${FONT}`;
+  const endY = drawWrappedText(
+    ctx,
+    body,
+    textX,
+    y + 42,
+    width,
+    lineHeight,
+    maxLines,
+    rtl,
+  );
+
+  ctx.strokeStyle = "#eadcc8";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x, endY + 22);
+  ctx.lineTo(x + width, endY + 22);
+  ctx.stroke();
+
+  return endY + 58;
+}
+
 function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   return new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -455,18 +508,18 @@ export async function createShareImage({
   cursorY = drawInfoItem({
     ctx,
     label: labels.lookup,
-    value: trimText(result.lookup || result.itemType || result.description, 170),
+    value: trimText(result.itemType || result.title || result.lookup, 95),
     x: infoX,
     y: cursorY,
     width: infoW,
     rtl,
-    maxLines: 3,
+    maxLines: 2,
   });
 
   cursorY = drawInfoItem({
     ctx,
     label: labels.age,
-    value: trimText(result.timePeriod || result.period, 130),
+    value: trimText(result.timePeriod || result.period, 95),
     x: infoX,
     y: cursorY,
     width: infoW,
@@ -477,7 +530,7 @@ export async function createShareImage({
   cursorY = drawInfoItem({
     ctx,
     label: labels.origin,
-    value: trimText(result.origin, 110),
+    value: trimText(result.origin, 85),
     x: infoX,
     y: cursorY,
     width: infoW,
@@ -488,7 +541,7 @@ export async function createShareImage({
   cursorY = drawInfoItem({
     ctx,
     label: labels.value,
-    value: trimText(result.estimatedValue || result.priceRange, 120),
+    value: trimText(result.estimatedValue || result.priceRange, 110),
     x: infoX,
     y: cursorY,
     width: infoW,
@@ -534,7 +587,7 @@ export async function createShareImage({
   });
 
   /*
-    Description / history card
+    First page is only a visual summary. Full paragraphs are on page 2.
   */
   const descY = statsY + 140;
 
@@ -542,20 +595,36 @@ export async function createShareImage({
     ctx,
     title: labels.description,
     body: trimText(
-      result.history || result.priceReasoning || result.description,
-      520,
+      result.lookup || result.history || result.description,
+      1100,
     ),
     x: PADDING,
     y: descY,
     width: REPORT_WIDTH - PADDING * 2,
-    height: 310,
+    height: 370,
     rtl,
+    maxLines: 8,
+  });
+
+  drawSectionCard({
+    ctx,
+    title: labels.value,
+    body: trimText(
+      result.estimatedValue || result.priceRange || result.priceReasoning,
+      720,
+    ),
+    x: PADDING,
+    y: descY + 410,
+    width: REPORT_WIDTH - PADDING * 2,
+    height: 210,
+    rtl,
+    maxLines: 5,
   });
 
   /*
     Notice card - fixed position, not overlapping
   */
-  const noticeY = descY + 350;
+  const noticeY = descY + 660;
 
   roundedRect(ctx, PADDING, noticeY, REPORT_WIDTH - PADDING * 2, 128, 30);
   ctx.fillStyle = "#211711";
@@ -656,59 +725,55 @@ export async function createShareImage({
   const sectionWidth = REPORT_WIDTH - PADDING * 2;
   let pageTwoY = pageTwoHeaderEnd + 68;
 
-  drawSectionCard({
+  pageTwoY = drawPlainSection({
     ctx: secondCtx,
     title: labels.description,
-    body: compactText(result.history || result.description || result.lookup, 2200),
+    body: compactText(result.history || result.description || result.lookup, 1050),
     x: PADDING,
     y: pageTwoY,
     width: sectionWidth,
-    height: 540,
     rtl,
-    maxLines: 10,
+    maxLines: 7,
   });
 
-  pageTwoY += 580;
-
-  drawSectionCard({
+  pageTwoY = drawPlainSection({
     ctx: secondCtx,
     title: labels.priceReason,
-    body: compactText(result.priceReasoning || result.estimatedValue, 1800),
+    body: compactText(result.priceReasoning || result.estimatedValue, 980),
     x: PADDING,
     y: pageTwoY,
     width: sectionWidth,
-    height: 450,
     rtl,
-    maxLines: 8,
+    maxLines: 7,
   });
 
-  pageTwoY += 500;
-
-  const halfGap = 24;
+  const halfGap = 30;
   const halfWidth = (sectionWidth - halfGap) / 2;
 
-  drawSectionCard({
+  drawPlainSection({
     ctx: secondCtx,
     title: labels.valueDrivers,
-    body: compactText((result.valueDrivers || []).join("\n"), 1200),
+    body: compactText((result.valueDrivers || []).join("\n"), 540),
     x: PADDING,
     y: pageTwoY,
     width: halfWidth,
-    height: 430,
     rtl,
-    maxLines: 9,
+    maxLines: 6,
+    bodySize: 23,
+    lineHeight: 34,
   });
 
-  drawSectionCard({
+  drawPlainSection({
     ctx: secondCtx,
     title: labels.valueReducers,
-    body: compactText((result.valueReducers || []).join("\n"), 1200),
+    body: compactText((result.valueReducers || []).join("\n"), 540),
     x: PADDING + halfWidth + halfGap,
     y: pageTwoY,
     width: halfWidth,
-    height: 430,
     rtl,
-    maxLines: 9,
+    maxLines: 6,
+    bodySize: 23,
+    lineHeight: 34,
   });
 
   const pageTwoNoticeY = DETAIL_REPORT_HEIGHT - 250;

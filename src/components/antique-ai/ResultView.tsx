@@ -1299,7 +1299,7 @@ useEffect(() => {
           position: fixed;
           left: -99999px;
           top: 0;
-          width: 210mm;
+          width: 794px;
           height: auto;
           overflow: hidden;
           opacity: 0;
@@ -1309,7 +1309,7 @@ useEffect(() => {
         @media print {
           html,
           body {
-            width: 210mm !important;
+            width: 794px !important;
             margin: 0 !important;
             padding: 0 !important;
             background: white !important;
@@ -1345,7 +1345,7 @@ useEffect(() => {
             position: static !important;
             inset: auto !important;
             box-sizing: border-box !important;
-            width: 210mm !important;
+            width: 794px !important;
             height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -1357,7 +1357,7 @@ useEffect(() => {
           }
 
           .report-print-area .antique-report-document {
-            width: 210mm !important;
+            width: 794px !important;
             max-width: none !important;
             margin: 0 auto !important;
             border-radius: 0 !important;
@@ -1366,27 +1366,28 @@ useEffect(() => {
           }
 
           .report-print-area .report-page {
-            width: 210mm !important;
-            height: 297mm !important;
+            width: 794px !important;
+            height: auto !important;
             min-height: 0 !important;
             page-break-after: auto !important;
             break-after: auto !important;
+            page-break-before: auto !important;
+            break-before: auto !important;
             margin: 0 !important;
-            padding: 10mm !important;
-            overflow: hidden !important;
+            padding: 0 !important;
+            overflow: visible !important;
           }
 
           .report-print-area .report-page > .relative {
-            height: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            padding-bottom: 8mm !important;
           }
 
           .report-print-area .report-page footer,
           .report-print-area .report-page > .relative > div:last-child {
-            position: absolute !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            margin-top: 0 !important;
+            position: static !important;
+            margin-top: 5mm !important;
           }
 
           .report-print-area .report-page header,
@@ -1397,14 +1398,9 @@ useEffect(() => {
             page-break-inside: avoid !important;
           }
 
-          .report-print-area .report-page:not(:last-child) {
-            page-break-after: always !important;
-            break-after: page !important;
-          }
-
-          .report-print-area .report-page:last-child {
-            page-break-after: auto !important;
-            break-after: auto !important;
+          .report-print-area .report-page + .report-page {
+            page-break-before: always !important;
+            break-before: page !important;
           }
 
           @page {
