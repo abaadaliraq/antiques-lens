@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import {
   hasHouseSupabaseConfig,
   houseSupabase,
@@ -7,7 +7,7 @@ import {
 export const runtime = "nodejs";
 
 const STRONG_MATCH_CONFIDENCE_THRESHOLD = 0.88;
-const VISIBLE_IMAGE_SIMILARITY_THRESHOLD = 0.9;
+const VISIBLE_IMAGE_SIMILARITY_THRESHOLD = 0.92;
 
 type MatchConfidence = "exact" | "strong" | "partial" | "weak" | "none";
 
@@ -32,6 +32,13 @@ type HouseComparable = {
   confidenceScore: number;
   visualSimilarity: number;
   matchReason: string;
+  hasStrongMatch: boolean;
+  sameObjectType: boolean;
+  categoryMatch: boolean;
+  materialOrFinishCompatible: boolean;
+  shapeMatch: boolean;
+  decorativeMotifMatch: boolean;
+  structuralMatch: boolean;
 };
 
 type HouseOfAntiquesContext = {
@@ -56,13 +63,13 @@ function safeText(value: unknown) {
 function normalizeArabic(text: string) {
   return text
     .toLowerCase()
-    .replace(/[أإآا]/g, "ا")
-    .replace(/[ى]/g, "ي")
-    .replace(/[ة]/g, "ه")
-    .replace(/[ؤ]/g, "و")
-    .replace(/[ئ]/g, "ي")
-    .replace(/[گ]/g, "ك")
-    .replace(/[ق]/g, "ق")
+    .replace(/[Ø£Ø¥Ø¢Ø§]/g, "Ø§")
+    .replace(/[Ù‰]/g, "ÙŠ")
+    .replace(/[Ø©]/g, "Ù‡")
+    .replace(/[Ø¤]/g, "Ùˆ")
+    .replace(/[Ø¦]/g, "ÙŠ")
+    .replace(/[Ú¯]/g, "Ùƒ")
+    .replace(/[Ù‚]/g, "Ù‚")
     .replace(/[\u064B-\u065F\u0670]/g, "")
     .replace(/[^\p{L}\p{N}\s\-]/gu, " ")
     .replace(/\s+/g, " ")
@@ -119,27 +126,28 @@ function addMany(set: Set<string>, values: string[]) {
 }
 
 const ITEM_FAMILY_TERMS: Record<string, string[]> = {
-  samovar: ["samovar", "semaver", "سماور"],
+  samovar: ["samovar", "semaver", "Ø³Ù…Ø§ÙˆØ±"],
   statue: [
     "statue",
     "figurine",
     "sculpture",
     "idol",
     "heykel",
-    "figür",
-    "figürin",
-    "تمثال",
+    "figÃ¼r",
+    "figÃ¼rin",
+    "ØªÙ…Ø«Ø§Ù„",
   ],
-  painting: ["painting", "artwork", "canvas", "watercolor", "لوحة", "resim", "tablo"],
-  table: ["table", "stand", "طاولة", "masa"],
-  lamp: ["lamp", "مصباح", "lamba"],
-  candlestick: ["candlestick", "candle", "شمعدان", "şamdan"],
-  ewer: ["ewer", "pitcher", "jug", "إبريق", "ibrik", "sürahi"],
-  vase: ["vase", "jar", "vessel", "مزهرية", "فازة", "vazo"],
-  box: ["box", "chest", "case", "علبة", "صندوق", "kutu"],
-  cabinet: ["cabinet", "showcase", "display", "خزانة", "dolap", "vitrin"],
-  tray: ["tray", "صينية", "tepsi"],
-  bowl: ["bowl", "dish", "وعاء", "طبق", "kase"],
+  painting: ["painting", "artwork", "canvas", "watercolor", "Ù„ÙˆØ­Ø©", "resim", "tablo"],
+  table: ["table", "stand", "Ø·Ø§ÙˆÙ„Ø©", "masa"],
+  lamp: ["lamp", "Ù…ØµØ¨Ø§Ø­", "lamba"],
+  candlestick: ["candlestick", "candle", "Ø´Ù…Ø¹Ø¯Ø§Ù†", "ÅŸamdan"],
+  ewer: ["ewer", "pitcher", "jug", "Ø¥Ø¨Ø±ÙŠÙ‚", "ibrik", "sÃ¼rahi"],
+  vase: ["vase", "jar", "vessel", "Ù…Ø²Ù‡Ø±ÙŠØ©", "ÙØ§Ø²Ø©", "vazo"],
+  box: ["box", "chest", "case", "Ø¹Ù„Ø¨Ø©", "ØµÙ†Ø¯ÙˆÙ‚", "kutu"],
+  cabinet: ["cabinet", "showcase", "display", "Ø®Ø²Ø§Ù†Ø©", "dolap", "vitrin"],
+  tray: ["tray", "ØµÙŠÙ†ÙŠØ©", "tepsi"],
+  bowl: ["bowl", "dish", "ÙˆØ¹Ø§Ø¡", "Ø·Ø¨Ù‚", "kase"],
+  bucket: ["bucket", "pail", "coal bucket", "coal scuttle", "bin", "Ã˜Â¯Ã™â€žÃ™Ë†", "Ã˜Â³Ã˜Â·Ã™â€ž"],
 };
 
 function detectItemFamilies(text: string) {
@@ -167,6 +175,61 @@ function hasFamilyOverlap(queryFamilies: Set<string>, product: ProductRow) {
   return Array.from(queryFamilies).some((family) => productFamilies.has(family));
 }
 
+function getProductFamilies(product: ProductRow) {
+  return detectItemFamilies(
+    [productTitleText(product), productHaystack(product)].join(" "),
+  );
+}
+
+function hasAnyTerm(text: string, values: string[]) {
+  const normalizedText = normalizeArabic(text);
+
+  return values.some((value) => normalizedText.includes(normalizeArabic(value)));
+}
+
+function hasMaterialOrFinishCompatible(terms: string[], product: ProductRow) {
+  const queryText = terms.join(" ");
+  const productText = productAttributeText(product);
+  const materialGroups = [
+    ["brass", "copper", "bronze", "metal", "Ã™â€ Ã˜Â­Ã˜Â§Ã˜Â³", "Ã˜Â¨Ã˜Â±Ã™Ë†Ã™â€ Ã˜Â²", "Ã˜ÂµÃ™ÂÃ˜Â±"],
+    ["silver", "sterling", "925", "Ã™ÂÃ˜Â¶Ã˜Â©"],
+    ["gold", "gilded", "Ã™â€¦Ã˜Â°Ã™â€¡Ã˜Â¨", "Ã˜Â°Ã™â€¡Ã˜Â¨"],
+    ["wood", "wooden", "Ã˜Â®Ã˜Â´Ã˜Â¨"],
+    ["ceramic", "pottery", "porcelain", "Ã˜Â®Ã˜Â²Ã™Â", "Ã™ÂÃ˜Â®Ã˜Â§Ã˜Â±"],
+    ["glass", "crystal", "Ã˜Â²Ã˜Â¬Ã˜Â§Ã˜Â¬", "Ã™Æ’Ã˜Â±Ã™Å Ã˜Â³Ã˜ÂªÃ˜Â§Ã™â€ž"],
+    ["textile", "rug", "carpet", "Ã˜Â³Ã˜Â¬Ã˜Â§Ã˜Â¯", "Ã™â€šÃ™â€¦Ã˜Â§Ã˜Â´"],
+  ];
+  const queryGroups = materialGroups.filter((group) => hasAnyTerm(queryText, group));
+
+  if (queryGroups.length === 0) return false;
+
+  return queryGroups.some((group) => hasAnyTerm(productText, group));
+}
+
+function hasDecorativeMotifOrStructuralMatch(terms: string[], product: ProductRow) {
+  const queryText = terms.join(" ");
+  const productText = productHaystack(product);
+  const motifTerms = [
+    "engraved",
+    "etched",
+    "ornate",
+    "decorated",
+    "islamic",
+    "ottoman",
+    "calligraphy",
+    "quranic",
+    "handmade",
+    "Ã™â€¦Ã˜Â²Ã˜Â®Ã˜Â±Ã™Â",
+    "Ã˜Â²Ã˜Â®Ã˜Â±Ã™ÂÃ˜Â©",
+    "Ã˜Â­Ã™ÂÃ˜Â±",
+    "Ã™â€¦Ã˜Â­Ã™ÂÃ™Ë†Ã˜Â±",
+    "Ã˜Â¹Ã˜Â«Ã™â€¦Ã˜Â§Ã™â€ Ã™Å ",
+    "Ã˜Â§Ã˜Â³Ã™â€žÃ˜Â§Ã™â€¦Ã™Å ",
+  ];
+
+  return hasAnyTerm(queryText, motifTerms) && hasAnyTerm(productText, motifTerms);
+}
+
 function expandTerms(rawTerms: string[]) {
   const expanded = new Set<string>();
 
@@ -178,29 +241,29 @@ function expandTerms(rawTerms: string[]) {
 
     if (
       [
-        "فازه",
-        "فازة",
-        "مزهرية",
-        "مزهره",
-        "جره",
-        "جرة",
-        "اناء",
-        "انيه",
+        "ÙØ§Ø²Ù‡",
+        "ÙØ§Ø²Ø©",
+        "Ù…Ø²Ù‡Ø±ÙŠØ©",
+        "Ù…Ø²Ù‡Ø±Ù‡",
+        "Ø¬Ø±Ù‡",
+        "Ø¬Ø±Ø©",
+        "Ø§Ù†Ø§Ø¡",
+        "Ø§Ù†ÙŠÙ‡",
         "vase",
         "jar",
       ].includes(normalizedTerm)
     ) {
       addMany(expanded, [
-        "فازة",
-        "فازه",
-        "مزهرية",
-        "مزهره",
-        "جرة",
-        "جره",
-        "إناء",
-        "اناء",
-        "آنية",
-        "انيه",
+        "ÙØ§Ø²Ø©",
+        "ÙØ§Ø²Ù‡",
+        "Ù…Ø²Ù‡Ø±ÙŠØ©",
+        "Ù…Ø²Ù‡Ø±Ù‡",
+        "Ø¬Ø±Ø©",
+        "Ø¬Ø±Ù‡",
+        "Ø¥Ù†Ø§Ø¡",
+        "Ø§Ù†Ø§Ø¡",
+        "Ø¢Ù†ÙŠØ©",
+        "Ø§Ù†ÙŠÙ‡",
         "vase",
         "jar",
         "vessel",
@@ -210,23 +273,23 @@ function expandTerms(rawTerms: string[]) {
 
     if (
       [
-        "خزف",
-        "خزفي",
-        "خزفيه",
-        "خزفية",
-        "سيراميك",
-        "فخار",
+        "Ø®Ø²Ù",
+        "Ø®Ø²ÙÙŠ",
+        "Ø®Ø²ÙÙŠÙ‡",
+        "Ø®Ø²ÙÙŠØ©",
+        "Ø³ÙŠØ±Ø§Ù…ÙŠÙƒ",
+        "ÙØ®Ø§Ø±",
         "ceramic",
         "pottery",
       ].includes(normalizedTerm)
     ) {
       addMany(expanded, [
-        "خزف",
-        "خزفي",
-        "خزفية",
-        "خزفيه",
-        "سيراميك",
-        "فخار",
+        "Ø®Ø²Ù",
+        "Ø®Ø²ÙÙŠ",
+        "Ø®Ø²ÙÙŠØ©",
+        "Ø®Ø²ÙÙŠÙ‡",
+        "Ø³ÙŠØ±Ø§Ù…ÙŠÙƒ",
+        "ÙØ®Ø§Ø±",
         "ceramic",
         "pottery",
         "porcelain",
@@ -235,41 +298,41 @@ function expandTerms(rawTerms: string[]) {
 
     if (
       [
-        "قران",
-        "قرآن",
-        "قرانيه",
-        "قرآنية",
-        "ايات",
-        "آيات",
-        "ايه",
-        "آية",
-        "كتابه",
-        "كتابة",
-        "كتابيه",
-        "كتابية",
-        "خط",
+        "Ù‚Ø±Ø§Ù†",
+        "Ù‚Ø±Ø¢Ù†",
+        "Ù‚Ø±Ø§Ù†ÙŠÙ‡",
+        "Ù‚Ø±Ø¢Ù†ÙŠØ©",
+        "Ø§ÙŠØ§Øª",
+        "Ø¢ÙŠØ§Øª",
+        "Ø§ÙŠÙ‡",
+        "Ø¢ÙŠØ©",
+        "ÙƒØªØ§Ø¨Ù‡",
+        "ÙƒØªØ§Ø¨Ø©",
+        "ÙƒØªØ§Ø¨ÙŠÙ‡",
+        "ÙƒØªØ§Ø¨ÙŠØ©",
+        "Ø®Ø·",
         "calligraphy",
         "quranic",
         "islamic",
       ].includes(normalizedTerm)
     ) {
       addMany(expanded, [
-        "قرآن",
-        "قران",
-        "قرآنية",
-        "قرانيه",
-        "آيات",
-        "ايات",
-        "آية",
-        "ايه",
-        "كتابة",
-        "كتابه",
-        "كتابية",
-        "كتابيه",
-        "خط",
-        "عربي",
-        "اسلامي",
-        "إسلامي",
+        "Ù‚Ø±Ø¢Ù†",
+        "Ù‚Ø±Ø§Ù†",
+        "Ù‚Ø±Ø¢Ù†ÙŠØ©",
+        "Ù‚Ø±Ø§Ù†ÙŠÙ‡",
+        "Ø¢ÙŠØ§Øª",
+        "Ø§ÙŠØ§Øª",
+        "Ø¢ÙŠØ©",
+        "Ø§ÙŠÙ‡",
+        "ÙƒØªØ§Ø¨Ø©",
+        "ÙƒØªØ§Ø¨Ù‡",
+        "ÙƒØªØ§Ø¨ÙŠØ©",
+        "ÙƒØªØ§Ø¨ÙŠÙ‡",
+        "Ø®Ø·",
+        "Ø¹Ø±Ø¨ÙŠ",
+        "Ø§Ø³Ù„Ø§Ù…ÙŠ",
+        "Ø¥Ø³Ù„Ø§Ù…ÙŠ",
         "calligraphy",
         "quranic",
         "islamic",
@@ -279,58 +342,58 @@ function expandTerms(rawTerms: string[]) {
 
     if (
       [
-        "شيشه",
-        "شيشة",
-        "نركيله",
-        "نركيلة",
-        "اركيله",
-        "أركيلة",
+        "Ø´ÙŠØ´Ù‡",
+        "Ø´ÙŠØ´Ø©",
+        "Ù†Ø±ÙƒÙŠÙ„Ù‡",
+        "Ù†Ø±ÙƒÙŠÙ„Ø©",
+        "Ø§Ø±ÙƒÙŠÙ„Ù‡",
+        "Ø£Ø±ÙƒÙŠÙ„Ø©",
         "hookah",
         "shisha",
       ].includes(normalizedTerm)
     ) {
       addMany(expanded, [
-        "شيشة",
-        "شيشه",
-        "نركيلة",
-        "نركيله",
-        "أركيلة",
-        "اركيله",
+        "Ø´ÙŠØ´Ø©",
+        "Ø´ÙŠØ´Ù‡",
+        "Ù†Ø±ÙƒÙŠÙ„Ø©",
+        "Ù†Ø±ÙƒÙŠÙ„Ù‡",
+        "Ø£Ø±ÙƒÙŠÙ„Ø©",
+        "Ø§Ø±ÙƒÙŠÙ„Ù‡",
         "hookah",
         "shisha",
         "water pipe",
       ]);
     }
 
-    if (["سماور", "samovar"].includes(normalizedTerm)) {
+    if (["Ø³Ù…Ø§ÙˆØ±", "samovar"].includes(normalizedTerm)) {
       addMany(expanded, [
-        "سماور",
+        "Ø³Ù…Ø§ÙˆØ±",
         "samovar",
         "tea",
         "brass",
         "copper",
-        "نحاس",
+        "Ù†Ø­Ø§Ø³",
       ]);
     }
 
-    if (["نحاس", "نحاسي", "نحاسيه", "brass", "copper"].includes(normalizedTerm)) {
+    if (["Ù†Ø­Ø§Ø³", "Ù†Ø­Ø§Ø³ÙŠ", "Ù†Ø­Ø§Ø³ÙŠÙ‡", "brass", "copper"].includes(normalizedTerm)) {
       addMany(expanded, [
-        "نحاس",
-        "نحاسي",
-        "نحاسية",
-        "نحاسيه",
+        "Ù†Ø­Ø§Ø³",
+        "Ù†Ø­Ø§Ø³ÙŠ",
+        "Ù†Ø­Ø§Ø³ÙŠØ©",
+        "Ù†Ø­Ø§Ø³ÙŠÙ‡",
         "brass",
         "copper",
         "metal",
       ]);
     }
 
-    if (["لوحه", "لوحة", "رسم", "فنان", "painting", "art"].includes(normalizedTerm)) {
+    if (["Ù„ÙˆØ­Ù‡", "Ù„ÙˆØ­Ø©", "Ø±Ø³Ù…", "ÙÙ†Ø§Ù†", "painting", "art"].includes(normalizedTerm)) {
       addMany(expanded, [
-        "لوحة",
-        "لوحه",
-        "رسم",
-        "فنان",
+        "Ù„ÙˆØ­Ø©",
+        "Ù„ÙˆØ­Ù‡",
+        "Ø±Ø³Ù…",
+        "ÙÙ†Ø§Ù†",
         "painting",
         "art",
         "artist",
@@ -339,19 +402,19 @@ function expandTerms(rawTerms: string[]) {
     }
 
     if (
-      ["خزانه", "خزانة", "عرض", "فاترينا", "كابينه", "cabinet", "display"].includes(
+      ["Ø®Ø²Ø§Ù†Ù‡", "Ø®Ø²Ø§Ù†Ø©", "Ø¹Ø±Ø¶", "ÙØ§ØªØ±ÙŠÙ†Ø§", "ÙƒØ§Ø¨ÙŠÙ†Ù‡", "cabinet", "display"].includes(
         normalizedTerm,
       )
     ) {
       addMany(expanded, [
-        "خزانة",
-        "خزانه",
-        "عرض",
-        "فاترينا",
-        "كابينة",
-        "كابينه",
-        "خشب",
-        "زجاج",
+        "Ø®Ø²Ø§Ù†Ø©",
+        "Ø®Ø²Ø§Ù†Ù‡",
+        "Ø¹Ø±Ø¶",
+        "ÙØ§ØªØ±ÙŠÙ†Ø§",
+        "ÙƒØ§Ø¨ÙŠÙ†Ø©",
+        "ÙƒØ§Ø¨ÙŠÙ†Ù‡",
+        "Ø®Ø´Ø¨",
+        "Ø²Ø¬Ø§Ø¬",
         "cabinet",
         "display",
         "showcase",
@@ -474,15 +537,15 @@ function getMatchReason(product: ProductRow, terms: string[]) {
   const textHits = terms.filter((term) => haystack.includes(term)).slice(0, 5);
 
   if (titleHits.length > 0) {
-    return `Matched House of Antiques title/SKU/category terms: ${titleHits.join(", ")}`;
+    return `Matched reference title/SKU/category terms: ${titleHits.join(", ")}`;
   }
 
   if (attributeHits.length > 0) {
-    return `Matched House of Antiques material/origin/period/keyword/price terms: ${attributeHits.join(", ")}`;
+    return `Matched reference material/origin/period/keyword/price terms: ${attributeHits.join(", ")}`;
   }
 
   if (textHits.length > 0) {
-    return `Matched House of Antiques description/material/keywords terms: ${textHits.join(", ")}`;
+    return `Matched reference description/material/keywords terms: ${textHits.join(", ")}`;
   }
 
   return "Weak internal store text match";
@@ -513,20 +576,20 @@ function scoreProduct(product: ProductRow, terms: string[]) {
   }
 
   const isVaseQuery = terms.some((term) =>
-    ["فازه", "فازة", "مزهرية", "مزهره", "جره", "جرة", "vase", "jar"].includes(term),
+    ["ÙØ§Ø²Ù‡", "ÙØ§Ø²Ø©", "Ù…Ø²Ù‡Ø±ÙŠØ©", "Ù…Ø²Ù‡Ø±Ù‡", "Ø¬Ø±Ù‡", "Ø¬Ø±Ø©", "vase", "jar"].includes(term),
   );
 
   const isQuranicQuery = terms.some((term) =>
     [
-      "قران",
-      "قرآن",
-      "قرانيه",
-      "قرآنية",
-      "ايات",
-      "آيات",
-      "كتابه",
-      "كتابية",
-      "خط",
+      "Ù‚Ø±Ø§Ù†",
+      "Ù‚Ø±Ø¢Ù†",
+      "Ù‚Ø±Ø§Ù†ÙŠÙ‡",
+      "Ù‚Ø±Ø¢Ù†ÙŠØ©",
+      "Ø§ÙŠØ§Øª",
+      "Ø¢ÙŠØ§Øª",
+      "ÙƒØªØ§Ø¨Ù‡",
+      "ÙƒØªØ§Ø¨ÙŠØ©",
+      "Ø®Ø·",
       "quranic",
       "calligraphy",
       "islamic",
@@ -534,35 +597,35 @@ function scoreProduct(product: ProductRow, terms: string[]) {
   );
 
   const isCeramicQuery = terms.some((term) =>
-    ["خزف", "خزفي", "خزفيه", "خزفية", "سيراميك", "فخار", "ceramic", "pottery"].includes(
+    ["Ø®Ø²Ù", "Ø®Ø²ÙÙŠ", "Ø®Ø²ÙÙŠÙ‡", "Ø®Ø²ÙÙŠØ©", "Ø³ÙŠØ±Ø§Ù…ÙŠÙƒ", "ÙØ®Ø§Ø±", "ceramic", "pottery"].includes(
       term,
     ),
   );
 
   const isCabinetQuery = terms.some((term) =>
-    ["خزانه", "خزانة", "فاترينا", "عرض", "cabinet", "display", "showcase"].includes(
+    ["Ø®Ø²Ø§Ù†Ù‡", "Ø®Ø²Ø§Ù†Ø©", "ÙØ§ØªØ±ÙŠÙ†Ø§", "Ø¹Ø±Ø¶", "cabinet", "display", "showcase"].includes(
       term,
     ),
   );
 
-  if (isVaseQuery && titleText.includes("فازه")) score += 35;
-  if (isVaseQuery && titleText.includes("فازة")) score += 35;
+  if (isVaseQuery && titleText.includes("ÙØ§Ø²Ù‡")) score += 35;
+  if (isVaseQuery && titleText.includes("ÙØ§Ø²Ø©")) score += 35;
   if (isVaseQuery && titleText.includes("vase")) score += 35;
-  if (isVaseQuery && haystack.includes("مزهر")) score += 18;
+  if (isVaseQuery && haystack.includes("Ù…Ø²Ù‡Ø±")) score += 18;
 
-  if (isQuranicQuery && haystack.includes("قران")) score += 35;
-  if (isQuranicQuery && haystack.includes("قرآ")) score += 35;
-  if (isQuranicQuery && haystack.includes("ايات")) score += 26;
-  if (isQuranicQuery && haystack.includes("خط")) score += 18;
+  if (isQuranicQuery && haystack.includes("Ù‚Ø±Ø§Ù†")) score += 35;
+  if (isQuranicQuery && haystack.includes("Ù‚Ø±Ø¢")) score += 35;
+  if (isQuranicQuery && haystack.includes("Ø§ÙŠØ§Øª")) score += 26;
+  if (isQuranicQuery && haystack.includes("Ø®Ø·")) score += 18;
   if (isQuranicQuery && haystack.includes("calligraphy")) score += 26;
 
-  if (isCeramicQuery && haystack.includes("خزف")) score += 24;
+  if (isCeramicQuery && haystack.includes("Ø®Ø²Ù")) score += 24;
   if (isCeramicQuery && haystack.includes("ceramic")) score += 24;
   if (isCeramicQuery && haystack.includes("pottery")) score += 20;
 
-  if (isCabinetQuery && haystack.includes("خزانه")) score += 30;
-  if (isCabinetQuery && haystack.includes("خزانة")) score += 30;
-  if (isCabinetQuery && haystack.includes("فاترينا")) score += 28;
+  if (isCabinetQuery && haystack.includes("Ø®Ø²Ø§Ù†Ù‡")) score += 30;
+  if (isCabinetQuery && haystack.includes("Ø®Ø²Ø§Ù†Ø©")) score += 30;
+  if (isCabinetQuery && haystack.includes("ÙØ§ØªØ±ÙŠÙ†Ø§")) score += 28;
   if (isCabinetQuery && haystack.includes("cabinet")) score += 30;
   if (isCabinetQuery && haystack.includes("display")) score += 20;
 
@@ -650,14 +713,35 @@ function toComparable(
   score: number,
   imageMap: Map<string, string[]>,
   terms: string[],
+  queryFamilies: Set<string>,
 ): HouseComparable {
   const confidenceScore = getConfidenceScore(score, product, terms);
   const visualSimilarity = getVisualSimilarity(score, product, terms);
-  const title =
-    safeText(product.name_ar) ||
-    safeText(product.name_en) ||
-    safeText(product.name_ku) ||
-    "قطعة من بيت التحفيات";
+  const productFamilies = getProductFamilies(product);
+  const sameObjectType =
+    queryFamilies.size > 0 &&
+    Array.from(queryFamilies).some((family) => productFamilies.has(family));
+  const categoryMatch = sameObjectType;
+  const materialOrFinishCompatible = hasMaterialOrFinishCompatible(terms, product);
+  const shapeMatch = sameObjectType;
+  const decorativeMotifMatch = hasDecorativeMotifOrStructuralMatch(terms, product);
+  const structuralMatch = productFamilies.size > 0 && sameObjectType;
+  const hasStrongMatch =
+    sameObjectType &&
+    visualSimilarity >= VISIBLE_IMAGE_SIMILARITY_THRESHOLD &&
+    confidenceScore >= STRONG_MATCH_CONFIDENCE_THRESHOLD &&
+    categoryMatch &&
+    materialOrFinishCompatible &&
+    shapeMatch &&
+    (decorativeMotifMatch || structuralMatch);
+  let title =
+    [product.name_ar, product.name_en, product.name_ku]
+      .map(safeText)
+      .find(Boolean) || "قطعة مرجعية مشابهة جدًا";
+
+  if (/house of antiques|Ø¨ÙŠØª Ø§Ù„ØªØ­ÙÙŠØ§Øª|Ã˜Â¨Ã™Å Ã˜Âª Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â­Ã™ÂÃ™Å Ã˜Â§Ã˜Âª/i.test(title)) {
+    title = "Very close reference item";
+  }
 
   const description =
     safeText(product.description_ar) ||
@@ -695,12 +779,19 @@ function toComparable(
     imageUrl: images[0] || "",
     images,
     url: buildProductUrl(product),
-    source: "House of Antiques Store",
+    source: "house_store",
     score,
-    confidence: getConfidence(score, product, terms),
+    confidence: hasStrongMatch ? "exact" : getConfidence(score, product, terms),
     confidenceScore,
     visualSimilarity,
     matchReason: getMatchReason(product, terms),
+    hasStrongMatch,
+    sameObjectType,
+    categoryMatch,
+    materialOrFinishCompatible,
+    shapeMatch,
+    decorativeMotifMatch,
+    structuralMatch,
   };
 }
 
@@ -711,7 +802,7 @@ function buildStoreContext(items: HouseComparable[]) {
     .slice(0, 2)
     .map((item, index) => {
       return `
-HOUSE OF ANTIQUES INTERNAL MATCH ${index + 1}
+NEUTRAL INTERNAL REFERENCE MATCH ${index + 1}
 Title: ${item.title}
 SKU: ${item.sku || "N/A"}
 Product ID: ${item.id}
@@ -720,13 +811,17 @@ Material: ${item.material || "N/A"}
 Period: ${item.period || "N/A"}
 Origin: ${item.origin || "N/A"}
 Exact listed price: ${item.price} ${item.currency}
-Product URL: ${item.url}
-Image URL: ${item.imageUrl || "N/A"}
-Source: ${item.source}
 Match score: ${item.score}
 Match confidence score: ${item.confidenceScore}
 Visual similarity estimate: ${item.visualSimilarity}
 Strict match confidence: ${item.confidence}
+hasStrongMatch: ${item.hasStrongMatch}
+sameObjectType: ${item.sameObjectType}
+categoryMatch: ${item.categoryMatch}
+materialOrFinishCompatible: ${item.materialOrFinishCompatible}
+shapeMatch: ${item.shapeMatch}
+decorativeMotifMatch: ${item.decorativeMotifMatch}
+structuralMatch: ${item.structuralMatch}
 Match reason: ${item.matchReason}
 Description: ${item.description || "N/A"}
 `;
@@ -736,7 +831,12 @@ Description: ${item.description || "N/A"}
 
 function getHouseOfAntiquesContext(items: HouseComparable[]): HouseOfAntiquesContext {
   const matches = items.filter((item) =>
-    item.confidence === "exact" &&
+    item.hasStrongMatch === true &&
+    item.sameObjectType === true &&
+    item.categoryMatch === true &&
+    item.materialOrFinishCompatible === true &&
+    item.shapeMatch === true &&
+    (item.decorativeMotifMatch === true || item.structuralMatch === true) &&
     item.confidenceScore >= STRONG_MATCH_CONFIDENCE_THRESHOLD &&
     item.visualSimilarity >= VISIBLE_IMAGE_SIMILARITY_THRESHOLD,
   );
@@ -766,7 +866,7 @@ function findHouseOfAntiquesMatches(
     .slice(0, 12);
 
   const items = scored.map(({ product, score }) =>
-    toComparable(product, score, imageMap, terms),
+    toComparable(product, score, imageMap, terms, queryFamilies),
   );
 
   return getHouseOfAntiquesContext(items);

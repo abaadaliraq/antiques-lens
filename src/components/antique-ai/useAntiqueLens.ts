@@ -396,10 +396,13 @@ function buildPinterestSearchQuery(result: AnalysisResult) {
 }
 
 const HOUSE_STRONG_MATCH_THRESHOLD = 0.88;
-const HOUSE_VISIBLE_IMAGE_THRESHOLD = 0.9;
+const HOUSE_VISIBLE_IMAGE_THRESHOLD = 0.92;
 
 function isUsableHouseMatch(item: HouseOfAntiquesMatch) {
   return (
+    item.source === "house_store" &&
+    item.hasStrongMatch === true &&
+    item.sameObjectType === true &&
     item.confidence === "exact" &&
     typeof item.confidenceScore === "number" &&
     item.confidenceScore >= HOUSE_STRONG_MATCH_THRESHOLD &&
@@ -416,10 +419,10 @@ function buildHouseSimilarImages(matches: HouseOfAntiquesMatch[]): SimilarImageR
       const urls = item.images?.length ? item.images : item.imageUrl ? [item.imageUrl] : [];
 
       return urls.slice(0, 2).map((imageUrl) => ({
-        title: "قطعة مرجعية مشابهة",
+        title: "قطعة مرجعية مشابهة جدًا",
         imageUrl,
         link: item.url || imageUrl,
-        source: "قطعة مرجعية مشابهة",
+        source: "قطعة مرجعية مشابهة جدًا",
         description: item.description,
         confidence: item.confidence,
         confidenceScore: item.confidenceScore,
@@ -436,6 +439,8 @@ function isHouseOfAntiquesSimilarImage(item: SimilarImageResult) {
     .toLowerCase();
 
   return (
+    item.isHouseOfAntiques === true ||
+    sourceText.includes("house_store") ||
     sourceText.includes("house of antiques") ||
     sourceText.includes("houseofantiques.store")
   );
@@ -1234,8 +1239,8 @@ async function handleAnalyze() {
           .slice(0, 3)
           .map((item: HouseOfAntiquesMatch, index: number) => {
             return [
-              `${index + 1}. INTERNAL HOUSE OF ANTIQUES COMPARABLE`,
-              `Title: ${item.title || "Untitled House of Antiques item"}`,
+              `${index + 1}. VERY CLOSE INTERNAL REFERENCE`,
+              `Title: ${item.title || "Very close reference item"}`,
               `Description: ${item.description || "No description"}`,
               `Listed retail price: ${item.price || "No listed price"} ${item.currency || ""}`,
               `Category: ${item.category || "Unknown"}`,
@@ -1247,9 +1252,7 @@ async function handleAnalyze() {
               `Similarity confidence score: ${item.confidenceScore || 0}`,
               `Visual similarity: ${item.visualSimilarity || 0}`,
               `Similarity reason: ${item.matchReason || "Text similarity"}`,
-              `Image: ${item.imageUrl || "No image"}`,
-              `URL: ${item.url || "No link"}`,
-              `Source: ${item.source || "House of Antiques Store"}`,
+              `hasStrongMatch: ${item.hasStrongMatch === true ? "true" : "false"}`,
             ].join(" | ");
           })
           .join("\n");
@@ -1266,7 +1269,7 @@ async function handleAnalyze() {
       houseContext &&
       houseStoreContext?.confidence === "exact" &&
       houseStoreContext.matches.some(isUsableHouseMatch)
-        ? `House of Antiques internal comparables:\n${houseContext}`
+        ? `Neutral internal reference comparables:\n${houseContext}`
         : "",
     ]
       .filter(Boolean)
@@ -1290,7 +1293,7 @@ async function handleAnalyze() {
 
  const analyzedResult = normalizeResult({
    ...data,
-   houseOfAntiques: houseStoreContext || undefined,
+   houseOfAntiques: houseStoreContext?.found ? houseStoreContext : undefined,
  });
 
  console.info("[KISHIB archive] Analysis completed", {
@@ -1353,7 +1356,7 @@ async function handleAnalyze() {
 
 let finalResult = normalizeResult({
   ...analyzedResult,
-  houseOfAntiques: houseStoreContext || undefined,
+  houseOfAntiques: houseStoreContext?.found ? houseStoreContext : undefined,
 });
 
 if (locale !== "ar") {
@@ -1374,7 +1377,7 @@ if (locale !== "ar") {
     if (translateResponse.ok) {
       finalResult = normalizeResult({
         ...(translateData.result || translateData),
-        houseOfAntiques: houseStoreContext || undefined,
+        houseOfAntiques: houseStoreContext?.found ? houseStoreContext : undefined,
       });
     }
   } catch (translateError) {
@@ -1529,8 +1532,8 @@ async function handleShare() {
   const shareTitle = locale === "en" ? "KISHIB Report" : "تقرير KISHIB";
   const shareImageMessage =
     locale === "en"
-      ? "Report image was downloaded. You can share it from your downloads."
-      : "تم تنزيل صورة التقرير، يمكنك مشاركتها من التنزيلات.";
+      ? "Report images were downloaded. You can share them from your downloads."
+      : "تم تنزيل صور التقرير، يمكنك مشاركتها من التنزيلات.";
   const fallbackMessage =
     locale === "en"
       ? "Report summary copied. You can paste and share it."
@@ -1544,7 +1547,7 @@ async function handleShare() {
   });
 
   try {
-    const shareImage = await createShareImage({
+    const shareImages = await createShareImage({
       result,
       imagePreview:
         imagePreviews[0] ||
@@ -1558,7 +1561,7 @@ async function handleShare() {
     const shareData = {
       title: shareTitle,
       text: shareTitle,
-      files: [shareImage],
+      files: shareImages,
     } as ShareData;
 
     if (
@@ -1570,7 +1573,7 @@ async function handleShare() {
       return;
     }
 
-    downloadFile(shareImage);
+    shareImages.forEach(downloadFile);
     alert(shareImageMessage);
     return;
   } catch (err) {

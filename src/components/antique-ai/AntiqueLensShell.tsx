@@ -94,6 +94,28 @@ function cacheAuthSession(active: boolean) {
   window.localStorage.removeItem(AUTH_CACHE_KEY);
 }
 
+function isWeakHouseStoreImage(item: SimilarImageResult) {
+  const sourceText = `${item.source || ""} ${item.link || ""} ${item.imageUrl || ""}`
+    .toLowerCase();
+
+  const isHouseStore =
+    item.isHouseOfAntiques === true ||
+    sourceText.includes("house_store") ||
+    sourceText.includes("house of antiques") ||
+    sourceText.includes("houseofantiques.store");
+
+  if (!isHouseStore) return false;
+
+  return !(
+    item.source === "قطعة مرجعية مشابهة جدًا" &&
+    item.confidence === "exact" &&
+    typeof item.confidenceScore === "number" &&
+    item.confidenceScore >= 0.88 &&
+    typeof item.visualSimilarity === "number" &&
+    item.visualSimilarity >= 0.92
+  );
+}
+
 function getSafeSimilarImages(lens: ReturnType<typeof useAntiqueLens>) {
   const result = lens.result as
     | (Record<string, unknown> & {
@@ -114,7 +136,7 @@ function getSafeSimilarImages(lens: ReturnType<typeof useAntiqueLens>) {
     | null;
 
   if (Array.isArray(lens.similarImages) && lens.similarImages.length > 0) {
-    return lens.similarImages;
+    return lens.similarImages.filter((item) => !isWeakHouseStoreImage(item));
   }
 
   const restoredSimilarImages =
@@ -132,7 +154,7 @@ function getSafeSimilarImages(lens: ReturnType<typeof useAntiqueLens>) {
     [];
 
   if (Array.isArray(restoredSimilarImages) && restoredSimilarImages.length > 0) {
-    return restoredSimilarImages;
+    return restoredSimilarImages.filter((item) => !isWeakHouseStoreImage(item));
   }
 
   return [];

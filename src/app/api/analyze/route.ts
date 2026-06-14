@@ -813,7 +813,9 @@ function hasHouseOfAntiquesContext(marketContext?: string) {
     text.includes("store match") ||
     text.includes("store comparable") ||
     text.includes("listed price") ||
-    text.includes("exact listed price")
+    text.includes("exact listed price") ||
+    text.includes("hasstrongmatch: true") ||
+    text.includes("neutral internal reference")
   );
 }
 
@@ -821,21 +823,21 @@ function buildHouseOfAntiquesRule(marketContext?: string) {
   if (!hasHouseOfAntiquesContext(marketContext)) {
     return `
 HOUSE OF ANTIQUES STORE STATUS:
-No verified House of Antiques store context was provided.
-Do not claim the item exists in House of Antiques store unless the market context explicitly says so.
+No strong internal reference context was provided.
+Do not claim the item exists in any internal store.
 `;
   }
 
   return `
 HOUSE OF ANTIQUES STORE COMPARISON RULE:
 
-The market comparison context includes House of Antiques internal store data.
+The market comparison context includes neutral internal reference data.
 This is not a random internet result, but it is still only a comparable reference.
-Use House of Antiques only when the provided Match confidence is exactly "exact".
-If confidence is strong, partial, weak, none, or missing, ignore House of Antiques completely for identification, price, description, similar items, and user-facing wording.
-Do not make House of Antiques the basis of identification or valuation unless the uploaded item is clearly the same object.
+Use the neutral internal reference only when the provided Match confidence is exactly "exact" and hasStrongMatch is true.
+If confidence is strong, partial, weak, none, or missing, ignore the internal reference completely for identification, price, description, similar items, and user-facing wording.
+Do not make an internal reference the basis of identification or valuation unless the uploaded item is clearly the same object type and very visually similar.
 
-If the House of Antiques context includes a title, description, material, price, product URL, SKU, or product ID:
+If the internal reference context includes a title, description, material, price, SKU, or product ID:
 - Read the provided Match confidence value as exact, strong, partial, weak, or none.
 - If confidence is exact and the image strongly supports it, you may use the store listing as a direct internal match.
 - If confidence is not exact, do not use the store listing at all.
@@ -843,17 +845,17 @@ If the House of Antiques context includes a title, description, material, price,
 - Do NOT say there is a store match unless confidence is exact.
 - Do NOT use a store price unless confidence is exact.
 - Do NOT replace the item with a generic category if the store data is specific.
-- In priceReasoning, mention House of Antiques only when confidence is exact and it actually affected the range.
+- In priceReasoning, use only neutral wording such as "a very close reference item" when confidence is exact and hasStrongMatch is true.
 - The final estimate must still be based on the uploaded image, visible condition, material, age clues, user notes, and overall market logic.
 
 Arabic wording rule:
-If answering in Arabic and House of Antiques data exists, do not write:
+If answering in Arabic and internal reference data exists, do not write:
 "لم يتم العثور على مقارنة مباشرة"
 "لم يتم العثور على القطعة في المتجر"
 "لا توجد مقارنة موثوقة"
 unless the context explicitly says the match failed.
 
-Only if confidence is exact, write that an exact internal House of Antiques match was used as one pricing reference.
+Only if confidence is exact and hasStrongMatch is true, write that a very close internal reference item was used as one cautious pricing reference.
 `;
 }
 
@@ -965,7 +967,7 @@ Use these only when marketContext includes concrete comparable data such as sold
 - Invaluable
 - AuctionZip
 - Google Custom Search results scoped to auction/market sites
-- House of Antiques internal store comparables only when Match confidence is exactly "exact"
+- Neutral internal reference comparables only when hasStrongMatch is true, confidence is exactly "exact", confidenceScore >= 0.88, and visualSimilarity >= 0.92
 
 How to use price/market sources:
 - Give strongest weight to sold/completed/realized auction prices.
@@ -1156,7 +1158,7 @@ Identification rules:
 - If the image is not enough to confirm period, say "possible" or "in the style of", not a definite date.
 - Do not rename a regional craft object into a generic object if the user's description and visual evidence support a traditional function.
 
-Market comparison context from Google Lens, visual search, and internal House of Antiques store:
+Market comparison context from Google Lens, visual search, and neutral internal references:
 ${fields.marketContext || "No market comparison context was provided."}
 
 PRECIOUS METAL SPOT PRICE CONTEXT:
@@ -1191,13 +1193,19 @@ INTERNAL MARKET REFERENCES RULES:
 - Use them when they are relevant by object type, material, origin, style, period, or function.
 - Do not claim an exact match unless the reference is clearly the same object.
 - If references are only similar, describe them as comparable references only.
-- House of Antiques references are usable only when the match confidence is exactly "exact".
+- Internal references are usable only when hasStrongMatch is true, confidence is exactly "exact", confidenceScore >= 0.88, and visualSimilarity >= 0.92.
 - Auction and sold_listing references are stronger than asking_price references.
 - If internal references contain useful price ranges, the estimated value must be consistent with them.
 - If internal references are weak, unrelated, or missing, lower confidence and say the valuation is preliminary.
 - Do not invent references, prices, sources, or URLs that are not listed in the internal references.
 
 ${houseOfAntiquesRule}
+
+STRICT SILENT INTERNAL STORE RULE - HIGHEST PRIORITY:
+If you were not given a reference with hasStrongMatch=true, confidence exactly "exact", confidenceScore >= 0.88, and visualSimilarity >= 0.92, behave as if the internal store does not exist.
+Do not mention internal searches, missing internal matches, store names, House of Antiques, بيت التحفيات, no internal match, not found in store, or any equivalent phrase.
+Do not put internal-store negative results in lookup, history, priceReasoning, valueDrivers, valueReducers, confidenceNote, disclaimer, similarItems, or any user-facing field.
+If a strong internal reference is provided, use it only as "قطعة مرجعية مشابهة جدًا" or "a very close reference item"; never say it is the same item or a 100% match.
 
 HOW TO USE MARKET COMPARISON CONTEXT:
 
@@ -1210,14 +1218,14 @@ HOW TO USE MARKET COMPARISON CONTEXT:
 If a Google Lens or Google Custom Search result points to a museum/knowledge source, use it for style and identification only.
 If it points to an auction/market source with a real sold/completed/realized price, use it as comparable market evidence only after checking relevance.
 
-2. House of Antiques internal comparables:
-- House of Antiques Store comparables are internal retail references from the owner's real antiques inventory.
-- Use them only when Match confidence is exactly "exact".
-- If confidence is strong, partial, weak, none, uncertain, or missing, ignore House of Antiques completely.
-- Do not mention House of Antiques to the user unless confidence is exactly "exact".
-- Do not use House of Antiques titles, descriptions, images, product categories, or prices unless confidence is exactly "exact".
-- If confidence is exactly "exact", compare the title, identification, description, and price reasoning with the internal comparable unless the user description clearly contradicts it.
-- If confidence is exactly "exact", the listed retail price may be used as one serious internal reference, but not as the automatic final appraisal value.
+2. Neutral internal reference comparables:
+- Internal comparables are silent retail references from a private reference source.
+- Use them only when hasStrongMatch is true, Match confidence is exactly "exact", confidenceScore >= 0.88, and visualSimilarity >= 0.92.
+- If confidence is strong, partial, weak, none, uncertain, missing, or hasStrongMatch is not true, ignore internal references completely.
+- Do not mention the store/source name to the user.
+- Do not use internal titles, descriptions, images, product categories, or prices unless hasStrongMatch is true.
+- If hasStrongMatch is true, compare the title, identification, description, and price reasoning with the internal comparable unless the user description clearly contradicts it.
+- If hasStrongMatch is true, the listed retail price may be used as one cautious reference, but not as the automatic final appraisal value.
 
 VALUATION DISCIPLINE - VERY IMPORTANT:
 
@@ -1252,7 +1260,7 @@ You must explain price based on collector value, not only material value.
 Do not say "only one image" as a reason to crush the price.
 Instead, provide a cautious range but keep it realistic for antique and heritage markets.
 
-Only exact House of Antiques matches can support or adjust market reasoning, and they do not override the visual analysis.
+Only strong neutral internal reference matches can support or adjust market reasoning, and they do not override the visual analysis.
 
 VALUATION CONSISTENCY RULES:
 
@@ -1291,7 +1299,7 @@ Pricing must consider:
 - visible marks/signature/stamps
 - rarity
 - comparable market logic
-- exact House of Antiques internal match, only if Match confidence is exactly "exact"
+- exact neutral internal reference match, only if hasStrongMatch is true and Match confidence is exactly "exact"
 - uncertainty level
 
 If there is insufficient evidence, use a cautious range and explain why.
@@ -1309,7 +1317,7 @@ Price consistency guide:
 PRICE REASONING RULE:
 The priceReasoning field must clearly explain why the value range was suggested.
 If the item is rare, old, heavy, regional, handmade, or culturally specific, priceReasoning must mention those factors.
-If an exact House of Antiques internal match was found, priceReasoning must mention whether it affected the estimate.
+If an exact strong internal reference match was found, priceReasoning may mention whether a very close reference item affected the estimate.
 If no reliable comparable exists, explain that the range is preliminary but do not make it unrealistically low only because evidence is incomplete.
 
 Image analysis checklist:
@@ -1386,8 +1394,8 @@ Required JSON shape:
   "style": "visual style, design influence, school, or type",
   "condition": "visible condition and what still needs checking",
   "authenticity": "authenticity indicators without certainty",
-  "estimatedValue": "preliminary USD price range. If an exact House of Antiques match is provided, consider its listed price as one comparable reference only",
-"priceReasoning": "why this value range was suggested. If an exact House of Antiques match affected the range, mention it as a matched internal reference, not as the only basis.",  "history": "short historical/contextual explanation about this kind of object",
+  "estimatedValue": "preliminary USD price range. If an exact strong internal reference is provided, consider its listed price as one comparable reference only",
+"priceReasoning": "why this value range was suggested. If an exact strong internal reference affected the range, mention it as a very close reference item, not as the only basis.",  "history": "short historical/contextual explanation about this kind of object",
   "valueDrivers": ["things that may increase value"],
   "valueReducers": ["things that may reduce value"],
   "visualSearchKeywords": ["short search keyword for finding similar items online"],
@@ -1473,7 +1481,7 @@ Important final self-check before returning JSON:
 - Did you respect the user's notes?
 - Did you avoid inventing certainty?
 - Did you avoid a contradiction between age/rarity/weight and price?
-- Did you ignore House of Antiques unless confidence is exactly "exact"?
+- Did you ignore internal references unless hasStrongMatch is true, confidence is exactly "exact", confidenceScore >= 0.88, and visualSimilarity >= 0.92?
 - Did you avoid pricing rare regional heritage objects as ordinary used items?
 - Did you ask for the right next photos?
 - Is the price range defensible?

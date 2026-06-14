@@ -159,6 +159,13 @@ export type HouseOfAntiquesMatch = {
   confidenceScore?: number;
   visualSimilarity?: number;
   matchReason?: string;
+  hasStrongMatch?: boolean;
+  sameObjectType?: boolean;
+  categoryMatch?: boolean;
+  materialOrFinishCompatible?: boolean;
+  shapeMatch?: boolean;
+  decorativeMotifMatch?: boolean;
+  structuralMatch?: boolean;
 };
 
 export type HouseOfAntiquesContext = {

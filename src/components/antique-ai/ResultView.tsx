@@ -1347,8 +1347,8 @@ useEffect(() => {
             box-sizing: border-box !important;
             width: 210mm !important;
             height: auto !important;
-            margin: 0 auto !important;
-            padding: 10mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
             border: none !important;
             background: white !important;
             overflow: visible !important;
@@ -1357,7 +1357,7 @@ useEffect(() => {
           }
 
           .report-print-area .antique-report-document {
-            width: 190mm !important;
+            width: 210mm !important;
             max-width: none !important;
             margin: 0 auto !important;
             border-radius: 0 !important;
@@ -1366,24 +1366,27 @@ useEffect(() => {
           }
 
           .report-print-area .report-page {
-            width: 190mm !important;
-            height: auto !important;
+            width: 210mm !important;
+            height: 297mm !important;
             min-height: 0 !important;
             page-break-after: auto !important;
             break-after: auto !important;
-            margin: 0 auto !important;
-            padding: 0 !important;
-            overflow: visible !important;
+            margin: 0 !important;
+            padding: 10mm !important;
+            overflow: hidden !important;
           }
 
           .report-print-area .report-page > .relative {
-            height: auto !important;
+            height: 100% !important;
           }
 
           .report-print-area .report-page footer,
           .report-print-area .report-page > .relative > div:last-child {
-            position: static !important;
-            margin-top: 6mm !important;
+            position: absolute !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            margin-top: 0 !important;
           }
 
           .report-print-area .report-page header,
