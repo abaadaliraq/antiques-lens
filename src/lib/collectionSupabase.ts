@@ -3,6 +3,7 @@
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import {
   calculateMarketplaceAmounts,
+  KISHIB_COMMISSION_PERCENT,
   MARKETPLACE_STORAGE_BUCKET,
 } from "@/lib/marketplaceSupabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -236,7 +237,7 @@ function mapCollectionItem(row: CollectionItemRow): CollectionItem {
     material: row.material ?? "",
     origin: row.origin ?? "",
     estimatedAge: row.estimated_age ?? "",
-    condition: row.condition ?? ("Ø¬ÙŠØ¯Ø©" as MarketplaceCondition),
+    condition: row.condition ?? ("جيدة" as MarketplaceCondition),
     estimatedValue: toNumber(row.estimated_value),
     currency: row.currency ?? "USD",
     country: row.country ?? "",
@@ -545,7 +546,7 @@ export async function convertCollectionItemToMarketplace(id: string) {
   if (item.marketplaceItemId) return item.marketplaceItemId;
 
   const amounts = calculateMarketplaceAmounts(item.estimatedValue);
-  if (amounts.commissionPercent !== 7) {
+  if (amounts.commissionPercent !== KISHIB_COMMISSION_PERCENT) {
     throw new Error("Invalid marketplace commission.");
   }
 

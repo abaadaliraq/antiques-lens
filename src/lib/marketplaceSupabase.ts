@@ -18,7 +18,7 @@ import type {
   MarketplaceOrderStatus,
 } from "@/types/marketplace";
 
-export const KISHIB_COMMISSION_PERCENT = 7;
+export const KISHIB_COMMISSION_PERCENT = 3;
 export const MARKETPLACE_STORAGE_BUCKET = "marketplace-items";
 
 type MarketplaceDatabase = {
@@ -272,7 +272,8 @@ export async function getCurrentUserIsMarketplaceAdmin() {
 }
 
 export function calculateMarketplaceAmounts(itemPrice: number) {
-  const commissionAmount = Math.round(itemPrice * 0.07 * 100) / 100;
+  const commissionAmount =
+    Math.round(itemPrice * (KISHIB_COMMISSION_PERCENT / 100) * 100) / 100;
   const sellerNetAmount = Math.round((itemPrice - commissionAmount) * 100) / 100;
 
   return {

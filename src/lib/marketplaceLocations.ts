@@ -186,20 +186,6 @@ export const marketplaceLocations: MarketplaceCountryOption[] = [
     cities: [city("Kyoto", "كيوتو"), city("Osaka", "أوساكا"), city("Tokyo", "طوكيو")],
   },
   {
-    code: "EUROPE",
-    value: "Europe",
-    flag: "🌍",
-    labels: labels("Europe", "أوروبا كلها", "Europe", "Europe", "Avrupa", "Europe", "Europe", "Europe"),
-    cities: [],
-  },
-  {
-    code: "NORTH_AMERICA",
-    value: "North America",
-    flag: "🌎",
-    labels: labels("North America", "أمريكا كلها", "North America", "North America", "Kuzey Amerika", "North America", "North America", "Amérique du Nord"),
-    cities: [],
-  },
-  {
     code: "OTHER",
     value: "Other",
     flag: "🌍",

@@ -2,13 +2,13 @@
 
 import type { Locale } from "@/components/antique-ai/types";
 import type { CollectionReviewStatus } from "@/types/collection";
-import { marketplaceCopy } from "@/lib/marketplaceI18n";
+import { cleanMarketplaceText, marketplaceCopy } from "@/lib/marketplaceI18n";
 
 const copy = {
   ar: {
     myCollection: "مقتنيات",
     myCollectionSubtitle:
-      "معرض عام للمقتنيات الموثقة؛ يمكن للزوار الإعجاب أو تقديم عرض سعر بسيط، ويبقى قرار البيع لصاحب المقتنى.",
+      "معرض عام للمقتنيات الموثقة. يمكن للزوار الإعجاب أو تقديم عرض سعر بسيط، ويبقى قرار البيع لصاحب المقتنى.",
     addItem: "أضف مقتنى",
     addItemTitle: "إضافة مقتنى",
     addItemSubtitle: "احفظ مقتناك الخاص وأرسله لمراجعة KISHIB.",
@@ -78,7 +78,10 @@ function group(locale: Locale): keyof typeof copy {
 }
 
 export function collectionCopy(locale: Locale) {
-  return copy[group(locale)];
+  const selected = copy[group(locale)];
+  return Object.fromEntries(
+    Object.entries(selected).map(([key, value]) => [key, cleanMarketplaceText(value)]),
+  ) as typeof selected;
 }
 
 export function getCollectionStatusLabel(status: CollectionReviewStatus, locale: Locale) {
@@ -97,7 +100,7 @@ export function getCollectionStatusLabel(status: CollectionReviewStatus, locale:
     },
   };
 
-  return labels[group(locale)][status] ?? status;
+  return cleanMarketplaceText(labels[group(locale)][status] ?? status);
 }
 
 export function sharedMarketplaceText(locale: Locale) {

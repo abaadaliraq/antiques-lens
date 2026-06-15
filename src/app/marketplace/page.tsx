@@ -7,6 +7,7 @@ import MarketItemCard from "@/components/marketplace/MarketItemCard";
 import MarketShell from "@/components/marketplace/MarketShell";
 import { getMarketplaceItemsWithFallback } from "@/lib/marketplaceSupabase";
 import {
+  cleanMarketplaceText,
   getMarketplaceCategoryLabel,
   marketplaceCategoryValues,
   marketplaceCopy,
@@ -46,19 +47,6 @@ const categorySearchTerms: Record<string, string[]> = {
   other: ["other", "أخرى"],
 };
 
-const countryGroups: Record<string, string[]> = {
-  Europe: [
-    "France",
-    "Germany",
-    "Italy",
-    "Spain",
-    "United Kingdom",
-    "Russia",
-    "Turkey",
-  ],
-  "North America": ["United States", "Canada"],
-};
-
 export default function MarketplacePage() {
   const locale = useMarketplaceLocale();
   const t = marketplaceCopy(locale);
@@ -88,8 +76,8 @@ export default function MarketplacePage() {
   const countryOptions = useMemo(
     () =>
       [...marketplaceLocations].sort((a, b) =>
-        getMarketplaceCountryLabelWithFlag(a.value, locale).localeCompare(
-          getMarketplaceCountryLabelWithFlag(b.value, locale),
+        cleanMarketplaceText(getMarketplaceCountryLabelWithFlag(a.value, locale)).localeCompare(
+          cleanMarketplaceText(getMarketplaceCountryLabelWithFlag(b.value, locale)),
           locale,
         ),
       ),
@@ -99,7 +87,7 @@ export default function MarketplacePage() {
   const filteredItems = items.filter((item) => {
     const matchesCategory =
       category === "all" || item.category === category || itemMatchesCategory(item, category);
-    const matchesCountry = country === "all" || itemMatchesCountry(item, country);
+    const matchesCountry = country === "all" || item.country === country;
 
     return matchesCategory && matchesCountry;
   });
@@ -124,12 +112,12 @@ export default function MarketplacePage() {
       }
     >
       <section className="mb-5 rounded-[8px] border border-[#d2b98f]/18 bg-[#fff4e2]/8 p-3 sm:p-4">
-        <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end sm:gap-3">
           <FilterSelect label={t.country} value={country} onChange={setCountry}>
             <option value="all">{t.allCountries}</option>
             {countryOptions.map((location) => (
               <option key={location.code} value={location.value}>
-                {getMarketplaceCountryLabelWithFlag(location.value, locale)}
+                {cleanMarketplaceText(getMarketplaceCountryLabelWithFlag(location.value, locale))}
               </option>
             ))}
           </FilterSelect>
@@ -145,14 +133,14 @@ export default function MarketplacePage() {
 
           <button
             type="button"
-            className="h-10 rounded-[8px] bg-[#b88a3d] px-4 text-sm font-semibold text-[#fff4e2] transition hover:bg-[#986f2e]"
+            className="h-10 rounded-[8px] bg-[#b88a3d] px-2 text-xs font-semibold text-[#fff4e2] transition hover:bg-[#986f2e] sm:px-4 sm:text-sm"
           >
             {t.applyFilters}
           </button>
           <button
             type="button"
             onClick={resetFilters}
-            className="h-10 rounded-[8px] border border-[#d2b98f]/28 bg-[#fff4e2]/8 px-4 text-sm font-semibold text-[#fff4e2] transition hover:bg-[#fff4e2]/14"
+            className="h-10 rounded-[8px] border border-[#d2b98f]/28 bg-[#fff4e2]/8 px-2 text-xs font-semibold text-[#fff4e2] transition hover:bg-[#fff4e2]/14 sm:px-4 sm:text-sm"
           >
             {t.resetFilters}
           </button>
@@ -170,7 +158,7 @@ export default function MarketplacePage() {
             : "لا توجد قطع مطابقة للفلاتر الحالية"}
         </div>
       ) : (
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
           {filteredItems.map((item) => (
             <MarketItemCard key={item.id} item={item} />
           ))}
@@ -186,16 +174,11 @@ function itemMatchesCategory(item: MarketplaceItem, selectedCategory: string) {
 
   const haystack = [item.category, item.material, item.title, item.description]
     .filter(Boolean)
+    .map((value) => cleanMarketplaceText(value))
     .join(" ")
     .toLowerCase();
 
   return terms.some((term) => haystack.includes(term.toLowerCase()));
-}
-
-function itemMatchesCountry(item: MarketplaceItem, selectedCountry: string) {
-  const group = countryGroups[selectedCountry];
-  if (group) return group.includes(item.country);
-  return item.country === selectedCountry;
 }
 
 function FilterSelect({
@@ -210,12 +193,14 @@ function FilterSelect({
   children: React.ReactNode;
 }) {
   return (
-    <label className="space-y-1">
-      <span className="text-xs font-semibold text-[#dcc18a]">{label}</span>
+    <label className="min-w-0 space-y-1">
+      <span className="block truncate text-[11px] font-semibold text-[#dcc18a] sm:text-xs">
+        {label}
+      </span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-[8px] border border-[#d2b98f]/26 bg-[#0d0907]/72 px-3 text-sm text-[#fff4e2] outline-none focus:border-[#b88a3d]"
+        className="h-10 w-full min-w-0 rounded-[8px] border border-[#d2b98f]/26 bg-[#0d0907]/72 px-2 text-xs text-[#fff4e2] outline-none focus:border-[#b88a3d] sm:px-3 sm:text-sm"
       >
         {children}
       </select>
