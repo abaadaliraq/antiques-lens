@@ -172,8 +172,6 @@ function getReportLabels(locale: Locale) {
       back: "Back",
       share: "Share",
       printable: "Printable Report",
-      auction: "Auction Report — Soon",
-      sale: "Sale Report — Soon",
     };
   }
 
@@ -188,8 +186,6 @@ function getReportLabels(locale: Locale) {
       back: "Retour",
       share: "Partager",
       printable: "Rapport imprimable",
-      auction: "Rapport d'enchères — bientôt",
-      sale: "Rapport de vente — bientôt",
     };
   }
 
@@ -204,8 +200,6 @@ function getReportLabels(locale: Locale) {
       back: "گەڕانەوە",
       share: "هاوبەشکردن",
       printable: "ڕاپۆرتی چاپکراو",
-      auction: "ڕاپۆرتی مزایدە — بەم زووانە",
-      sale: "ڕاپۆرتی فرۆشتن — بەم زووانە",
     };
   }
 
@@ -219,8 +213,6 @@ function getReportLabels(locale: Locale) {
     back: "رجوع",
     share: "مشاركة",
     printable: "تقرير قابل للطباعة",
-    auction: "تقرير مزاد — قريبًا",
-    sale: "تقرير بيع — قريبًا",
   };
 }
 
@@ -1093,7 +1085,7 @@ useEffect(() => {
               </p>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 sm:max-w-xs">
               <button
                 type="button"
                 onClick={() => setIsReportOpen(true)}
@@ -1101,24 +1093,6 @@ useEffect(() => {
               >
                 <FileText className="h-4 w-4" />
                 {reportLabels.printable}
-              </button>
-
-              <button
-                type="button"
-                disabled
-                className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 rounded-[12px] border border-[#d2b98f] bg-[#efe3cf]/70 px-4 text-[12px] font-semibold text-[#735f4b]/75"
-              >
-                <FileText className="h-4 w-4" />
-                {reportLabels.auction}
-              </button>
-
-              <button
-                type="button"
-                disabled
-                className="inline-flex min-h-11 cursor-not-allowed items-center justify-center gap-2 rounded-[12px] border border-[#d2b98f] bg-[#efe3cf]/70 px-4 text-[12px] font-semibold text-[#735f4b]/75"
-              >
-                <FileText className="h-4 w-4" />
-                {reportLabels.sale}
               </button>
             </div>
           </div>

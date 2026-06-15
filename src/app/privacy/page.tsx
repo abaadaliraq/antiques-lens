@@ -85,9 +85,8 @@ export default function PrivacyPage() {
           <li>Responding to support requests and user questions.</li>
           <li>Preventing fraud, misuse, illegal activity, or violations of our Terms.</li>
           <li>
-            Developing and supporting future features such as marketplace tools,
-            auction reports, expert contact, metals references, invoice reading,
-            or serial number support.
+            Developing and supporting future features such as expert contact,
+            metals references, invoice reading, or serial number support.
           </li>
         </ul>
 
@@ -296,9 +295,8 @@ export default function PrivacyPage() {
         <div className="mt-10 rounded-[1.5rem] border border-[#D8C7AA] bg-[#F8EEDC] p-5 text-sm leading-7 text-[#6D573B]">
           <strong className="text-[#234236]">Important:</strong> This Privacy
           Policy is written for KISHIB’s current and planned features. If payment,
-          marketplace, auction, expert verification, or account deletion systems
-          are added or changed, this policy should be reviewed again before
-          publishing the update.
+          expert verification, or account deletion systems are added or changed,
+          this policy should be reviewed again before publishing the update.
         </div>
       </section>
     </main>

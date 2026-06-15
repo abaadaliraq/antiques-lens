@@ -11,6 +11,8 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "_archived-marketplace-for-tohfa/**",
+    "android/app/build/**",
     "next-env.d.ts",
   ]),
 ]);

@@ -5,10 +5,6 @@ import { AlertCircle, ArrowLeft, Coins, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ProfileCompletionGate from "@/components/antique-ai/ProfileCompletionGate";
 import type { Locale } from "@/components/antique-ai/types";
-import {
-  getMarketplaceDirection,
-  useMarketplaceLocale,
-} from "@/lib/marketplaceI18n";
 
 type MetalKey = "gold" | "silver" | "platinum" | "palladium" | "copper";
 
@@ -52,6 +48,51 @@ const metalKeys: MetalKey[] = [
   "palladium",
   "copper",
 ];
+
+const supportedLocales: Locale[] = ["ar", "en", "fr", "hi", "fa", "tr", "ru", "ku"];
+const rtlLocales: Locale[] = ["ar", "ku", "fa"];
+const localeStorageKeys = ["antiques-lens:locale", "kishib:pending-oauth-locale"];
+
+function normalizeLocale(value: unknown): Locale {
+  return typeof value === "string" && supportedLocales.includes(value as Locale)
+    ? (value as Locale)
+    : "ar";
+}
+
+function getStoredLocale(): Locale {
+  if (typeof window === "undefined") return "ar";
+
+  for (const key of localeStorageKeys) {
+    const stored = window.localStorage.getItem(key);
+    if (stored && supportedLocales.includes(stored as Locale)) {
+      return stored as Locale;
+    }
+  }
+
+  return normalizeLocale(document.documentElement.lang);
+}
+
+function useMetalPricesLocale() {
+  const [locale, setLocale] = useState<Locale>(() => getStoredLocale());
+
+  useEffect(() => {
+    const syncLocale = () => setLocale(getStoredLocale());
+    syncLocale();
+    window.addEventListener("storage", syncLocale);
+    window.addEventListener("focus", syncLocale);
+
+    return () => {
+      window.removeEventListener("storage", syncLocale);
+      window.removeEventListener("focus", syncLocale);
+    };
+  }, []);
+
+  return locale;
+}
+
+function getLocaleDirection(locale: Locale) {
+  return rtlLocales.includes(locale) ? "rtl" : "ltr";
+}
 
 const copy = {
   ar: {
@@ -238,7 +279,7 @@ function formatDate(locale: Locale, value?: string) {
 }
 
 export default function MetalPricesPage() {
-  const locale = useMarketplaceLocale();
+  const locale = useMetalPricesLocale();
   const t = getCopy(locale);
   const names = getMetalNames(locale);
   const [data, setData] = useState<MetalPricesPayload | null>(null);
@@ -279,7 +320,11 @@ export default function MetalPricesPage() {
   );
 
   useEffect(() => {
-    void loadPrices(false);
+    const timer = window.setTimeout(() => {
+      void loadPrices(false);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [loadPrices]);
 
   const metalRows = useMemo<MetalRow[]>(
@@ -328,7 +373,7 @@ export default function MetalPricesPage() {
   return (
     <ProfileCompletionGate locale={locale}>
       <main
-        dir={getMarketplaceDirection(locale)}
+        dir={getLocaleDirection(locale)}
         className="min-h-dvh overflow-x-hidden bg-[#efe3cf] text-[#241913] kishib-bg-result"
       >
         <div className="min-h-dvh bg-[#fff7e8]/78">

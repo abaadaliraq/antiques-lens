@@ -42,8 +42,8 @@ export default function TermsPage() {
         <p className="mt-4 text-sm leading-8 text-[#4F4437]">
           KISHIB may provide descriptions, category suggestions, condition
           observations, estimated value ranges, similar item references, reports,
-          archive tools, and future features such as marketplace tools, auction
-          reports, expert contact, or metals price references.
+          archive tools, and future features such as expert contact, invoice
+          reading, serial number support, or metals price references.
         </p>
 
         <h2 className="mt-8 font-serif text-xl font-semibold text-[#234236]">
@@ -82,8 +82,8 @@ export default function TermsPage() {
 
         <p className="mt-4 text-sm leading-8 text-[#4F4437]">
           Estimated values may change depending on market demand, condition,
-          provenance, rarity, documentation, location, buyer interest, auction
-          timing, expert opinion, and physical inspection.
+          provenance, rarity, documentation, location, expert opinion, and
+          physical inspection.
         </p>
 
         <h2 className="mt-8 font-serif text-xl font-semibold text-[#234236]">
@@ -157,14 +157,13 @@ export default function TermsPage() {
         </p>
 
         <h2 className="mt-8 font-serif text-xl font-semibold text-[#234236]">
-          8. Marketplace, Auction, Expert, and Future Features
+          8. Expert and Future Features
         </h2>
 
         <p className="mt-3 text-sm leading-8 text-[#4F4437]">
-          Some KISHIB features, such as marketplace tools, auction reports,
-          expert contact, metals price references, invoice reading, serial
-          number checks, or luxury brand support, may be unavailable, limited,
-          experimental, or introduced in future updates.
+          Some KISHIB features, such as expert contact, metals price references,
+          invoice reading, serial number checks, or luxury brand support, may be
+          unavailable, limited, experimental, or introduced in future updates.
         </p>
 
         <p className="mt-4 text-sm leading-8 text-[#4F4437]">
@@ -173,19 +172,19 @@ export default function TermsPage() {
         </p>
 
         <h2 className="mt-8 font-serif text-xl font-semibold text-[#234236]">
-          9. Buying, Selling, and Transactions
+          9. Third-Party Transactions
         </h2>
 
         <p className="mt-3 text-sm leading-8 text-[#4F4437]">
-          Unless clearly stated otherwise, KISHIB is not a party to any sale,
-          purchase, auction, negotiation, delivery, payment, or transaction
-          between users or third parties.
+          Unless clearly stated otherwise, KISHIB is not a party to any
+          negotiation, delivery, payment, or transaction between users or third
+          parties.
         </p>
 
         <p className="mt-4 text-sm leading-8 text-[#4F4437]">
-          If marketplace or transaction features are introduced, additional
-          rules, fees, review steps, verification requirements, and seller or
-          buyer responsibilities may apply.
+          If optional transaction-related services are introduced in the future,
+          additional rules, fees, review steps, and verification requirements may
+          apply.
         </p>
 
         <h2 className="mt-8 font-serif text-xl font-semibold text-[#234236]">
@@ -193,10 +192,10 @@ export default function TermsPage() {
         </h2>
 
         <p className="mt-3 text-sm leading-8 text-[#4F4437]">
-          KISHIB may offer paid reports, subscriptions, report packages,
-          marketplace services, expert reviews, or other paid features in the
-          future. Prices, limits, availability, and payment methods may change
-          depending on the service offered.
+          KISHIB may offer paid reports, subscriptions, report packages, expert
+          reviews, or other paid features in the future. Prices, limits,
+          availability, and payment methods may change depending on the service
+          offered.
         </p>
 
         <p className="mt-4 text-sm leading-8 text-[#4F4437]">
@@ -210,10 +209,10 @@ export default function TermsPage() {
         </h2>
 
         <p className="mt-3 text-sm leading-8 text-[#4F4437]">
-          KISHIB may suspend accounts, restrict access, remove content, delete
-          listings, or refuse service if we believe a user has violated these
-          Terms, misused the platform, submitted unlawful content, attempted
-          fraud, or created risk for other users or KISHIB.
+          KISHIB may suspend accounts, restrict access, remove content, or refuse
+          service if we believe a user has violated these Terms, misused the
+          platform, submitted unlawful content, attempted fraud, or created risk
+          for other users or KISHIB.
         </p>
 
         <h2 className="mt-8 font-serif text-xl font-semibold text-[#234236]">
@@ -245,10 +244,9 @@ export default function TermsPage() {
 
         <p className="mt-3 text-sm leading-8 text-[#4F4437]">
           To the maximum extent permitted by law, KISHIB is not liable for
-          losses, damages, disputes, missed sales, incorrect purchases, pricing
-          differences, authenticity disputes, transaction issues, lost profits,
-          lost data, or decisions made based on preliminary evaluations or
-          platform content.
+          losses, damages, disputes, pricing differences, authenticity disputes,
+          transaction issues, lost profits, lost data, or decisions made based on
+          preliminary evaluations or platform content.
         </p>
 
         <p className="mt-4 text-sm leading-8 text-[#4F4437]">
@@ -278,10 +276,9 @@ export default function TermsPage() {
 
         <div className="mt-10 rounded-[1.5rem] border border-[#D8C7AA] bg-[#F8EEDC] p-5 text-sm leading-7 text-[#6D573B]">
           <strong className="text-[#234236]">Important:</strong> These Terms are
-          written for KISHIB’s current and planned features. If marketplace,
-          payment, expert verification, auction, or account deletion systems are
-          added, these Terms should be reviewed again before publishing the
-          update.
+          written for KISHIB’s current and planned features. If payment, expert verification, or account deletion systems are
+          added or changed, these Terms should be reviewed again before publishing
+          the update.
         </div>
       </section>
     </main>
