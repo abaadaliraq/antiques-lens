@@ -1,40 +1,70 @@
 "use client";
 
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import MarketItemCard from "@/components/marketplace/MarketItemCard";
 import MarketShell from "@/components/marketplace/MarketShell";
 import { getMarketplaceItemsWithFallback } from "@/lib/marketplaceSupabase";
 import {
   getMarketplaceCategoryLabel,
-  getMarketplaceConditionLabel,
   marketplaceCategoryValues,
-  marketplaceConditionValues,
   marketplaceCopy,
   useMarketplaceLocale,
 } from "@/lib/marketplaceI18n";
 import {
-  getMarketplaceCityLabel,
   getMarketplaceCountryLabelWithFlag,
-  getMarketplaceLocation,
-  marketplaceCityMatches,
   marketplaceLocations,
 } from "@/lib/marketplaceLocations";
 import type { MarketplaceItem } from "@/types/marketplace";
+
+const categorySearchTerms: Record<string, string[]> = {
+  metals: ["metal", "معادن", "معدن", "فضة", "ذهب", "نحاس", "برونز"],
+  wood: ["wood", "خشب", "أخشاب"],
+  furniture: ["furniture", "أثاث", "كرسي", "طاولة", "خزانة"],
+  paintings: ["painting", "paintings", "لوحة", "لوحات", "زيتية"],
+  artworks: ["art", "artwork", "artworks", "فن", "فنية", "أعمال فنية"],
+  crystal: ["crystal", "كرستال", "كريستال"],
+  glass: ["glass", "زجاج"],
+  accessories: ["accessory", "accessories", "اكسسوارات", "إكسسوارات", "مسبحة"],
+  boxes: ["box", "boxes", "صندوق", "صناديق"],
+  silver: ["silver", "فضة", "فضيات"],
+  gold: ["gold", "ذهب"],
+  copper: ["copper", "نحاس"],
+  bronze: ["bronze", "برونز"],
+  ceramic: ["ceramic", "ceramics", "سيراميك", "خزف"],
+  porcelain: ["porcelain", "بورسلان"],
+  textiles: ["textile", "textiles", "نسيج", "منسوجات", "قماش"],
+  rugs: ["rug", "rugs", "carpet", "سجاد", "سجادة"],
+  leather: ["leather", "جلد"],
+  paper_manuscripts: ["paper", "manuscript", "manuscripts", "ورق", "مخطوطات", "مخطوطة"],
+  coins: ["coin", "coins", "عملة", "عملات"],
+  watches: ["watch", "watches", "ساعة", "ساعات"],
+  jewelry: ["jewelry", "jewellery", "حلي", "مجوهرات"],
+  religious_antiques: ["religious", "prayer", "دينية", "تحف دينية", "مسبحة"],
+  vintage_household: ["household", "home", "منزلية", "قطع منزلية", "مصباح"],
+  other: ["other", "أخرى"],
+};
+
+const countryGroups: Record<string, string[]> = {
+  Europe: [
+    "France",
+    "Germany",
+    "Italy",
+    "Spain",
+    "United Kingdom",
+    "Russia",
+    "Turkey",
+  ],
+  "North America": ["United States", "Canada"],
+};
 
 export default function MarketplacePage() {
   const locale = useMarketplaceLocale();
   const t = marketplaceCopy(locale);
   const [items, setItems] = useState<MarketplaceItem[]>([]);
-  const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [country, setCountry] = useState("all");
-  const [city, setCity] = useState("all");
-  const [condition, setCondition] = useState("all");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [sort, setSort] = useState("newest");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -55,53 +85,28 @@ export default function MarketplacePage() {
     };
   }, []);
 
-  const cities = useMemo(() => getMarketplaceLocation(country)?.cities ?? [], [country]);
-
-  function parsePrice(value: string) {
-    const normalized = value
-      .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660))
-      .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - 0x06f0))
-      .replace(/[,\u066c\u060c\s]/g, "");
-
-    return normalized ? Number(normalized) : null;
-  }
+  const countryOptions = useMemo(
+    () =>
+      [...marketplaceLocations].sort((a, b) =>
+        getMarketplaceCountryLabelWithFlag(a.value, locale).localeCompare(
+          getMarketplaceCountryLabelWithFlag(b.value, locale),
+          locale,
+        ),
+      ),
+    [locale],
+  );
 
   const filteredItems = items.filter((item) => {
-    const min = parsePrice(minPrice);
-    const max = parsePrice(maxPrice);
-    const matchesQuery = item.title
-      .toLowerCase()
-      .includes(query.trim().toLowerCase());
-    const matchesCategory = category === "all" || item.category === category;
-    const matchesCountry = country === "all" || item.country === country;
-    const matchesCity = marketplaceCityMatches(item.country, city, item.city);
-    const matchesCondition = condition === "all" || item.condition === condition;
-    const matchesPrice =
-      (min === null || item.price >= min) && (max === null || item.price <= max);
+    const matchesCategory =
+      category === "all" || item.category === category || itemMatchesCategory(item, category);
+    const matchesCountry = country === "all" || itemMatchesCountry(item, country);
 
-    return (
-      matchesQuery &&
-      matchesCategory &&
-      matchesCountry &&
-      matchesCity &&
-      matchesCondition &&
-      matchesPrice
-    );
-  }).sort((a, b) => {
-    if (sort === "price_asc") return a.price - b.price;
-    if (sort === "price_desc") return b.price - a.price;
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    return matchesCategory && matchesCountry;
   });
 
   function resetFilters() {
-    setQuery("");
     setCategory("all");
     setCountry("all");
-    setCity("all");
-    setCondition("all");
-    setMinPrice("");
-    setMaxPrice("");
-    setSort("newest");
   }
 
   return (
@@ -118,94 +123,38 @@ export default function MarketplacePage() {
         </Link>
       }
     >
-      <section className="mb-6 rounded-[8px] border border-[#d2b98f]/18 bg-[#fff4e2]/8 p-4">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="space-y-1 lg:col-span-2">
-          <span className="text-xs font-semibold text-[#dcc18a]">{t.search}</span>
-          <div className="relative">
-          <Search className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#dcc18a]" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t.search}
-            className="h-11 w-full rounded-[8px] border border-[#d2b98f]/26 bg-[#0d0907]/72 px-9 text-sm text-[#fff4e2] outline-none placeholder:text-[#dcc18a]/70 focus:border-[#b88a3d]"
-          />
-          </div>
-        </label>
+      <section className="mb-5 rounded-[8px] border border-[#d2b98f]/18 bg-[#fff4e2]/8 p-3 sm:p-4">
+        <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
+          <FilterSelect label={t.country} value={country} onChange={setCountry}>
+            <option value="all">{t.allCountries}</option>
+            {countryOptions.map((location) => (
+              <option key={location.code} value={location.value}>
+                {getMarketplaceCountryLabelWithFlag(location.value, locale)}
+              </option>
+            ))}
+          </FilterSelect>
 
-        <FilterSelect label={t.category} value={category} onChange={setCategory}>
-          <option value="all">{t.allCategories}</option>
-          {marketplaceCategoryValues.map((value) => (
-            <option key={value} value={value}>
-              {getMarketplaceCategoryLabel(value, locale)}
-            </option>
-          ))}
-        </FilterSelect>
+          <FilterSelect label={t.category} value={category} onChange={setCategory}>
+            <option value="all">{t.allCategories}</option>
+            {marketplaceCategoryValues.map((value) => (
+              <option key={value} value={value}>
+                {getMarketplaceCategoryLabel(value, locale)}
+              </option>
+            ))}
+          </FilterSelect>
 
-        <FilterSelect
-          label={t.country}
-          value={country}
-          onChange={(value) => {
-            setCountry(value);
-            setCity("all");
-          }}
-        >
-          <option value="all">{t.allCountries}</option>
-          {marketplaceLocations.map((location) => (
-            <option key={location.code} value={location.value}>
-              {getMarketplaceCountryLabelWithFlag(location.value, locale)}
-            </option>
-          ))}
-        </FilterSelect>
-
-        <FilterSelect
-          label={t.city}
-          value={city}
-          onChange={setCity}
-          disabled={country === "all"}
-        >
-          <option value="all">
-            {country === "all" ? t.chooseCountryFirst : t.allCities}
-          </option>
-          {cities.map((value) => (
-            <option key={value.value} value={value.value}>
-              {getMarketplaceCityLabel(country, value.value, locale)}
-            </option>
-          ))}
-        </FilterSelect>
-
-        <FilterSelect label={t.condition} value={condition} onChange={setCondition}>
-          <option value="all">{t.allConditions}</option>
-          {marketplaceConditionValues.map((value) => (
-            <option key={value} value={value}>
-              {getMarketplaceConditionLabel(value, locale)}
-            </option>
-          ))}
-        </FilterSelect>
-
-        <FilterInput label={t.minPrice} value={minPrice} onChange={setMinPrice} />
-        <FilterInput label={t.maxPrice} value={maxPrice} onChange={setMaxPrice} />
-        <FilterSelect label={t.sort} value={sort} onChange={setSort}>
-          <option value="newest">{t.newest}</option>
-          <option value="price_asc">{t.priceLowHigh}</option>
-          <option value="price_desc">{t.priceHighLow}</option>
-          <option value="views" disabled>{t.mostViewed} TODO</option>
-        </FilterSelect>
-        </div>
-
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            className="h-10 rounded-[8px] bg-[#b88a3d] px-4 text-sm font-semibold text-[#fff4e2] transition hover:bg-[#986f2e]"
+          >
+            {t.applyFilters}
+          </button>
           <button
             type="button"
             onClick={resetFilters}
             className="h-10 rounded-[8px] border border-[#d2b98f]/28 bg-[#fff4e2]/8 px-4 text-sm font-semibold text-[#fff4e2] transition hover:bg-[#fff4e2]/14"
           >
             {t.resetFilters}
-          </button>
-          <button
-            type="button"
-            className="h-10 rounded-[8px] bg-[#b88a3d] px-4 text-sm font-semibold text-[#fff4e2] transition hover:bg-[#986f2e]"
-          >
-            {t.applyFilters}
           </button>
         </div>
       </section>
@@ -216,7 +165,9 @@ export default function MarketplacePage() {
         </div>
       ) : filteredItems.length === 0 ? (
         <div className="rounded-[8px] border border-[#d2b98f]/20 bg-[#fff4e2]/8 p-6 text-sm text-[#dcc18a]">
-          {t.noItems}
+          {locale === "en"
+            ? "No items match the current filters."
+            : "لا توجد قطع مطابقة للفلاتر الحالية"}
         </div>
       ) : (
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -229,52 +180,45 @@ export default function MarketplacePage() {
   );
 }
 
+function itemMatchesCategory(item: MarketplaceItem, selectedCategory: string) {
+  const terms = categorySearchTerms[selectedCategory] ?? [];
+  if (terms.length === 0) return false;
+
+  const haystack = [item.category, item.material, item.title, item.description]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return terms.some((term) => haystack.includes(term.toLowerCase()));
+}
+
+function itemMatchesCountry(item: MarketplaceItem, selectedCountry: string) {
+  const group = countryGroups[selectedCountry];
+  if (group) return group.includes(item.country);
+  return item.country === selectedCountry;
+}
+
 function FilterSelect({
   label,
   value,
   onChange,
   children,
-  disabled,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   children: React.ReactNode;
-  disabled?: boolean;
 }) {
   return (
     <label className="space-y-1">
       <span className="text-xs font-semibold text-[#dcc18a]">{label}</span>
       <select
         value={value}
-        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-[8px] border border-[#d2b98f]/26 bg-[#0d0907]/72 px-3 text-sm text-[#fff4e2] outline-none focus:border-[#b88a3d] disabled:cursor-not-allowed disabled:opacity-55"
+        className="h-10 w-full rounded-[8px] border border-[#d2b98f]/26 bg-[#0d0907]/72 px-3 text-sm text-[#fff4e2] outline-none focus:border-[#b88a3d]"
       >
         {children}
       </select>
-    </label>
-  );
-}
-
-function FilterInput({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="space-y-1">
-      <span className="text-xs font-semibold text-[#dcc18a]">{label}</span>
-      <input
-        value={value}
-        inputMode="numeric"
-        onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-[8px] border border-[#d2b98f]/26 bg-[#0d0907]/72 px-3 text-sm text-[#fff4e2] outline-none placeholder:text-[#dcc18a]/70 focus:border-[#b88a3d]"
-      />
     </label>
   );
 }

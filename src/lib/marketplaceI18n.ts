@@ -27,6 +27,14 @@ export type MarketplaceCountry =
   | "France"
   | "United Kingdom"
   | "United States"
+  | "Canada"
+  | "Italy"
+  | "Spain"
+  | "Australia"
+  | "China"
+  | "Japan"
+  | "Europe"
+  | "North America"
   | "Germany"
   | "Russia"
   | "Other";
@@ -60,17 +68,43 @@ export const marketplaceCountries: MarketplaceCountry[] = [
   "United Arab Emirates",
   "United Kingdom",
   "United States",
+  "Canada",
+  "Italy",
+  "Spain",
+  "Australia",
+  "China",
+  "Japan",
+  "Europe",
+  "North America",
   "Other",
 ];
 
 export const marketplaceCategoryValues = [
-  "Ù‚Ø·Ø¹ Ø³ÙˆÙ…Ø±ÙŠØ©",
-  "Ù…Ø®Ø·ÙˆØ·Ø§Øª",
-  "ÙØ¶ÙŠØ§Øª",
-  "Ø³Ø¬Ø§Ø¯",
-  "Ø®Ø²Ù",
-  "Ø­Ù„ÙŠ",
-  "Ø£Ø®Ø´Ø§Ø¨",
+  "metals",
+  "wood",
+  "furniture",
+  "paintings",
+  "artworks",
+  "crystal",
+  "glass",
+  "accessories",
+  "boxes",
+  "silver",
+  "gold",
+  "copper",
+  "bronze",
+  "ceramic",
+  "porcelain",
+  "textiles",
+  "rugs",
+  "leather",
+  "paper_manuscripts",
+  "coins",
+  "watches",
+  "jewelry",
+  "religious_antiques",
+  "vintage_household",
+  "other",
 ] as unknown as MarketplaceCategory[];
 
 export const marketplaceConditionValues = [
@@ -335,22 +369,58 @@ const aliases: Partial<Record<Locale, keyof typeof text>> = {
 
 const categoryLabels: Record<keyof typeof text, Record<string, string>> = {
   ar: {
-    [marketplaceCategoryValues[0]]: "قطع سومرية",
-    [marketplaceCategoryValues[1]]: "مخطوطات",
-    [marketplaceCategoryValues[2]]: "فضيات",
-    [marketplaceCategoryValues[3]]: "سجاد",
-    [marketplaceCategoryValues[4]]: "خزف",
-    [marketplaceCategoryValues[5]]: "حلي",
-    [marketplaceCategoryValues[6]]: "أخشاب",
+    metals: "معادن",
+    wood: "خشب",
+    furniture: "أثاث",
+    paintings: "لوحات",
+    artworks: "أعمال فنية",
+    crystal: "كرستال",
+    glass: "زجاج",
+    accessories: "اكسسوارات",
+    boxes: "صناديق",
+    silver: "فضة",
+    gold: "ذهب",
+    copper: "نحاس",
+    bronze: "برونز",
+    ceramic: "سيراميك",
+    porcelain: "بورسلان",
+    textiles: "نسيج",
+    rugs: "سجاد",
+    leather: "جلد",
+    paper_manuscripts: "ورق / مخطوطات",
+    coins: "عملات",
+    watches: "ساعات",
+    jewelry: "مجوهرات",
+    religious_antiques: "تحف دينية",
+    vintage_household: "قطع منزلية قديمة",
+    other: "أخرى",
   },
   en: {
-    [marketplaceCategoryValues[0]]: "Sumerian pieces",
-    [marketplaceCategoryValues[1]]: "Manuscripts",
-    [marketplaceCategoryValues[2]]: "Silverware",
-    [marketplaceCategoryValues[3]]: "Rugs",
-    [marketplaceCategoryValues[4]]: "Ceramics",
-    [marketplaceCategoryValues[5]]: "Jewelry",
-    [marketplaceCategoryValues[6]]: "Woodwork",
+    metals: "Metals",
+    wood: "Wood",
+    furniture: "Furniture",
+    paintings: "Paintings",
+    artworks: "Artworks",
+    crystal: "Crystal",
+    glass: "Glass",
+    accessories: "Accessories",
+    boxes: "Boxes",
+    silver: "Silver",
+    gold: "Gold",
+    copper: "Copper",
+    bronze: "Bronze",
+    ceramic: "Ceramic",
+    porcelain: "Porcelain",
+    textiles: "Textiles",
+    rugs: "Rugs",
+    leather: "Leather",
+    paper_manuscripts: "Paper / Manuscripts",
+    coins: "Coins",
+    watches: "Watches",
+    jewelry: "Jewelry",
+    religious_antiques: "Religious antiques",
+    vintage_household: "Vintage household pieces",
+    other: "Other",
   },
 };
 
@@ -386,6 +456,14 @@ const countryLabels: Record<keyof typeof text, Record<MarketplaceCountry, string
     France: "فرنسا",
     "United Kingdom": "المملكة المتحدة",
     "United States": "الولايات المتحدة",
+    Canada: "كندا",
+    Italy: "إيطاليا",
+    Spain: "إسبانيا",
+    Australia: "أستراليا",
+    China: "الصين",
+    Japan: "اليابان",
+    Europe: "أوروبا كلها",
+    "North America": "أمريكا كلها",
     Germany: "ألمانيا",
     Russia: "روسيا",
     Other: "أخرى",

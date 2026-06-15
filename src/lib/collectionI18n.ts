@@ -6,9 +6,9 @@ import { marketplaceCopy } from "@/lib/marketplaceI18n";
 
 const copy = {
   ar: {
-    myCollection: "مقتنياتي",
+    myCollection: "مقتنيات",
     myCollectionSubtitle:
-      "مقتنياتك الخاصة تظهر لك فقط، وتمر بمراجعة KISHIB قبل التوثيق أو العرض للبيع.",
+      "معرض عام للمقتنيات الموثقة؛ يمكن للزوار الإعجاب أو تقديم عرض سعر بسيط، ويبقى قرار البيع لصاحب المقتنى.",
     addItem: "أضف مقتنى",
     addItemTitle: "إضافة مقتنى",
     addItemSubtitle: "احفظ مقتناك الخاص وأرسله لمراجعة KISHIB.",
@@ -39,9 +39,9 @@ const copy = {
     cannotList: "يمكن عرض المقتنى للبيع بعد توثيقه فقط.",
   },
   en: {
-    myCollection: "My Collection",
+    myCollection: "Collections",
     myCollectionSubtitle:
-      "Your private collection is visible only to you and reviewed by KISHIB before verification or sale.",
+      "A public gallery for verified collectibles. Visitors can like an item or place a simple offer, while the collector decides whether to sell later.",
     addItem: "Add item",
     addItemTitle: "Add collection item",
     addItemSubtitle: "Save your private item and send it to KISHIB review.",

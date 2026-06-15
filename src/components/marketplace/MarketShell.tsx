@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Archive, Coins, Gem, LayoutDashboard, Plus, ScrollText, ShoppingBag } from "lucide-react";
+import { Archive, Gem, Plus, ScrollText, ShoppingBag } from "lucide-react";
 import ProfileCompletionGate from "@/components/antique-ai/ProfileCompletionGate";
 import { collectionCopy } from "@/lib/collectionI18n";
 import {
@@ -12,21 +12,6 @@ import {
   marketplaceCopy,
   useMarketplaceLocale,
 } from "@/lib/marketplaceI18n";
-
-function getMetalPricesNavLabel(locale: ReturnType<typeof useMarketplaceLocale>) {
-  const labels = {
-    ar: "بورصة المعادن",
-    en: "Metal Prices",
-    fr: "Prix des métaux",
-    hi: "Metal Prices",
-    fa: "قیمت فلزات",
-    tr: "Metal Fiyatları",
-    ru: "Цены на металлы",
-    ku: "نرخی کانزاکان",
-  };
-
-  return labels[locale] ?? labels.en;
-}
 
 export default function MarketShell({
   title,
@@ -44,10 +29,8 @@ export default function MarketShell({
   const collectionT = collectionCopy(locale);
   const links = [
     { href: "/marketplace", label: getMarketplaceNavLabel(locale), icon: ShoppingBag },
-    { href: "/metal-prices", label: getMetalPricesNavLabel(locale), icon: Coins },
     { href: "/collection", label: collectionT.myCollection, icon: Archive },
     { href: "/marketplace/new", label: getMarketplaceSellItemLabel(locale), icon: Plus },
-    { href: "/marketplace/seller", label: t.sellerNav, icon: LayoutDashboard },
     { href: "/marketplace/orders", label: t.ordersNav, icon: ScrollText },
   ];
 

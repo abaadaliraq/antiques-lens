@@ -22,7 +22,7 @@ import {
   type UserProfile,
 } from "@/lib/profilesSupabase";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
-import { Coins, Lock, ShoppingBag, Trash2 } from "lucide-react";
+import { Coins, ShoppingBag, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -590,19 +590,15 @@ export default function AntiqueLensShell() {
               dir={lens.t.dir}
               className="flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-              <button
-                type="button"
-                disabled
-                aria-disabled="true"
-                title={lens.t.soon}
-                className="inline-flex h-7 shrink-0 cursor-not-allowed items-center gap-1 rounded-full px-1.5 text-[10.5px] font-normal text-white/90 opacity-90 sm:px-2 sm:text-[11px]"
+              <Link
+                href="/marketplace"
+                className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full px-1.5 text-[10.5px] font-normal text-white/95 transition hover:bg-white/10 sm:px-2 sm:text-[11px]"
               >
                 <span className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-white/10 text-white/80">
                   <ShoppingBag className="h-2.5 w-2.5" />
                 </span>
                 {getMarketplaceNavLabel(lens.locale)}
-                <Lock className="h-2.5 w-2.5 text-white/65" aria-hidden="true" />
-              </button>
+              </Link>
 
               <Link
                 href="/metal-prices"
@@ -626,19 +622,15 @@ export default function AntiqueLensShell() {
             </div>
 
            <div className="kishib-app-chrome fixed left-3 top-3 z-40 flex max-w-[calc(100vw-7.25rem)] items-center gap-0.5 rounded-full border border-[#d2b98f]/20 bg-[#11100f]/28 p-0.5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] backdrop-blur-2xl lg:left-8 lg:top-8 lg:gap-1 lg:p-1">
-              <button
-                type="button"
-                disabled
-                aria-disabled="true"
-                title={lens.t.soon}
-                className="inline-flex h-8 shrink-0 cursor-not-allowed items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-[#fff4e2]/55 opacity-75 sm:px-2.5 sm:text-xs lg:h-9 lg:gap-1.5 lg:px-3 lg:text-sm"
+              <Link
+                href="/marketplace"
+                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-[#fff4e2]/90 transition hover:bg-[#fff4e2]/10 sm:px-2.5 sm:text-xs lg:h-9 lg:gap-1.5 lg:px-3 lg:text-sm"
               >
                 <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#fff4e2]/10 text-[#dcc18a] lg:h-6 lg:w-6">
                   <ShoppingBag className="h-3 w-3 lg:h-3.5 lg:w-3.5" />
                 </span>
                 {getMarketplaceNavLabel(lens.locale)}
-                <Lock className="h-3 w-3 text-[#dcc18a]/80" aria-hidden="true" />
-              </button>
+              </Link>
 
               <Link
                 href="/metal-prices"

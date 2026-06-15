@@ -16,21 +16,9 @@ export type MarketplaceOrderStatus =
   | "cancelled"
   | "dispute";
 
-export type MarketplaceCategory =
-  | "قطع سومرية"
-  | "مخطوطات"
-  | "فضيات"
-  | "سجاد"
-  | "خزف"
-  | "حلي"
-  | "أخشاب";
+export type MarketplaceCategory = string;
 
-export type MarketplaceCondition =
-  | "ممتازة"
-  | "جيدة جدا"
-  | "جيدة"
-  | "تحتاج ترميم"
-  | "آثار عمر واضحة";
+export type MarketplaceCondition = string;
 
 export type MarketplaceItemImage = {
   id: string;

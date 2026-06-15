@@ -46,6 +46,26 @@ type CollectionDatabase = {
         Update: Partial<CollectionImageRow>;
         Relationships: [];
       };
+      collection_item_likes: {
+        Row: CollectionLikeRow;
+        Insert: {
+          collection_item_id: string;
+          visitor_key: string;
+        };
+        Update: Partial<CollectionLikeRow>;
+        Relationships: [];
+      };
+      collection_item_offers: {
+        Row: CollectionOfferRow;
+        Insert: {
+          collection_item_id: string;
+          visitor_key: string;
+          amount: number;
+          currency?: "IQD" | "USD";
+        };
+        Update: Partial<CollectionOfferRow>;
+        Relationships: [];
+      };
       marketplace_items: {
         Row: MarketplaceItemRow;
         Insert: Partial<MarketplaceItemRow> & {
@@ -123,6 +143,22 @@ type CollectionImageRow = {
   image_url: string;
   storage_path: string | null;
   sort_order: number | null;
+  created_at: string;
+};
+
+type CollectionLikeRow = {
+  id: string;
+  collection_item_id: string;
+  visitor_key: string;
+  created_at: string;
+};
+
+type CollectionOfferRow = {
+  id: string;
+  collection_item_id: string;
+  visitor_key: string;
+  amount: number | string;
+  currency: "IQD" | "USD" | null;
   created_at: string;
 };
 
@@ -246,6 +282,95 @@ export async function getMyCollectionItems() {
   if (error) throw error;
 
   return ((data ?? []) as CollectionItemRow[]).map(mapCollectionItem);
+}
+
+export async function getPublicCollectionItems() {
+  const supabase = getCollectionSupabase();
+  const { data, error } = await supabase
+    .from("collection_items")
+    .select("*, collection_item_images(*)")
+    .eq("review_status", "verified")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return ((data ?? []) as CollectionItemRow[]).map(mapCollectionItem);
+}
+
+export async function getCollectionInteractionSummary(itemIds: string[]) {
+  if (itemIds.length === 0) return {};
+
+  const supabase = getCollectionSupabase();
+  const [likesResult, offersResult] = await Promise.all([
+    supabase
+      .from("collection_item_likes")
+      .select("collection_item_id")
+      .in("collection_item_id", itemIds),
+    supabase
+      .from("collection_item_offers")
+      .select("collection_item_id, amount, currency, created_at")
+      .in("collection_item_id", itemIds),
+  ]);
+
+  if (likesResult.error || offersResult.error) {
+    return {};
+  }
+
+  const summary: Record<
+    string,
+    { likes: number; highestOffer: number | null; currency: "IQD" | "USD" }
+  > = {};
+
+  for (const id of itemIds) {
+    summary[id] = { likes: 0, highestOffer: null, currency: "USD" };
+  }
+
+  for (const like of likesResult.data ?? []) {
+    const id = (like as Pick<CollectionLikeRow, "collection_item_id">).collection_item_id;
+    if (summary[id]) summary[id].likes += 1;
+  }
+
+  for (const offer of (offersResult.data ?? []) as CollectionOfferRow[]) {
+    const current = summary[offer.collection_item_id];
+    if (!current) continue;
+
+    const amount = Number(offer.amount);
+    if (!Number.isFinite(amount)) continue;
+
+    if (current.highestOffer === null || amount > current.highestOffer) {
+      current.highestOffer = amount;
+      current.currency = offer.currency ?? "USD";
+    }
+  }
+
+  return summary;
+}
+
+export async function likeCollectionItem(itemId: string, visitorKey: string) {
+  const supabase = getCollectionSupabase();
+  const { error } = await supabase.from("collection_item_likes").insert({
+    collection_item_id: itemId,
+    visitor_key: visitorKey,
+  });
+
+  if (error && error.code !== "23505") throw error;
+}
+
+export async function createCollectionOffer(
+  itemId: string,
+  visitorKey: string,
+  amount: number,
+  currency: "IQD" | "USD",
+) {
+  const supabase = getCollectionSupabase();
+  const { error } = await supabase.from("collection_item_offers").insert({
+    collection_item_id: itemId,
+    visitor_key: visitorKey,
+    amount,
+    currency,
+  });
+
+  if (error) throw error;
 }
 
 export async function getCollectionItemById(id: string) {
