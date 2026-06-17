@@ -29,8 +29,8 @@ export default function ProfileCompletionGate({
       setHasUser(Boolean(result.user));
       setProfile(result.profile);
       setComplete(result.complete);
-    } catch (error) {
-      console.error("Failed to load required profile", error);
+    } catch {
+      console.warn("Required profile load skipped.");
       setHasUser(false);
       setProfile(null);
       setComplete(false);

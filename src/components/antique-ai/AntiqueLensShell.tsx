@@ -261,8 +261,8 @@ export default function AntiqueLensShell() {
       const result = await ensureCurrentUserProfile();
       setProfile(result.profile);
       setProfileComplete(result.complete);
-    } catch (error) {
-      console.error("Failed to load required profile", error);
+    } catch {
+      console.warn("Required profile load skipped.");
       setProfile(null);
       setProfileComplete(false);
     } finally {
@@ -436,8 +436,8 @@ export default function AntiqueLensShell() {
           setProfileComplete(false);
           setProfileReady(true);
         }
-      } catch (error) {
-        console.error("Failed to restore visible app session", error);
+      } catch {
+        console.warn("Visible app session restore skipped.");
       } finally {
         isRestoring = false;
         setAppRestoring(false);

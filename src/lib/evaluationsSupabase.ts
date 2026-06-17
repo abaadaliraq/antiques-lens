@@ -149,8 +149,8 @@ export async function loadEvaluationArchiveItemsFromSupabase() {
     if (error) throw error;
 
     return ((data || []) as EvaluationRow[]).map(mapEvaluationRowToArchiveItem);
-  } catch (error) {
-    console.error("Failed to load evaluations from Supabase", error);
+  } catch {
+    console.warn("Supabase evaluations load skipped.");
     return [];
   }
 }
@@ -213,7 +213,7 @@ export async function saveEvaluationToSupabase({
       .insert(payload);
 
     if (error) throw error;
-  } catch (error) {
-    console.error("Failed to save evaluation to Supabase", error);
+  } catch {
+    console.warn("Supabase evaluation save skipped.");
   }
 }

@@ -431,7 +431,7 @@ function buildHouseSimilarImages(matches: HouseOfAntiquesMatch[]): SimilarImageR
         isHouseOfAntiques: true,
       }));
     })
-    .slice(0, 3);
+    .slice(0, 6);
 }
 
 function isHouseOfAntiquesSimilarImage(item: SimilarImageResult) {
@@ -455,15 +455,16 @@ function mergeSimilarImages(
   externalImages: SimilarImageResult[],
 ) {
   const seen = new Set<string>();
+  const visibleHouseImages = houseImages.slice(0, externalImages.length > 0 ? 3 : 6);
 
-  return [...houseImages, ...externalImages]
+  return [...externalImages, ...visibleHouseImages]
     .filter((item) => {
       const key = item.imageUrl || item.link || item.title;
       if (!key || seen.has(key)) return false;
       seen.add(key);
       return true;
     })
-    .slice(0, 16);
+    .slice(0, 24);
 }
 
 function normalizeSimilarImageItems(items: unknown): SimilarImageResult[] {
@@ -505,6 +506,31 @@ function normalizeSimilarImageItems(items: unknown): SimilarImageResult[] {
       return normalizedItem;
     })
     .filter((item): item is SimilarImageResult => Boolean(item));
+}
+
+async function safePostJson(url: string, body: unknown) {
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    let data: unknown = null;
+
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+
+    return { ok: response.ok, status: response.status, data };
+  } catch (error) {
+    console.warn(`[KISHIB] Optional request skipped: ${url}`);
+    return { ok: false, status: 0, data: null };
+  }
 }
 
 function getSimilarItems(result: Partial<AnalysisResult> | null | undefined): SimilarImageResult[] {
@@ -1057,25 +1083,19 @@ async function fetchSimilarImagesByImage(imageUrl: string) {
   setSimilarImages([]);
 
   try {
-    const response = await fetch("/api/google-lens", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ imageUrl }),
-    });
+    const { ok, data } = await safePostJson("/api/google-lens", { imageUrl });
+    const record = data && typeof data === "object" ? (data as Record<string, unknown>) : {};
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data?.error || "Google Lens search failed.");
+    if (!ok) {
+      setSimilarImages([]);
+      return;
     }
 
     setSimilarImages(
-      Array.isArray(data.items) ? filterExternalSimilarImages(data.items) : [],
+      Array.isArray(record.items) ? filterExternalSimilarImages(record.items as SimilarImageResult[]) : [],
     );
-  } catch (error) {
-    console.error("Google Lens similar images failed:", error);
+  } catch {
+    console.warn("Google Lens similar images skipped.");
     setSimilarImages([]);
   } finally {
     setIsLoadingSimilar(false);
@@ -1164,20 +1184,19 @@ async function handleAnalyze() {
       try {
         const lensResults = await Promise.all(
           uploadedImageUrls.slice(0, 4).map(async (imageUrl, imageIndex) => {
-            const lensResponse = await fetch("/api/google-lens", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ imageUrl }),
+            const { ok, data: lensData } = await safePostJson("/api/google-lens", {
+              imageUrl,
             });
-            const lensData = await lensResponse.json();
+            const lensRecord =
+              lensData && typeof lensData === "object"
+                ? (lensData as Record<string, unknown>)
+                : {};
 
-            if (!lensResponse.ok || !Array.isArray(lensData.items)) {
+            if (!ok || !Array.isArray(lensRecord.items)) {
               return [];
             }
 
-            return filterExternalSimilarImages(lensData.items).map((item) => ({
+            return filterExternalSimilarImages(lensRecord.items as SimilarImageResult[]).map((item) => ({
               ...item,
               source: item.source
                 ? `${item.source} · image ${imageIndex + 1}`
@@ -1190,7 +1209,7 @@ async function handleAnalyze() {
             .map((itemsForImage) => itemsForImage[rank])
             .filter(Boolean) as SimilarImageResult[],
         );
-        const items = mergeSimilarImages([], interleavedLensItems).slice(0, 16);
+        const items = mergeSimilarImages([], interleavedLensItems).slice(0, 24);
 
         if (items.length > 0) {
           googleLensItems = items;
@@ -1209,8 +1228,8 @@ async function handleAnalyze() {
             })
             .join("\n");
         }
-      } catch (error) {
-        console.error("Google Lens market context failed:", error);
+      } catch {
+        console.warn("Google Lens market context skipped.");
         setSimilarImages([]);
       } finally {
         setIsLoadingSimilar(false);
@@ -1219,19 +1238,18 @@ async function handleAnalyze() {
 
     // 3) House of Antiques internal comparables
     try {
-      const houseResponse = await fetch("/api/house-comparables", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const { ok: houseOk, data: houseRawData } = await safePostJson(
+        "/api/house-comparables",
+        {
           query: prompt,
-        }),
-      });
+        },
+      );
+      const houseData =
+        houseRawData && typeof houseRawData === "object"
+          ? (houseRawData as Record<string, unknown>)
+          : {};
 
-      const houseData = await houseResponse.json();
-
-      if (houseResponse.ok && Array.isArray(houseData.items)) {
+      if (houseOk && Array.isArray(houseData.items)) {
         const matches = (houseData.items as HouseOfAntiquesMatch[]).filter(
           isUsableHouseMatch,
         );
@@ -1241,7 +1259,11 @@ async function handleAnalyze() {
           matches,
           contextText:
             matches.length > 0
-              ? houseData.contextText || houseData.storeContext || ""
+              ? typeof houseData.contextText === "string"
+                ? houseData.contextText
+                : typeof houseData.storeContext === "string"
+                  ? houseData.storeContext
+                  : ""
               : "",
         };
 
@@ -1273,8 +1295,8 @@ async function handleAnalyze() {
           })
           .join("\n");
       }
-    } catch (error) {
-      console.error("House of Antiques comparables failed:", error);
+    } catch {
+      console.warn("House of Antiques comparables skipped.");
     }
 
     // 4) Build combined market context
@@ -1319,12 +1341,9 @@ async function handleAnalyze() {
  });
 
   try {
-    const refinedHouseResponse = await fetch("/api/house-comparables", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    const { ok: refinedHouseOk, data: refinedHouseRawData } = await safePostJson(
+      "/api/house-comparables",
+      {
         query: [
           prompt,
           analyzedResult.title,
@@ -1340,12 +1359,14 @@ async function handleAnalyze() {
         material: analyzedResult.material,
         origin: analyzedResult.origin,
         description: analyzedResult.history || analyzedResult.description,
-      }),
-    });
+      },
+    );
+    const refinedHouseData =
+      refinedHouseRawData && typeof refinedHouseRawData === "object"
+        ? (refinedHouseRawData as Record<string, unknown>)
+        : {};
 
-    const refinedHouseData = await refinedHouseResponse.json();
-
-    if (refinedHouseResponse.ok && Array.isArray(refinedHouseData.items)) {
+    if (refinedHouseOk && Array.isArray(refinedHouseData.items)) {
       const matches = (refinedHouseData.items as HouseOfAntiquesMatch[]).filter(
         isUsableHouseMatch,
       );
@@ -1356,7 +1377,11 @@ async function handleAnalyze() {
         matches,
         contextText:
           matches.length > 0
-            ? refinedHouseData.contextText || refinedHouseData.storeContext || ""
+            ? typeof refinedHouseData.contextText === "string"
+              ? refinedHouseData.contextText
+              : typeof refinedHouseData.storeContext === "string"
+                ? refinedHouseData.storeContext
+                : ""
             : "",
       };
 
@@ -1366,8 +1391,8 @@ async function handleAnalyze() {
         setSimilarImages(mergeSimilarImages(houseSimilarImages, googleLensItems));
       }
     }
-  } catch (error) {
-    console.error("Refined House of Antiques comparables failed:", error);
+  } catch {
+    console.warn("Refined House of Antiques comparables skipped.");
   }
 
 let finalResult = normalizeResult({
@@ -1404,11 +1429,11 @@ if (locale !== "ar") {
 const finalHouseSimilarImages = buildHouseSimilarImages(
   houseStoreContext?.matches || [],
 );
-const finalExternalSimilarImages = filterExternalSimilarImages(
-  getSimilarItems(finalResult).length
-    ? getSimilarItems(finalResult)
-    : googleLensItems,
-);
+const resultSimilarItems = getSimilarItems(finalResult);
+const resultExternalSimilarImages = filterExternalSimilarImages(resultSimilarItems);
+const finalExternalSimilarImages = resultExternalSimilarImages.length
+  ? resultExternalSimilarImages
+  : googleLensItems;
 const finalSimilarImages = mergeSimilarImages(
   finalHouseSimilarImages,
   finalExternalSimilarImages,

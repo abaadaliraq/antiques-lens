@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       : [];
 
     const items: GoogleLensItem[] = visualMatches
-      .slice(0, 16)
+      .slice(0, 32)
       .map((item) => {
         const priceObject =
           item.price && typeof item.price === "object"

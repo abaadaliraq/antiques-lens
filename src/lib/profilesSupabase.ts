@@ -101,75 +101,87 @@ export function isProfileComplete(profile: UserProfile | null) {
 }
 
 export async function getCurrentUserProfile() {
-  const supabase = getSupabaseBrowserClient();
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const { data: userData, error: userError } = await supabase.auth.getUser();
 
-  if (userError || !userData.user) {
+    if (userError || !userData.user) {
+      return { user: null, profile: null, complete: false };
+    }
+
+    const { data, error } = await (supabase as unknown as SupabaseProfilesClient)
+      .from("profiles")
+      .select(
+        "id,email,full_name,avatar_url,phone,country,city,province,provider,created_at,updated_at",
+      )
+      .eq("id", userData.user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    const profile = profileFromUnknown(data);
+
+    return {
+      user: userData.user,
+      profile,
+      complete: isProfileComplete(profile),
+    };
+  } catch {
+    console.warn("[KISHIB profile] Profile load skipped after network error.");
     return { user: null, profile: null, complete: false };
   }
-
-  const { data, error } = await (supabase as unknown as SupabaseProfilesClient)
-    .from("profiles")
-    .select(
-      "id,email,full_name,avatar_url,phone,country,city,province,provider,created_at,updated_at",
-    )
-    .eq("id", userData.user.id)
-    .maybeSingle();
-
-  if (error) throw error;
-
-  return {
-    user: userData.user,
-    profile: profileFromUnknown(data),
-    complete: isProfileComplete(profileFromUnknown(data)),
-  };
 }
 
 export async function ensureCurrentUserProfile() {
-  const supabase = getSupabaseBrowserClient();
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const { data: userData, error: userError } = await supabase.auth.getUser();
 
-  if (userError || !userData.user) {
+    if (userError || !userData.user) {
+      return { user: null, profile: null, complete: false };
+    }
+
+    const user = userData.user;
+    const metadata = user.user_metadata ?? {};
+    const existing = await getCurrentUserProfile();
+
+    if (existing.profile) return existing;
+
+    const baseProfile = {
+      id: user.id,
+      email: user.email ?? null,
+      full_name:
+        readText(metadata, ["full_name", "name", "display_name"]) || null,
+      avatar_url: readText(metadata, ["avatar_url", "picture", "photo_url"]) || null,
+      phone: readText(metadata, ["phone", "phone_number", "mobile"]) || null,
+      country: readText(metadata, ["country", "country_name"]) || null,
+      city: readText(metadata, ["city"]) || null,
+      province: readText(metadata, ["province", "governorate"]) || null,
+      provider: getProvider(user) || null,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await (supabase as unknown as SupabaseProfilesClient)
+      .from("profiles")
+      .upsert(baseProfile, { onConflict: "id" })
+      .select(
+        "id,email,full_name,avatar_url,phone,country,city,province,provider,created_at,updated_at",
+      )
+      .single();
+
+    if (error) throw error;
+
+    const profile = profileFromUnknown(data);
+
+    return {
+      user,
+      profile,
+      complete: isProfileComplete(profile),
+    };
+  } catch {
+    console.warn("[KISHIB profile] Profile ensure skipped after network error.");
     return { user: null, profile: null, complete: false };
   }
-
-  const user = userData.user;
-  const metadata = user.user_metadata ?? {};
-  const existing = await getCurrentUserProfile();
-
-  if (existing.profile) return existing;
-
-  const baseProfile = {
-    id: user.id,
-    email: user.email ?? null,
-    full_name:
-      readText(metadata, ["full_name", "name", "display_name"]) || null,
-    avatar_url: readText(metadata, ["avatar_url", "picture", "photo_url"]) || null,
-    phone: readText(metadata, ["phone", "phone_number", "mobile"]) || null,
-    country: readText(metadata, ["country", "country_name"]) || null,
-    city: readText(metadata, ["city"]) || null,
-    province: readText(metadata, ["province", "governorate"]) || null,
-    provider: getProvider(user) || null,
-    updated_at: new Date().toISOString(),
-  };
-
-  const { data, error } = await (supabase as unknown as SupabaseProfilesClient)
-    .from("profiles")
-    .upsert(baseProfile, { onConflict: "id" })
-    .select(
-      "id,email,full_name,avatar_url,phone,country,city,province,provider,created_at,updated_at",
-    )
-    .single();
-
-  if (error) throw error;
-
-  const profile = profileFromUnknown(data);
-
-  return {
-    user,
-    profile,
-    complete: isProfileComplete(profile),
-  };
 }
 
 export async function updateCurrentUserProfile(input: RequiredProfileInput) {
