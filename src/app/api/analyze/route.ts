@@ -1085,6 +1085,11 @@ Visitor provided:
 MULTI-IMAGE INSPECTION RULE:
 You must inspect every provided image. Treat side images, back images, marks, signatures, stamps, hallmarks, labels, inscriptions, serials, and close-up details as essential evidence. Never say that no mark/stamp/extra image was provided if one appears in any uploaded image.
 Use all images together when identifying the item, checking condition, reading marks/signatures, and estimating value.
+All uploaded images should be treated as views of the same item unless the visitor clearly says otherwise.
+Do not base the entire appraisal only on image 1.
+If image 1 is a close-up mark/stamp/signature and another image shows the full object, identify and value the full object using the close-up as supporting evidence.
+If image 1 shows the full object and later images show hallmarks/stamps/signatures/damage, incorporate those later details into the valuation and confidence.
+For visual comparables, prioritize the full object over isolated marks, stamps, signatures, labels, or damage close-ups.
 
 ${objectTypeGuidance}
 
@@ -2456,13 +2461,15 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
       );
     }
 
+    const visionImageCount = images.length > 0 ? images.length : uploadedImageUrls.length;
+
     let promptText = isFollowUpUpdate && followUpContext
       ? buildCompactFollowUpPrompt({
           locale,
           followUpClaim,
           followUpContext,
           hasImage,
-          imageCount: images.length + uploadedImageUrls.length,
+          imageCount: visionImageCount,
           preciousMetalMarketContext,
           brandContext,
         })
@@ -2476,7 +2483,7 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
           weight,
           hasMark,
           hasImage,
-          imageCount: images.length + uploadedImageUrls.length,
+          imageCount: visionImageCount,
           marketContext,
           marketReferencesText,
           preciousMetalMarketContext,
@@ -2493,7 +2500,7 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
         followUpClaim: cleanText(followUpClaim, 600),
         followUpContext,
         hasImage,
-        imageCount: images.length + uploadedImageUrls.length,
+        imageCount: visionImageCount,
         preciousMetalMarketContext: cleanText(preciousMetalMarketContext, 900),
         brandContext: cleanText(brandContext, 500),
       });
@@ -2503,7 +2510,7 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
       isFollowUpUpdate &&
       JSON.stringify({
         text: promptText,
-        imageCount: images.length + uploadedImageUrls.length,
+        imageCount: visionImageCount,
       }).length > FOLLOW_UP_PROMPT_MAX_CHARS
     ) {
       return NextResponse.json(
@@ -2527,9 +2534,18 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
     ];
     const geminiImages: GeminiImageInput[] = [];
 
-    for (const file of images.slice(0, 6)) {
+    const totalVisionImages =
+      images.length > 0
+        ? images.slice(0, 6).length
+        : uploadedImageUrls.slice(0, 6).length;
+
+    for (const [index, file] of images.slice(0, 6).entries()) {
       const dataUrl = await fileToDataUrl(file);
 
+      inputContent.push({
+        type: "input_text",
+        text: `Uploaded image ${index + 1} of ${totalVisionImages}. Inspect it as one view/detail of the same item. If this is a stamp, hallmark, signature, back, side, damage, or material close-up, use it as supporting evidence for the full-object appraisal, not as a separate object.`,
+      });
       inputContent.push({
         type: "input_image",
         image_url: dataUrl,
@@ -2538,7 +2554,13 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
       geminiImages.push({ dataUrl });
     }
 
-    for (const imageUrl of uploadedImageUrls.slice(0, Math.max(0, 6 - images.length))) {
+    const imageUrlsForVision = images.length > 0 ? [] : uploadedImageUrls.slice(0, 6);
+
+    for (const [index, imageUrl] of imageUrlsForVision.entries()) {
+      inputContent.push({
+        type: "input_text",
+        text: `Uploaded image ${index + 1} of ${totalVisionImages}. Inspect it as one view/detail of the same item. Use marks, stamps, signatures, labels, backs, and close-ups as evidence for the main object.`,
+      });
       inputContent.push({
         type: "input_image",
         image_url: imageUrl,

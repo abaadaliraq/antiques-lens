@@ -39,7 +39,7 @@ export const content = {
     followUp: "السؤال التالي",
     confidence: "درجة الثقة",
     share: "مشاركة",
-    addInfo: "أضف معلومات",
+    addInfo: "جلسة تقييم ذكية",
     notice: "التقييم استرشادي ولا يعتبر شهادة أصالة أو تسعيراً نهائياً.",
   },
 
@@ -81,7 +81,7 @@ export const content = {
     followUp: "Next question",
     confidence: "Confidence",
     share: "Share",
-    addInfo: "Add info",
+    addInfo: "Smart evaluation session",
     notice: "This is an indicative evaluation, not an authenticity certificate or final appraisal.",
   },
 

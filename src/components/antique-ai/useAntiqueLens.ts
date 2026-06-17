@@ -570,9 +570,11 @@ const [translatedResults, setTranslatedResults] = useState<
 const [isTranslatingResult, setIsTranslatingResult] = useState(false);
 const [isAnalyzing, setIsAnalyzing] = useState(false);
 const [error, setError] = useState("");
+const [selectedArchiveItemId, setSelectedArchiveItemId] = useState<string | null>(null);
 
 const followUp = useFollowUpEvaluation({
   result,
+  itemId: selectedArchiveItemId,
   locale,
   setResult,
   setError,
@@ -584,7 +586,6 @@ const followUp = useFollowUpEvaluation({
 
 const [historyOpen, setHistoryOpen] = useState(false);
 const [history, setHistory] = useState<ArchiveItem[]>([]);
-const [selectedArchiveItemId, setSelectedArchiveItemId] = useState<string | null>(null);
 
   const t = useMemo(() => content[locale], [locale]);
 
@@ -832,7 +833,7 @@ async function changeLocale(nextLocale: Locale) {
   }
 
   function handleAddInfoInside() {
-    if (!result || followUp.followUpUsed) {
+    if (!result) {
       followUp.handleAddInfo();
       return;
     }
@@ -1104,10 +1105,6 @@ async function handleAnalyze() {
       formData.append("images", file);
     });
 
-    if (optimizedFiles[0]) {
-      formData.append("image", optimizedFiles[0]);
-    }
-
     formData.append("notes", prompt);
     formData.append("locale", locale);
 
@@ -1159,24 +1156,43 @@ async function handleAnalyze() {
       formData.append("uploadedImageUrl", uploadedImageUrl);
     }
 
-    // 2) Google Lens visual matches
-    if (uploadedImageUrl) {
+    // 2) Google Lens visual matches. Search several uploaded views because
+    // detail shots such as stamps/signatures should support, not replace, the main object.
+    if (uploadedImageUrls.length > 0) {
       setIsLoadingSimilar(true);
 
       try {
-        const lensResponse = await fetch("/api/google-lens", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ imageUrl: uploadedImageUrl }),
-        });
+        const lensResults = await Promise.all(
+          uploadedImageUrls.slice(0, 4).map(async (imageUrl, imageIndex) => {
+            const lensResponse = await fetch("/api/google-lens", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ imageUrl }),
+            });
+            const lensData = await lensResponse.json();
 
-        const lensData = await lensResponse.json();
+            if (!lensResponse.ok || !Array.isArray(lensData.items)) {
+              return [];
+            }
 
-        if (lensResponse.ok && Array.isArray(lensData.items)) {
-          const items = filterExternalSimilarImages(lensData.items).slice(0, 16);
+            return filterExternalSimilarImages(lensData.items).map((item) => ({
+              ...item,
+              source: item.source
+                ? `${item.source} · image ${imageIndex + 1}`
+                : `Google Lens · image ${imageIndex + 1}`,
+            }));
+          }),
+        );
+        const interleavedLensItems = Array.from({ length: 8 }).flatMap((_, rank) =>
+          lensResults
+            .map((itemsForImage) => itemsForImage[rank])
+            .filter(Boolean) as SimilarImageResult[],
+        );
+        const items = mergeSimilarImages([], interleavedLensItems).slice(0, 16);
 
+        if (items.length > 0) {
           googleLensItems = items;
           setSimilarImages(items);
 
@@ -1264,7 +1280,7 @@ async function handleAnalyze() {
     // 4) Build combined market context
     const combinedMarketContext = [
       googleLensContext
-        ? `Google Lens visual matches:\n${googleLensContext}`
+        ? `Google Lens visual matches from all uploaded views. Results from mark/stamp/signature close-ups are supporting clues only and must not override the full-object appraisal:\n${googleLensContext}`
         : "",
       houseContext &&
       houseStoreContext?.confidence === "exact" &&
@@ -1507,6 +1523,7 @@ console.info("[KISHIB archive] Prepared history item before save", {
 });
 
 await saveHistory(archiveItem);
+setSelectedArchiveItemId(archiveItem.id);
 await saveEvaluationToSupabase({
   archiveItem,
   locale,

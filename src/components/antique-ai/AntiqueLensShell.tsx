@@ -515,7 +515,7 @@ export default function AntiqueLensShell() {
   const isSimilarLoading =
     Boolean(lens.isLoadingSimilar) && safeSimilarImages.length === 0;
   const canUseFollowUp = Boolean(
-    lens.result && !lens.followUpOpen && !lens.followUpUsed,
+    lens.result && !lens.followUpOpen,
   );
   const copy = homeCopy(lens.locale);
   const latestItems = lens.history;
@@ -534,18 +534,23 @@ export default function AntiqueLensShell() {
   }
 
   const followUpPanel =
-    lens.followUpOpen && !lens.followUpUsed ? (
+    lens.followUpOpen ? (
       <FollowUpEvaluationPanel
         locale={lens.locale}
         error={lens.error}
         followUpText={lens.followUpText}
         followUpPreviews={lens.followUpPreviews}
         isFollowUpAnalyzing={lens.isFollowUpAnalyzing}
+        isReadingFollowUpImage={lens.isReadingFollowUpImage}
+        chatMessages={lens.chatMessages}
+        chatUsedTurns={lens.chatUsedTurns}
+        chatMaxTurns={lens.chatMaxTurns}
         setFollowUpText={lens.setFollowUpText}
-        setFollowUpOpen={lens.setFollowUpOpen}
         handleFollowUpImageChange={lens.handleFollowUpImageChange}
         removeFollowUpImageAt={lens.removeFollowUpImageAt}
         handleFollowUpAnalyze={lens.handleFollowUpAnalyze}
+        handleFinalSummary={lens.handleFinalSummary}
+        handleSuggestionClick={lens.handleSuggestionClick}
       />
     ) : null;
 

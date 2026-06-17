@@ -610,7 +610,6 @@ export default function AntiqueReportDocument({
 
   const period = result.timePeriod || result.period;
   const value = result.estimatedValue || result.priceRange;
-  const history = result.history || result.description;
   const reportImages = [
     imageUrl,
     ...imageUrls,
@@ -618,12 +617,19 @@ export default function AntiqueReportDocument({
     typeof src === "string" && src.trim().length > 0 && list.indexOf(src) === index,
   );
   const primaryImage = reportImages[0];
-  const secondaryImages = reportImages.slice(1, 7);
   const cleanTitle = cleanReportText(result.title) || "KISHIB Evaluation";
-  const disclaimerText = compactReportText(
-    result.disclaimer || getDefaultDisclaimer(locale),
-    165,
+  const priceReason = compactReportText(
+    result.priceReasoning || result.description || result.history || value || "",
+    260,
   );
+  const valueDrivers = (result.valueDrivers || [])
+    .map((item) => compactReportText(item, 105))
+    .filter(Boolean)
+    .slice(0, 4);
+  const valueReducers = (result.valueReducers || [])
+    .map((item) => compactReportText(item, 105))
+    .filter(Boolean)
+    .slice(0, 4);
 
   return (
     <article
@@ -636,10 +642,10 @@ export default function AntiqueReportDocument({
       ].join(" ")}
     >
       <div className={variant === "print" ? "" : "space-y-6"}>
-        <ReportPage pageNumber="1 / 2" labels={labels}>
-          <header className="mb-5 flex items-start justify-between gap-5 border-b border-[#dfcfb7] pb-4">
+        <ReportPage pageNumber="1 / 1" labels={labels}>
+          <header className="mb-4 flex items-start justify-between gap-5 border-b border-[#dfcfb7] pb-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-[18px] bg-[#1f1711] text-[16px] font-black text-[#f5d8a7]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-[#1f1711] text-[15px] font-black text-[#f5d8a7]">
                 K
               </div>
 
@@ -647,12 +653,9 @@ export default function AntiqueReportDocument({
                 <p className="text-[9px] font-black uppercase tracking-[0.22em] text-[#9a7441]">
                   {labels.preliminary}
                 </p>
-                <h1 className="mt-1 text-[24px] font-black leading-tight tracking-tight text-[#1c1713]">
-                  {labels.report}
+                <h1 className="mt-1 text-[22px] font-black leading-tight tracking-tight text-[#1c1713]">
+                  KISHIB Report
                 </h1>
-                <p className="mt-1 text-[10.5px] font-semibold text-[#745f4b]">
-                  {labels.subtitle}
-                </p>
               </div>
             </div>
 
@@ -670,20 +673,16 @@ export default function AntiqueReportDocument({
             </div>
           </header>
 
-          <section className="mb-5 text-center">
-            <h2 className="mx-auto max-w-[670px] break-words text-[23px] font-black leading-[1.28] text-[#1e1712]">
+          <section className="mb-4 text-center">
+            <h2 className="mx-auto max-w-[670px] break-words text-[24px] font-black leading-[1.25] text-[#1e1712]">
               {cleanTitle}
             </h2>
           </section>
 
-          <section className="report-main-grid mb-4 grid grid-cols-[275px_1fr] gap-4">
-            <div className="rounded-[18px] border border-[#dfcfb7] bg-[#efe3d2] p-3">
-              <p className="mb-2 text-[8.5px] font-black uppercase tracking-[0.18em] text-[#9a7441]">
-                {labels.objectImage}
-              </p>
-
+          <section className="report-main-grid mb-4 grid grid-cols-[315px_1fr] gap-4">
+            <div className="rounded-[16px] border border-[#dfcfb7] bg-[#efe3d2] p-3">
               {primaryImage ? (
-                <div className="flex h-[300px] items-center justify-center rounded-[14px] bg-[#1f1711] p-2">
+                <div className="flex h-[330px] items-center justify-center rounded-[12px] bg-[#1f1711] p-2">
                   <img
                     src={primaryImage}
                     alt={cleanTitle || labels.objectImage}
@@ -691,86 +690,32 @@ export default function AntiqueReportDocument({
                   />
                 </div>
               ) : (
-                <div className="flex h-[300px] items-center justify-center rounded-[14px] bg-[#d8c5a8] text-[11px] font-bold text-[#735b42]">
+                <div className="flex h-[330px] items-center justify-center rounded-[12px] bg-[#d8c5a8] text-[11px] font-bold text-[#735b42]">
                   {labels.noImage}
                 </div>
               )}
-
-              {secondaryImages.length > 0 ? (
-                <div className="mt-2 grid grid-cols-4 gap-1.5">
-                  {secondaryImages.map((src, index) => (
-                    <div
-                      key={`${src}-${index}`}
-                      className="flex aspect-square items-center justify-center overflow-hidden rounded-[9px] border border-[#d8c5a8] bg-[#fff8ed]"
-                    >
-                      <img
-                        src={src}
-                        alt={`${cleanTitle} ${index + 2}`}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                  ))}
-                </div>
-              ) : null}
             </div>
 
             <div className="grid content-start gap-3">
-              <TextBox title={labels.identification} body={result.lookup || history} compact />
               <InfoBlock label={labels.value} value={value} strong />
-              <TextBox title={labels.priceReasoning} body={result.priceReasoning} compact />
+
+              <div className="grid grid-cols-2 gap-3">
+                <InfoBlock label={labels.period} value={compactReportText(period || "", 95)} />
+                <InfoBlock label={labels.material} value={compactReportText(result.material || "", 95)} />
+                <InfoBlock label={labels.condition} value={compactReportText(result.condition || "", 120)} />
+                <InfoBlock label={labels.authenticity} value={compactReportText(result.authenticity || "", 120)} />
+              </div>
             </div>
-          </section>
-
-          <TextBox title={labels.historicalContext} body={history} compact />
-        </ReportPage>
-
-        <ReportPage pageNumber="2 / 2" labels={labels}>
-          <header className="mb-5 flex items-center justify-between border-b border-[#dfcfb7] pb-4">
-            <div className="min-w-0">
-              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-[#9a7441]">
-                {labels.report}
-              </p>
-              <h2 className="mt-1 max-w-[640px] break-words text-[21px] font-black leading-[1.25] text-[#1c1713]">
-                {cleanTitle}
-              </h2>
-            </div>
-
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] bg-[#1f1711] text-[14px] font-black text-[#f5d8a7]">
-              K
-            </div>
-          </header>
-
-          <section className="mb-4">
-            <div className="grid grid-cols-2 gap-3">
-              <InfoBlock label={labels.period} value={period} />
-              <InfoBlock label={labels.origin} value={result.origin} />
-              <InfoBlock label={labels.material} value={result.material} />
-              <InfoBlock label={labels.style} value={result.style} />
-            </div>
-          </section>
-
-          <section className="report-two-grid mb-4 grid grid-cols-2 gap-3">
-            <TextBox title={labels.condition} body={result.condition} compact />
-            <TextBox title={labels.authenticity} body={result.authenticity} compact />
           </section>
 
           <section className="mb-4">
-            <MarkReportSection locale={locale} mark={result.markAnalysis} />
+            <TextBox title={labels.priceReasoning} body={priceReason} compact />
           </section>
 
           <section className="report-two-grid mb-4 grid grid-cols-2 gap-3">
-            <ListSection title={labels.valueDrivers} items={result.valueDrivers} />
-            <ListSection title={labels.valueReducers} items={result.valueReducers} />
+            <ListSection title={labels.valueDrivers} items={valueDrivers} />
+            <ListSection title={labels.valueReducers} items={valueReducers} />
           </section>
-
-          <footer className="absolute bottom-[34px] left-0 right-0 border-t border-[#dfcfb7] pt-3 text-center">
-            <p className="mb-1 text-[8px] font-black uppercase tracking-[0.16em] text-[#a1763e]">
-              {labels.disclaimerTitle}
-            </p>
-            <p className="mx-auto max-w-[620px] break-words text-[8.5px] font-medium leading-[1.45] text-[#6f5b47]">
-              {disclaimerText}
-            </p>
-          </footer>
         </ReportPage>
       </div>
 

@@ -30,7 +30,7 @@ type CreateShareImageArgs = {
 };
 
 const REPORT_WIDTH = 1200;
-const REPORT_HEIGHT = 2000;
+const REPORT_HEIGHT = 1600;
 const DETAIL_REPORT_HEIGHT = 2000;
 const PADDING = 64;
 
@@ -42,21 +42,21 @@ function isRtlLocale(locale: Locale) {
 }
 
 function safeText(value?: string | number | null) {
-  if (value === undefined || value === null) return "—";
+  if (value === undefined || value === null) return "-";
   const text = String(value).trim();
-  return text.length ? text : "—";
+  return text.length ? text : "-";
 }
 
 function trimText(value?: string | number | null, max = 280) {
   const clean = safeText(value);
   if (clean.length <= max) return clean;
-  return `${clean.slice(0, max).replace(/[،,.؛:\s]+$/, "")}…`;
+  return `${clean.slice(0, max).replace(/[,.;:\s]+$/, "")}...`;
 }
 
 function compactText(value?: string | number | null, max = 900) {
   const clean = safeText(value).replace(/\s+/g, " ").trim();
   if (clean.length <= max) return clean;
-  return `${clean.slice(0, max).replace(/[ØŒ,.Ø›:\s]+$/, "")}...`;
+  return `${clean.slice(0, max).replace(/[,.;:\s]+$/, "")}...`;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -126,6 +126,43 @@ function drawCoverImage(
   ctx.restore();
 }
 
+function drawContainImage(
+  ctx: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) {
+  const imageRatio = image.width / image.height;
+  const boxRatio = width / height;
+
+  let drawWidth = width;
+  let drawHeight = height;
+
+  if (imageRatio > boxRatio) {
+    drawWidth = width;
+    drawHeight = width / imageRatio;
+  } else {
+    drawHeight = height;
+    drawWidth = height * imageRatio;
+  }
+
+  const offsetX = (width - drawWidth) / 2;
+  const offsetY = (height - drawHeight) / 2;
+
+  ctx.save();
+  roundedRect(ctx, x, y, width, height, radius);
+  ctx.clip();
+
+  ctx.fillStyle = "#211711";
+  ctx.fillRect(x, y, width, height);
+  ctx.drawImage(image, x + offsetX, y + offsetY, drawWidth, drawHeight);
+
+  ctx.restore();
+}
+
 function drawWrappedText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -163,8 +200,8 @@ function drawWrappedText(
   if (false && lines.length >= maxLines && finalLines.length) {
     const lastIndex = finalLines.length - 1;
     finalLines[lastIndex] = `${finalLines[lastIndex]
-      .replace(/[،,.؛:\s]+$/, "")
-      .slice(0, 80)}…`;
+      .replace(/[,.;:\s]+$/, "")
+      .slice(0, 80)}...`;
   }
 
   ctx.textAlign = rtl ? "right" : "left";
@@ -401,114 +438,66 @@ export async function createShareImage({
   }
 
   ctx.direction = rtl ? "rtl" : "ltr";
-
-  /*
-    Background
-  */
   ctx.fillStyle = "#f3eadf";
   ctx.fillRect(0, 0, REPORT_WIDTH, REPORT_HEIGHT);
 
-  /*
-    Main paper
-  */
-  roundedRect(ctx, 34, 34, REPORT_WIDTH - 68, REPORT_HEIGHT - 68, 42);
+  roundedRect(ctx, 54, 54, REPORT_WIDTH - 108, REPORT_HEIGHT - 108, 34);
   ctx.fillStyle = "#fffaf4";
   ctx.fill();
-
   ctx.strokeStyle = "#e4d4bd";
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  /*
-    Header
-  */
-  const logoX = rtl ? PADDING : REPORT_WIDTH - PADDING - 92;
+  const contentX = PADDING;
+  const contentW = REPORT_WIDTH - PADDING * 2;
   const titleX = rtl ? REPORT_WIDTH - PADDING : PADDING;
 
-  roundedRect(ctx, logoX, 78, 92, 92, 27);
-  ctx.fillStyle = "#211711";
-  ctx.fill();
-
-  ctx.fillStyle = "#d8a25d";
-  ctx.font = `700 34px ${FONT}`;
-  ctx.textAlign = "center";
-  ctx.fillText("AL", logoX + 46, 135);
-
   ctx.textAlign = rtl ? "right" : "left";
+  ctx.fillStyle = "#9a7447";
+  ctx.font = `700 25px ${FONT}`;
+  ctx.fillText("KISHIB Report", titleX, 118);
 
   ctx.fillStyle = "#130f0b";
   ctx.font = `700 48px ${FONT}`;
-  ctx.fillText("Antique Lens", titleX, 108);
-
-  ctx.fillStyle = "#9a7447";
-  ctx.font = `500 23px ${FONT}`;
-  ctx.fillText("AI Antique Evaluation Report", titleX, 145);
-
-  /*
-    Item title
-  */
-  ctx.fillStyle = "#211711";
-  ctx.font = `600 43px ${FONT}`;
-
   const titleEndY = drawWrappedText(
     ctx,
-    safeText(result.title),
+    trimText(result.title || labels.result, 120),
     titleX,
-    235,
-    REPORT_WIDTH - PADDING * 2,
-    56,
+    184,
+    contentW,
+    58,
     2,
     rtl,
   );
 
-  /*
-    Main layout
-  */
-  const topY = titleEndY + 48;
-  const imageX = PADDING;
+  const topY = titleEndY + 38;
+  const imageX = contentX;
   const imageY = topY;
-  const imageW = 475;
-  const imageH = 520;
-
-  const infoX = imageX + imageW + 58;
-  const infoY = imageY + 4;
+  const imageW = 470;
+  const imageH = 430;
+  const infoX = imageX + imageW + 46;
   const infoW = REPORT_WIDTH - PADDING - infoX;
 
   if (imagePreview) {
     try {
       const uploadedImage = await loadImage(imagePreview);
-      drawCoverImage(ctx, uploadedImage, imageX, imageY, imageW, imageH, 32);
+      drawContainImage(ctx, uploadedImage, imageX, imageY, imageW, imageH, 26);
     } catch {
-      roundedRect(ctx, imageX, imageY, imageW, imageH, 32);
+      roundedRect(ctx, imageX, imageY, imageW, imageH, 26);
       ctx.fillStyle = "#efe7da";
       ctx.fill();
-
-      ctx.fillStyle = "#8a6a45";
-      ctx.font = `500 28px ${FONT}`;
-      ctx.textAlign = "center";
-      ctx.fillText("Image unavailable", imageX + imageW / 2, imageY + imageH / 2);
     }
   } else {
-    roundedRect(ctx, imageX, imageY, imageW, imageH, 32);
+    roundedRect(ctx, imageX, imageY, imageW, imageH, 26);
     ctx.fillStyle = "#efe7da";
     ctx.fill();
-
-    ctx.fillStyle = "#8a6a45";
-    ctx.font = `500 28px ${FONT}`;
-    ctx.textAlign = "center";
-    ctx.fillText("No image", imageX + imageW / 2, imageY + imageH / 2);
   }
 
-  /*
-    Details column
-    ملاحظة: ألغينا نسبة الثقة نهائياً.
-  */
-  let cursorY = infoY;
-
+  let cursorY = imageY + 6;
   cursorY = drawInfoItem({
     ctx,
-    label: labels.lookup,
-    value: trimText(result.itemType || result.title || result.lookup, 95),
+    label: labels.value,
+    value: trimText(result.estimatedValue || result.priceRange, 120),
     x: infoX,
     y: cursorY,
     width: infoW,
@@ -529,48 +518,24 @@ export async function createShareImage({
 
   cursorY = drawInfoItem({
     ctx,
-    label: labels.origin,
-    value: trimText(result.origin, 85),
-    x: infoX,
-    y: cursorY,
-    width: infoW,
-    rtl,
-    maxLines: 2,
-  });
-
-  cursorY = drawInfoItem({
-    ctx,
-    label: labels.value,
-    value: trimText(result.estimatedValue || result.priceRange, 110),
-    x: infoX,
-    y: cursorY,
-    width: infoW,
-    rtl,
-    maxLines: 2,
-  });
-
-  /*
-    Three clean cards under image/details
-  */
-  const statsY = imageY + imageH + 42;
-  const gap = 22;
-  const statW = (REPORT_WIDTH - PADDING * 2 - gap * 2) / 3;
-
-  drawMiniStat({
-    ctx,
     label: labels.material,
-    value: trimText(result.material, 70),
-    x: PADDING,
-    y: statsY,
-    width: statW,
+    value: trimText(result.material, 95),
+    x: infoX,
+    y: cursorY,
+    width: infoW,
     rtl,
+    maxLines: 2,
   });
+
+  const statsY = imageY + imageH + 34;
+  const gap = 22;
+  const statW = (contentW - gap * 1) / 2;
 
   drawMiniStat({
     ctx,
     label: labels.condition,
-    value: trimText(result.condition, 70),
-    x: PADDING + statW + gap,
+    value: trimText(result.condition, 85),
+    x: contentX,
     y: statsY,
     width: statW,
     rtl,
@@ -579,237 +544,71 @@ export async function createShareImage({
   drawMiniStat({
     ctx,
     label: labels.authenticity,
-    value: trimText(result.authenticity, 70),
-    x: PADDING + (statW + gap) * 2,
+    value: trimText(result.authenticity, 85),
+    x: contentX + statW + gap,
     y: statsY,
     width: statW,
     rtl,
   });
 
-  /*
-    First page is only a visual summary. Full paragraphs are on page 2.
-  */
-  const descY = statsY + 140;
-
+  const reasonY = statsY + 138;
   drawSectionCard({
     ctx,
-    title: labels.description,
+    title: labels.priceReason,
     body: trimText(
-      result.lookup || result.history || result.description,
-      1100,
+      result.priceReasoning || result.description || result.history || result.estimatedValue,
+      360,
     ),
-    x: PADDING,
-    y: descY,
-    width: REPORT_WIDTH - PADDING * 2,
-    height: 370,
+    x: contentX,
+    y: reasonY,
+    width: contentW,
+    height: 210,
     rtl,
-    maxLines: 8,
+    maxLines: 4,
   });
 
+  const listY = reasonY + 246;
+  const halfW = (contentW - gap) / 2;
+  const drivers = (result.valueDrivers || [])
+    .slice(0, 4)
+    .map((item) => `- ${trimText(item, 80)}`)
+    .join(" ");
+  const reducers = (result.valueReducers || [])
+    .slice(0, 4)
+    .map((item) => `- ${trimText(item, 80)}`)
+    .join(" ");
+
   drawSectionCard({
     ctx,
-    title: labels.value,
-    body: trimText(
-      result.estimatedValue || result.priceRange || result.priceReasoning,
-      720,
-    ),
-    x: PADDING,
-    y: descY + 410,
-    width: REPORT_WIDTH - PADDING * 2,
-    height: 210,
+    title: labels.valueDrivers,
+    body: drivers || "-",
+    x: contentX,
+    y: listY,
+    width: halfW,
+    height: 245,
     rtl,
     maxLines: 5,
   });
 
-  /*
-    Notice card - fixed position, not overlapping
-  */
-  const noticeY = descY + 660;
-
-  roundedRect(ctx, PADDING, noticeY, REPORT_WIDTH - PADDING * 2, 128, 30);
-  ctx.fillStyle = "#211711";
-  ctx.fill();
-
-  const noticeTextX = rtl
-    ? REPORT_WIDTH - PADDING - 34
-    : PADDING + 34;
-
-  ctx.textAlign = rtl ? "right" : "left";
-
-  ctx.fillStyle = "#d8a25d";
-  ctx.font = `600 23px ${FONT}`;
-  ctx.fillText(labels.notice, noticeTextX, noticeY + 44);
-
-  ctx.fillStyle = "#f7ead8";
-  ctx.font = `400 22px ${FONT}`;
-
-  drawWrappedText(
+  drawSectionCard({
     ctx,
-    trimText(result.disclaimer || result.confidenceNote, 180),
-    noticeTextX,
-    noticeY + 82,
-    REPORT_WIDTH - PADDING * 2 - 68,
-    31,
-    2,
+    title: labels.valueReducers,
+    body: reducers || "-",
+    x: contentX + halfW + gap,
+    y: listY,
+    width: halfW,
+    height: 245,
     rtl,
-  );
+    maxLines: 5,
+  });
 
-  /*
-    Footer
-  */
   ctx.textAlign = "center";
   ctx.fillStyle = "#9a7447";
   ctx.font = `500 20px ${FONT}`;
-  ctx.fillText(
-    "Generated by KISHIB",
-    REPORT_WIDTH / 2,
-    REPORT_HEIGHT - 76,
-  );
+  ctx.fillText("Generated by KISHIB", REPORT_WIDTH / 2, REPORT_HEIGHT - 86);
 
-  const firstBlob = await canvasToBlob(canvas);
-
-  files.push(new File([firstBlob], `kishib-report-page-1-${timestamp}.png`, {
-    type: "image/png",
-    lastModified: timestamp,
-  }));
-
-  const secondCanvas = document.createElement("canvas");
-  secondCanvas.width = REPORT_WIDTH;
-  secondCanvas.height = DETAIL_REPORT_HEIGHT;
-
-  const secondCtx = secondCanvas.getContext("2d");
-
-  if (!secondCtx) {
-    throw new Error("Canvas is not supported");
-  }
-
-  secondCtx.direction = rtl ? "rtl" : "ltr";
-  secondCtx.fillStyle = "#f3eadf";
-  secondCtx.fillRect(0, 0, REPORT_WIDTH, DETAIL_REPORT_HEIGHT);
-
-  roundedRect(secondCtx, 34, 34, REPORT_WIDTH - 68, DETAIL_REPORT_HEIGHT - 68, 42);
-  secondCtx.fillStyle = "#fffaf4";
-  secondCtx.fill();
-
-  secondCtx.strokeStyle = "#e4d4bd";
-  secondCtx.lineWidth = 2;
-  secondCtx.stroke();
-
-  const pageTwoTitleX = rtl ? REPORT_WIDTH - PADDING : PADDING;
-  secondCtx.textAlign = rtl ? "right" : "left";
-
-  secondCtx.fillStyle = "#9a7447";
-  secondCtx.font = `600 24px ${FONT}`;
-  secondCtx.fillText("KISHIB", pageTwoTitleX, 96);
-
-  secondCtx.fillStyle = "#130f0b";
-  secondCtx.font = `700 42px ${FONT}`;
-  const pageTwoHeaderEnd = drawWrappedText(
-    secondCtx,
-    safeText(result.title),
-    pageTwoTitleX,
-    148,
-    REPORT_WIDTH - PADDING * 2,
-    52,
-    2,
-    rtl,
-  );
-
-  secondCtx.strokeStyle = "#dfc9ab";
-  secondCtx.lineWidth = 2;
-  secondCtx.beginPath();
-  secondCtx.moveTo(PADDING, pageTwoHeaderEnd + 22);
-  secondCtx.lineTo(REPORT_WIDTH - PADDING, pageTwoHeaderEnd + 22);
-  secondCtx.stroke();
-
-  const sectionWidth = REPORT_WIDTH - PADDING * 2;
-  let pageTwoY = pageTwoHeaderEnd + 68;
-
-  pageTwoY = drawPlainSection({
-    ctx: secondCtx,
-    title: labels.description,
-    body: compactText(result.history || result.description || result.lookup, 1050),
-    x: PADDING,
-    y: pageTwoY,
-    width: sectionWidth,
-    rtl,
-    maxLines: 7,
-  });
-
-  pageTwoY = drawPlainSection({
-    ctx: secondCtx,
-    title: labels.priceReason,
-    body: compactText(result.priceReasoning || result.estimatedValue, 980),
-    x: PADDING,
-    y: pageTwoY,
-    width: sectionWidth,
-    rtl,
-    maxLines: 7,
-  });
-
-  const halfGap = 30;
-  const halfWidth = (sectionWidth - halfGap) / 2;
-
-  drawPlainSection({
-    ctx: secondCtx,
-    title: labels.valueDrivers,
-    body: compactText((result.valueDrivers || []).join("\n"), 540),
-    x: PADDING,
-    y: pageTwoY,
-    width: halfWidth,
-    rtl,
-    maxLines: 6,
-    bodySize: 23,
-    lineHeight: 34,
-  });
-
-  drawPlainSection({
-    ctx: secondCtx,
-    title: labels.valueReducers,
-    body: compactText((result.valueReducers || []).join("\n"), 540),
-    x: PADDING + halfWidth + halfGap,
-    y: pageTwoY,
-    width: halfWidth,
-    rtl,
-    maxLines: 6,
-    bodySize: 23,
-    lineHeight: 34,
-  });
-
-  const pageTwoNoticeY = DETAIL_REPORT_HEIGHT - 250;
-  roundedRect(secondCtx, PADDING, pageTwoNoticeY, sectionWidth, 130, 30);
-  secondCtx.fillStyle = "#211711";
-  secondCtx.fill();
-
-  const pageTwoNoticeTextX = rtl
-    ? REPORT_WIDTH - PADDING - 34
-    : PADDING + 34;
-
-  secondCtx.textAlign = rtl ? "right" : "left";
-  secondCtx.fillStyle = "#d8a25d";
-  secondCtx.font = `600 23px ${FONT}`;
-  secondCtx.fillText(labels.notice, pageTwoNoticeTextX, pageTwoNoticeY + 44);
-
-  secondCtx.fillStyle = "#f7ead8";
-  secondCtx.font = `400 22px ${FONT}`;
-  drawWrappedText(
-    secondCtx,
-    compactText(result.disclaimer || result.confidenceNote, 260),
-    pageTwoNoticeTextX,
-    pageTwoNoticeY + 82,
-    sectionWidth - 68,
-    31,
-    2,
-    rtl,
-  );
-
-  secondCtx.textAlign = "center";
-  secondCtx.fillStyle = "#9a7447";
-  secondCtx.font = `500 20px ${FONT}`;
-  secondCtx.fillText("Generated by KISHIB", REPORT_WIDTH / 2, DETAIL_REPORT_HEIGHT - 76);
-
-  const secondBlob = await canvasToBlob(secondCanvas);
-  files.push(new File([secondBlob], `kishib-report-page-2-${timestamp}.png`, {
+  const blob = await canvasToBlob(canvas);
+  files.push(new File([blob], `kishib-report-${timestamp}.png`, {
     type: "image/png",
     lastModified: timestamp,
   }));

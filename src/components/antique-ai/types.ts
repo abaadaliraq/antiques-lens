@@ -89,6 +89,24 @@ export type AnalysisResult = {
   };
 };
 
+export type AntiqueChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  imageUrls?: string[];
+  createdAt: string;
+  isFinalSummary?: boolean;
+};
+
+export type AntiqueChatSession = {
+  itemId: string;
+  originalAnalysis: AnalysisResult;
+  currentResult: AnalysisResult;
+  messages: AntiqueChatMessage[];
+  usedTurns: number;
+  updatedAt: string;
+};
+
 export type MarkAnalysis = {
   hasMark: boolean;
   markType:
