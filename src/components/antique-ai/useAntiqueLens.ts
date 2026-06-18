@@ -16,6 +16,12 @@ import {
   mergeEvaluationArchiveItems,
   saveEvaluationToSupabase,
 } from "@/lib/evaluationsSupabase";
+import {
+  canUserAnalyze,
+  DEFAULT_USAGE_LIMIT_STATUS,
+  incrementAnalysisUsage,
+  type UsageLimitStatus,
+} from "@/lib/usageLimitsSupabase";
 
 import {
   addArchiveItemWithStatus,
@@ -109,6 +115,22 @@ function getUsefulShareUrl() {
   } catch {
     return "";
   }
+}
+
+function getUsageMessage(locale: Locale, key: "auth" | "limit" | "checkFailed") {
+  if (locale === "en") {
+    if (key === "auth") return "Please sign in first to start an evaluation.";
+    if (key === "checkFailed") {
+      return "We could not verify your free usage limit. Please try again.";
+    }
+    return "Your free evaluations are finished. Please subscribe to continue.";
+  }
+
+  if (key === "auth") return "يرجى تسجيل الدخول أولًا لبدء التقييم.";
+  if (key === "checkFailed") {
+    return "تعذر التحقق من محاولاتك المجانية. حاول مرة أخرى.";
+  }
+  return "انتهت محاولاتك المجانية. يرجى الاشتراك لمتابعة التحليل.";
 }
 
 function isCanceledShare(error: unknown) {
@@ -597,6 +619,11 @@ const [isTranslatingResult, setIsTranslatingResult] = useState(false);
 const [isAnalyzing, setIsAnalyzing] = useState(false);
 const [error, setError] = useState("");
 const [selectedArchiveItemId, setSelectedArchiveItemId] = useState<string | null>(null);
+const [usageStatus, setUsageStatus] = useState<UsageLimitStatus>(
+  DEFAULT_USAGE_LIMIT_STATUS,
+);
+const [isUsageLoading, setIsUsageLoading] = useState(false);
+const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
 
 const followUp = useFollowUpEvaluation({
   result,
@@ -613,7 +640,27 @@ const followUp = useFollowUpEvaluation({
 const [historyOpen, setHistoryOpen] = useState(false);
 const [history, setHistory] = useState<ArchiveItem[]>([]);
 
-  const t = useMemo(() => content[locale], [locale]);
+const t = useMemo(() => content[locale], [locale]);
+
+async function refreshUsageStatus() {
+  setIsUsageLoading(true);
+
+  try {
+    const nextStatus = await canUserAnalyze();
+    setUsageStatus(nextStatus);
+    return nextStatus;
+  } finally {
+    setIsUsageLoading(false);
+  }
+}
+
+function openSubscriptionModal() {
+  setIsSubscriptionModalOpen(true);
+}
+
+function closeSubscriptionModal() {
+  setIsSubscriptionModalOpen(false);
+}
 
   function setAppScreen(screen: AppScreen) {
     currentScreenRef.current = screen;
@@ -684,6 +731,7 @@ setIsLoadingSimilar(false);
         supabaseCount: supabaseArchiveItems.length,
       });
       setHistory(archiveItems);
+      void refreshUsageStatus();
     }, 0);
 
     return () => window.clearTimeout(timer);
@@ -1108,6 +1156,24 @@ async function handleAnalyze() {
     return;
   }
 
+  const currentUsageStatus = await refreshUsageStatus();
+
+  if (!currentUsageStatus.canAnalyze) {
+    if (currentUsageStatus.reason === "auth_required") {
+      setError(getUsageMessage(locale, "auth"));
+      return;
+    }
+
+    if (currentUsageStatus.reason === "usage_check_failed") {
+      setError(getUsageMessage(locale, "checkFailed"));
+      return;
+    }
+
+    setError(getUsageMessage(locale, "limit"));
+    openSubscriptionModal();
+    return;
+  }
+
   setIsAnalyzing(true);
   setError("");
   setResult(null);
@@ -1463,6 +1529,9 @@ if (uploadedImageUrl) {
   });
 }
 
+const usageAfterSuccessfulAnalysis = await incrementAnalysisUsage();
+setUsageStatus(usageAfterSuccessfulAnalysis);
+
 setSimilarImages(finalSimilarImages);
 setResult(finalResult);
 setSelectedArchiveItemId(null);
@@ -1691,6 +1760,12 @@ error,
   handleShare,
   similarImages,
   isLoadingSimilar,
+  usageStatus,
+  isUsageLoading,
+  refreshUsageStatus,
+  isSubscriptionModalOpen,
+  openSubscriptionModal,
+  closeSubscriptionModal,
   openHistoryItem,
   clearHistory,
   deleteHistoryItem,

@@ -38,6 +38,18 @@ type Props = {
   removeImageAt?: (index: number) => void;
   handleAnalyze: () => void;
   isAnalyzing: boolean;
+  usageStatus?: {
+    canAnalyze: boolean;
+    remainingCredits: number;
+    usedCount: number;
+    freeLimit: number;
+    subscriptionStatus: string;
+    accessType?: string;
+    isLifetimeFree?: boolean;
+    reason: string;
+  };
+  isUsageLoading?: boolean;
+  onOpenSubscription?: () => void;
 };
 
 function normalizeLocale(locale?: string): AppLocale {
@@ -70,6 +82,10 @@ function copy(locale: AppLocale): Record<string, string> {
       clear: "مسح الكل",
       main: "الرئيسية",
       ready: "صورة جاهزة للتحليل",
+      credits: "المحاولات المجانية المتبقية",
+      oneLeft: "تبقت لديك محاولة مجانية واحدة فقط",
+      subscribeAnalyze: "اشترك لتفعيل التحليل",
+      of: "من",
     },
     en: {
       uploadBox: "Upload or take a photo",
@@ -78,6 +94,10 @@ function copy(locale: AppLocale): Record<string, string> {
       clear: "Clear all",
       main: "Main",
       ready: "Photo ready for analysis",
+      credits: "Free evaluations remaining",
+      oneLeft: "You have one free evaluation left",
+      subscribeAnalyze: "Subscribe to enable analysis",
+      of: "of",
     },
     fr: {
       uploadBox: "Ajouter ou prendre une photo",
@@ -188,7 +208,9 @@ function copy(locale: AppLocale): Record<string, string> {
     },
   };
 
-  return { ...text[locale], ...pickerText[locale] };
+  const usageFallback = locale === "ar" ? text.ar : text.en;
+
+  return { ...usageFallback, ...text[locale], ...pickerText[locale] };
 }
 
 export default function EvaluationComposer({
@@ -208,6 +230,9 @@ export default function EvaluationComposer({
   removeImageAt,
   handleAnalyze,
   isAnalyzing,
+  usageStatus,
+  isUsageLoading = false,
+  onOpenSubscription,
 }: Props) {
   const safeLocale = normalizeLocale(locale);
   const isLight = theme === "light";
@@ -223,6 +248,21 @@ export default function EvaluationComposer({
   const files =
     selectedFiles.length > 0 ? selectedFiles : selectedFile ? [selectedFile] : [];
   const canAnalyze = Boolean(prompt.trim() || previews.length > 0);
+  const hasUsageStatus = Boolean(usageStatus);
+  const isLimitReached =
+    hasUsageStatus &&
+    usageStatus?.canAnalyze === false &&
+    usageStatus.reason !== "auth_required" &&
+    usageStatus.reason !== "usage_check_failed";
+  const remainingCredits = usageStatus?.remainingCredits ?? 0;
+  const freeLimit = usageStatus?.freeLimit ?? 5;
+  const shouldShowUsage =
+    hasUsageStatus &&
+    usageStatus?.subscriptionStatus !== "active" &&
+    usageStatus?.subscriptionStatus !== "lifetime_free" &&
+    usageStatus?.accessType !== "admin" &&
+    usageStatus?.accessType !== "lifetime_free" &&
+    usageStatus?.isLifetimeFree !== true;
 
   function handleRemoveAt(index: number) {
     if (removeImageAt) {
@@ -234,6 +274,11 @@ export default function EvaluationComposer({
   }
 
   function handleSmartAnalyze() {
+    if (isLimitReached) {
+      onOpenSubscription?.();
+      return;
+    }
+
     const gemstoneContext = buildGemstoneContext(gemstoneData);
 
     if (gemstoneContext) {
@@ -398,10 +443,26 @@ export default function EvaluationComposer({
           />
         </div>
 
+        {shouldShowUsage ? (
+          <div className="mt-3 rounded-[14px] border border-[#d2b98f] bg-[#efe3cf]/62 px-3 py-2">
+            <div className="flex items-center justify-between gap-3 text-[12px] font-semibold text-[#735f4b]">
+              <span>{t.credits}</span>
+              <span dir="ltr" className="font-bold text-[#986f2e]">
+                {remainingCredits} {t.of} {freeLimit}
+              </span>
+            </div>
+            {remainingCredits === 1 && !isLimitReached ? (
+              <p className="mt-1 text-[11px] font-semibold text-[#8b3a2b]">
+                {t.oneLeft}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         <button
           type="button"
           onClick={handleSmartAnalyze}
-          disabled={isAnalyzing || !canAnalyze}
+          disabled={isAnalyzing || isUsageLoading || !canAnalyze}
           className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-[#b88a3d] px-5 text-sm font-semibold text-[#fff4e2] shadow-[0_12px_28px_rgba(62,39,22,0.14)] transition hover:bg-[#986f2e] disabled:cursor-not-allowed disabled:opacity-45"
         >
           {isAnalyzing ? (
@@ -412,7 +473,7 @@ export default function EvaluationComposer({
           ) : (
             <>
               <Send className="h-4 w-4" />
-              {t.start}
+              {isLimitReached ? t.subscribeAnalyze : t.start}
             </>
           )}
         </button>

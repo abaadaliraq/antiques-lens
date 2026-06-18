@@ -13,6 +13,7 @@ import FollowUpEvaluationPanel from "@/components/antique-ai/FollowUpEvaluationP
 import KishibLoader from "@/components/antique-ai/KishibLoader";
 import PlatformNewsTicker from "@/components/antique-ai/PlatformNewsTicker";
 import ResultView from "@/components/antique-ai/ResultView";
+import SubscriptionModal from "@/components/antique-ai/SubscriptionModal";
 import ThinkingMotion from "@/components/antique-ai/ThinkingMotion";
 import UserMenu from "@/components/antique-ai/UserMenu";
 import {
@@ -305,6 +306,7 @@ export default function AntiqueLensShell() {
           setHasSession(sessionIsActive);
           if (sessionIsActive) {
             void refreshProfile();
+            void lens.refreshUsageStatus();
           } else {
             setProfile(null);
             setProfileComplete(false);
@@ -339,6 +341,7 @@ export default function AntiqueLensShell() {
           setHasSession(sessionIsActive);
           if (sessionIsActive) {
             void refreshProfile();
+            void lens.refreshUsageStatus();
           } else {
             setProfile(null);
             setProfileComplete(false);
@@ -680,6 +683,9 @@ export default function AntiqueLensShell() {
                     removeImageAt={lens.removeImageAt}
                     handleAnalyze={lens.handleAnalyze}
                     isAnalyzing={lens.isAnalyzing}
+                    usageStatus={lens.usageStatus}
+                    isUsageLoading={lens.isUsageLoading}
+                    onOpenSubscription={lens.openSubscriptionModal}
                   />
                 </div>
               </section>
@@ -757,6 +763,12 @@ export default function AntiqueLensShell() {
     onShare={lens.handleShare}
   />
 </div>
+
+        <SubscriptionModal
+          open={lens.isSubscriptionModalOpen}
+          locale={lens.locale}
+          onClose={lens.closeSubscriptionModal}
+        />
 
         <CookieBar />
       </div>

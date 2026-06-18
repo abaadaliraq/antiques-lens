@@ -63,6 +63,7 @@ export async function POST(request: Request) {
 
     await Promise.all([
       deleteRows(supabase, "evaluations", "user_id", userId),
+      deleteRows(supabase, "user_usage_limits", "user_id", userId),
       deleteRows(supabase, "profiles", "id", userId),
     ]);
 
