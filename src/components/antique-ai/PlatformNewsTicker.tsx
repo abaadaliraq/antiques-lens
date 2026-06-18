@@ -4,47 +4,61 @@ import type { Locale } from "./types";
 
 const NEWS_ITEMS: Record<Locale, string[]> = {
   ar: [
-    "KISHIB يعتمد على بورصة الذهب والفضة عند وجود ختم حقيقي على القطعة.",
-    "قريباً: تواصل مباشر مع خبير تقييم للقطع الثمينة.",
-    "قريباً: KISHIB يقرأ الرقم التسلسلي للفاتورة لتقييم أقوى.",
+    "بورصة المعادن متوفرة الآن داخل KISHIB لمتابعة أسعار الذهب والفضة والنحاس والبلاتين.",
+    "قريباً: تقارير خاصة للمزاد وتقارير مخصصة للبيع لعرض القطع بطريقة أكثر احترافية.",
+    "بعد التقييم، يمكنك إضافة معلومات أكثر عن القطعة من خلال محادثة ذكية لتحسين دقة التقرير.",
+    "KISHIB يستعرض صوراً مشابهة لقطعتك من متاجر ومصادر حول العالم لتطلع على نماذج قريبة منها.",
   ],
+
   en: [
-    "KISHIB can rely on gold and silver market rates when a genuine hallmark is present.",
-    "Coming soon: direct contact with a valuation expert for valuable items.",
-    "Coming soon: KISHIB can read invoice serial numbers for stronger evaluations.",
+    "Metal market rates are now available in KISHIB for gold, silver, copper, and platinum.",
+    "Coming soon: dedicated auction reports and selling reports to present items more professionally.",
+    "After the evaluation, you can add more details about your item through a smart chat to improve the report accuracy.",
+    "KISHIB displays similar images of your item from stores and sources around the world so you can explore close matches.",
   ],
+
   ku: [
-    "KISHIB دەتوانێت پشت بە نرخی بازاڕی زێڕ و زیو ببەستێت کاتێک مۆری ڕاستەقینە لەسەر پارچەکە هەبێت.",
-    "بەم نزیکانە: پەیوەندی ڕاستەوخۆ لەگەڵ پسپۆڕی نرخاندن بۆ پارچە گرانبەهاکان.",
-    "بەم نزیکانە: KISHIB ژمارەی زنجیرەیی فاکتورە دەخوێنێتەوە بۆ نرخاندنێکی بەهێزتر.",
+    "نرخی بازاڕی کانزاکان ئێستا لە KISHIB بەردەستە بۆ زێڕ، زیو، مس و پلاتین.",
+    "بەم نزیکانە: ڕاپۆرتی تایبەت بە مزاد و ڕاپۆرتی تایبەت بە فرۆشتن بۆ پیشاندانی پارچەکان بە شێوەیەکی پیشەیی‌تر.",
+    "دوای نرخاندن، دەتوانیت زانیاری زیاتر دەربارەی پارچەکە زیاد بکەیت لە ڕێگەی چاتی زیرەک بۆ باشترکردنی وردیی ڕاپۆرتەکە.",
+    "KISHIB وێنەی هاوشێوەی پارچەکەت لە فرۆشگا و سەرچاوەکانی جیهان پیشان دەدات بۆ ئەوەی نموونە نزیکەکان ببینیت.",
   ],
+
   fr: [
-    "KISHIB peut s'appuyer sur les cours de l'or et de l'argent lorsqu'un poinçon authentique est présent.",
-    "Bientôt : contact direct avec un expert en évaluation pour les pièces précieuses.",
-    "Bientôt : KISHIB pourra lire les numéros de série des factures pour des évaluations plus solides.",
+    "Les cours des métaux sont désormais disponibles dans KISHIB pour l’or, l’argent, le cuivre et le platine.",
+    "Bientôt : des rapports dédiés aux ventes aux enchères et à la vente pour présenter les pièces de manière plus professionnelle.",
+    "Après l’évaluation, vous pouvez ajouter plus d’informations sur votre pièce grâce à une discussion intelligente afin d’améliorer la précision du rapport.",
+    "KISHIB affiche des images similaires à votre pièce provenant de boutiques et de sources du monde entier pour consulter des modèles proches.",
   ],
+
   hi: [
-    "KISHIB can use gold and silver rates when a genuine hallmark is present.",
-    "Coming soon: direct contact with a valuation expert for valuable items.",
-    "Coming soon: KISHIB can read invoice serial numbers for stronger evaluations.",
+    "KISHIB में अब सोना, चांदी, तांबा और प्लेटिनम के मेटल मार्केट रेट उपलब्ध हैं.",
+    "जल्द आ रहा है: नीलामी रिपोर्ट और बिक्री रिपोर्ट, ताकि वस्तुओं को अधिक पेशेवर तरीके से प्रस्तुत किया जा सके.",
+    "मूल्यांकन के बाद, आप स्मार्ट चैट के माध्यम से अपनी वस्तु के बारे में अधिक जानकारी जोड़ सकते हैं ताकि रिपोर्ट की सटीकता बेहतर हो.",
+    "KISHIB आपकी वस्तु से मिलती-जुलती तस्वीरें दुनिया भर के स्टोर्स और स्रोतों से दिखाता है ताकि आप समान उदाहरण देख सकें.",
   ],
+
   fa: [
-    "KISHIB در صورت وجود نشان اصالت واقعی می‌تواند بر اساس نرخ بازار طلا و نقره ارزیابی کند.",
-    "به‌زودی: ارتباط مستقیم با کارشناس ارزیابی برای اشیای ارزشمند.",
-    "به‌زودی: KISHIB شماره سریال فاکتور را برای ارزیابی دقیق‌تر می‌خواند.",
+    "نرخ بازار فلزات اکنون در KISHIB برای طلا، نقره، مس و پلاتین در دسترس است.",
+    "به‌زودی: گزارش‌های اختصاصی مزایده و گزارش‌های فروش برای ارائه حرفه‌ای‌تر اشیا.",
+    "پس از ارزیابی، می‌توانید از طریق گفت‌وگوی هوشمند اطلاعات بیشتری درباره شیء اضافه کنید تا دقت گزارش بهتر شود.",
+    "KISHIB تصاویر مشابه شیء شما را از فروشگاه‌ها و منابع سراسر جهان نمایش می‌دهد تا نمونه‌های نزدیک را بررسی کنید.",
   ],
+
   ru: [
-    "KISHIB может учитывать рыночные цены золота и серебра при наличии подлинного клейма.",
-    "Скоро: прямой контакт с экспертом по оценке ценных предметов.",
-    "Скоро: KISHIB сможет считывать серийный номер счета для более точной оценки.",
+    "В KISHIB теперь доступны рыночные котировки металлов: золота, серебра, меди и платины.",
+    "Скоро: специальные отчёты для аукционов и продажи, чтобы представлять предметы более профессионально.",
+    "После оценки вы можете добавить больше информации о предмете через умный чат, чтобы повысить точность отчёта.",
+    "KISHIB показывает похожие изображения вашего предмета из магазинов и источников по всему миру, чтобы вы могли изучить близкие варианты.",
   ],
+
   tr: [
-    "KISHIB, gerçek bir damga bulunduğunda altın ve gümüş piyasa fiyatlarına dayanabilir.",
-    "Yakında: değerli parçalar için değerlendirme uzmanıyla doğrudan iletişim.",
-    "Yakında: KISHIB daha güçlü değerlendirme için fatura seri numarasını okuyabilecek.",
+    "KISHIB’de altın, gümüş, bakır ve platin için metal piyasa fiyatları artık mevcut.",
+    "Yakında: parçaları daha profesyonel sunmak için özel açık artırma raporları ve satış raporları.",
+    "Değerlendirmeden sonra, rapor doğruluğunu artırmak için akıllı sohbet üzerinden parça hakkında daha fazla bilgi ekleyebilirsiniz.",
+    "KISHIB, parçanıza benzer görselleri dünyanın farklı mağaza ve kaynaklarından göstererek yakın örnekleri incelemenizi sağlar.",
   ],
 };
-
 const RTL_LOCALES: Locale[] = ["ar", "ku", "fa"];
 
 const TICKER_LABEL: Record<Locale, string> = {

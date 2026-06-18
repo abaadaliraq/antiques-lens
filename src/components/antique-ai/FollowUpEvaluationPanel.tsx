@@ -129,49 +129,49 @@ export default function FollowUpEvaluationPanel({
   return (
     <section
       dir={direction}
-      className="rounded-[18px] border border-[#d2b98f] bg-[#fff8ec]/90 p-4 text-[#241912] shadow-[0_16px_44px_rgba(62,39,22,0.08)] backdrop-blur-2xl sm:p-5"
+      className="text-[#241912]"
     >
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="mb-2 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#986f2e]">
+      <div className="mb-2 flex items-start justify-between gap-3 px-3 sm:px-4">
+        <div className="min-w-0">
+          <p className="mb-1 inline-flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#986f2e]">
             <Sparkles className="h-3.5 w-3.5" />
             {t.title}
           </p>
-          <h2 className="text-[20px] font-semibold leading-7 tracking-[-0.03em] text-[#233f32]">
+          <h2 className="text-[18px] font-semibold leading-6 tracking-[-0.03em] text-[#233f32]">
             {t.altTitle}
           </h2>
-          <p className="mt-2 max-w-2xl text-[13px] font-normal leading-6 text-[#735f4b]">
+          <p className="mt-1 max-w-3xl text-[12px] font-normal leading-5 text-[#735f4b]">
             {t.hint}
           </p>
         </div>
 
-        <div className="shrink-0 rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/80 px-3 py-2 text-center text-[12px] font-semibold text-[#735f4b]">
+        <div className="shrink-0 rounded-full border border-[#d2b98f]/70 bg-[#fff4e2]/70 px-2.5 py-1 text-center text-[11px] font-semibold text-[#735f4b]">
           <span dir="ltr" className="block text-[#233f32]">
             {chatUsedTurns} / {chatMaxTurns}
           </span>
-          <span className="block text-[10px] font-medium text-[#986f2e]">
+          <span className="sr-only">
             {t.counter}
           </span>
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-2 flex gap-1.5 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden">
         {t.suggestions.map((suggestion) => (
           <button
             key={suggestion}
             type="button"
             onClick={() => onSuggestion(suggestion)}
             disabled={isFollowUpAnalyzing || (limitReached && suggestion !== t.final)}
-            className="min-h-9 rounded-[10px] border border-[#d2b98f] bg-[#fff4e2]/74 px-3 text-[12px] font-medium text-[#735f4b] transition hover:border-[#b88a3d] hover:text-[#6d241d] disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-7 shrink-0 rounded-full border border-[#d2b98f]/70 bg-[#fff8ec]/72 px-2.5 text-[11px] font-medium text-[#735f4b] transition hover:border-[#b88a3d] hover:bg-[#fff4e2] hover:text-[#6d241d] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {suggestion}
           </button>
         ))}
       </div>
 
-      <div className="max-h-[520px] min-h-[280px] space-y-4 overflow-y-auto rounded-[16px] border border-[#e1cfad] bg-[#f7eddb]/72 p-3 sm:p-4">
+      <div className="max-h-[60dvh] min-h-[330px] space-y-2.5 overflow-y-auto border-y border-[#e1cfad]/55 bg-[#f8efdf]/42 px-3 py-3 sm:min-h-[420px] sm:px-4">
         {chatMessages.length === 0 ? (
-          <p className="py-6 text-center text-[13px] text-[#8a7560]">{t.empty}</p>
+          <p className="py-6 text-center text-[12px] text-[#8a7560]">{t.empty}</p>
         ) : (
           chatMessages.map((message) => {
             const isUser = message.role === "user";
@@ -185,13 +185,13 @@ export default function FollowUpEvaluationPanel({
               >
                 <div
                   className={[
-                    "max-w-[82%] rounded-[18px] px-3.5 py-3 text-[13px] leading-6 shadow-sm sm:max-w-[74%]",
+                    "max-w-[86%] rounded-[16px] px-3 py-2.5 text-[12.5px] leading-6 shadow-[0_3px_12px_rgba(62,39,22,0.05)] sm:max-w-[72%]",
                     isUser
-                      ? "rounded-br-[6px] bg-[#233f32] text-[#fff8ec]"
-                      : "rounded-bl-[6px] border border-[#d2b98f] bg-[#fff8ec] text-[#4d3c2d]",
+                      ? "rounded-br-[5px] bg-[#214333] text-[#fff8ec]"
+                      : "rounded-bl-[5px] border border-[#d2b98f]/70 bg-[#fffaf3] text-[#4d3c2d]",
                   ].join(" ")}
                 >
-                  <p className="mb-1 text-[10px] font-semibold opacity-70">
+                  <p className="mb-0.5 text-[9.5px] font-semibold opacity-65">
                     {isUser ? t.you : t.expert}
                   </p>
                   {isUser && message.imageUrls?.length ? (
@@ -201,13 +201,13 @@ export default function FollowUpEvaluationPanel({
                   ) : null}
                   <p className="whitespace-pre-line">{message.text}</p>
                   {message.imageUrls?.length ? (
-                    <div className="mt-2 grid grid-cols-2 gap-2">
+                    <div className="mt-2 grid grid-cols-2 gap-1.5">
                       {message.imageUrls.map((src, index) => (
                         <img
                           key={`${message.id}-${index}`}
                           src={src}
                           alt=""
-                          className="aspect-square rounded-[10px] object-cover"
+                          className="aspect-square rounded-[9px] object-cover"
                         />
                       ))}
                     </div>
@@ -220,11 +220,11 @@ export default function FollowUpEvaluationPanel({
 
         {isFollowUpAnalyzing ? (
           <div className="flex justify-start">
-            <div className="max-w-[78%] rounded-[18px] rounded-bl-[6px] border border-[#d2b98f] bg-[#fff8ec] px-3.5 py-3 text-[13px] leading-6 text-[#4d3c2d] shadow-sm">
-              <p className="mb-1 text-[10px] font-semibold opacity-70">
+            <div className="inline-flex max-w-[82%] items-center gap-2 rounded-full border border-[#d2b98f]/65 bg-[#fffaf3]/92 px-3 py-1.5 text-[12px] leading-5 text-[#5d4938] shadow-[0_3px_12px_rgba(62,39,22,0.05)]">
+              <span className="text-[9.5px] font-semibold text-[#986f2e]">
                 {t.expert}
-              </p>
-              <div className="flex items-center gap-2">
+              </span>
+              <div className="flex items-center gap-1.5">
                 <span>
                   {isReadingFollowUpImage ? t.readingImage : t.typing}
                 </span>
@@ -242,11 +242,11 @@ export default function FollowUpEvaluationPanel({
       </div>
 
       {followUpPreviews.length > 0 && (
-        <div className="mt-3 grid grid-cols-4 gap-2">
+        <div className="mt-2 grid grid-cols-4 gap-1.5 px-3 sm:px-4">
           {followUpPreviews.map((src, index) => (
             <div
               key={`${src}-${index}`}
-              className="relative aspect-square overflow-hidden rounded-[12px] border border-[#d2b98f] bg-[#ead2c2]"
+              className="relative aspect-square overflow-hidden rounded-[10px] border border-[#d2b98f] bg-[#ead2c2]"
             >
               <img src={src} alt="" className="h-full w-full object-cover" />
               <button
@@ -263,13 +263,13 @@ export default function FollowUpEvaluationPanel({
       )}
 
       {error ? (
-        <p className="mt-3 text-[13px] font-medium leading-6 text-[#7b2f25]">
+        <p className="mt-2 px-3 text-[12px] font-medium leading-5 text-[#7b2f25] sm:px-4">
           {error}
         </p>
       ) : null}
 
       {limitReached ? (
-        <div className="mt-4 rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/80 p-3">
+        <div className="mx-3 mt-3 rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/80 p-3 sm:mx-4">
           <p className="mb-3 text-[13px] font-medium text-[#735f4b]">
             {t.locked}
           </p>
@@ -283,8 +283,8 @@ export default function FollowUpEvaluationPanel({
           </button>
         </div>
       ) : (
-        <div className="sticky bottom-0 mt-4 grid gap-2 rounded-[16px] border border-[#d2b98f] bg-[#fff8ec]/95 p-2 shadow-[0_-10px_30px_rgba(62,39,22,0.08)] backdrop-blur-xl sm:grid-cols-[auto_1fr_auto]">
-          <label className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-[12px] border border-dashed border-[#b58a45]/45 bg-[#fff4e2]/80 px-3 text-[12px] font-semibold text-[#735f4b] transition hover:border-[#b58a45] hover:text-[#6d241d]">
+        <div className="sticky bottom-0 mt-2 grid gap-1.5 border-t border-[#d2b98f]/55 bg-[#fff8ec]/92 px-3 py-2 backdrop-blur-xl sm:grid-cols-[auto_1fr_auto] sm:px-4">
+          <label className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-dashed border-[#b58a45]/45 bg-[#fff4e2]/72 px-3 text-[11px] font-semibold text-[#735f4b] transition hover:border-[#b58a45] hover:text-[#6d241d]">
             <ImagePlus className="h-4 w-4" />
             <span>{t.upload}</span>
             <input
@@ -302,14 +302,14 @@ export default function FollowUpEvaluationPanel({
             onChange={(event) => setFollowUpText(event.target.value)}
             placeholder={t.placeholder}
             disabled={disabled}
-            className="min-h-11 max-h-32 resize-none rounded-[12px] border border-[#d2b98f] bg-[#fff8ec] px-3 py-2 text-[13px] font-normal leading-6 text-[#241912] outline-none placeholder:text-[#8d7a65] focus:border-[#b58a45]/70 disabled:opacity-60"
+            className="min-h-10 max-h-28 resize-none rounded-[16px] border border-[#d2b98f]/80 bg-[#fffaf3] px-3 py-2 text-[12.5px] font-normal leading-5 text-[#241912] outline-none placeholder:text-[#8d7a65] focus:border-[#b58a45]/70 disabled:opacity-60"
           />
 
           <button
             type="button"
             onClick={handleFollowUpAnalyze}
             disabled={disabled}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[12px] bg-[#233f32] px-4 text-[13px] font-bold text-[#fff8ec] transition hover:bg-[#1f362c] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-[#233f32] px-3.5 text-[12px] font-bold text-[#fff8ec] transition hover:bg-[#1f362c] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <SendHorizontal className="h-4 w-4" />
             {isFollowUpAnalyzing ? t.sending : t.send}

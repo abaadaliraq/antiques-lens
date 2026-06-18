@@ -744,7 +744,7 @@ useEffect(() => {
         ) : null}
 
         {followUpPanel ? (
-          <section className="mt-3 border-y border-[#d2b98f] bg-[#fff4e2]/55 px-3 py-3 backdrop-blur-xl sm:px-5">
+          <section className="-mx-3 mt-3 border-y border-[#d2b98f]/45 bg-[#fff4e2]/28 py-2 backdrop-blur-md sm:-mx-5">
             <div className="compact-followup-panel">{followUpPanel}</div>
           </section>
         ) : null}
@@ -1253,8 +1253,6 @@ useEffect(() => {
         }
 
         .compact-followup-panel button {
-          min-height: 36px !important;
-          border-radius: 0.75rem !important;
           font-size: 12px !important;
           font-weight: 500 !important;
         }
@@ -1266,7 +1264,6 @@ useEffect(() => {
         }
 
         .compact-followup-panel textarea {
-          min-height: 88px !important;
           max-height: 150px !important;
         }
 

@@ -12,41 +12,101 @@ type Props = {
   onClose: () => void;
 };
 
+type Plan = {
+  id: "free" | "monthly" | "yearly";
+  name: string;
+  price: string;
+  period?: string;
+  description: string;
+  button: string;
+  badge?: string;
+  featured?: boolean;
+  features: string[];
+};
+
 const RTL_LOCALES: Locale[] = ["ar", "ku", "fa"];
 
 function getCopy(locale: Locale) {
   if (locale === "en") {
     return {
-      eyebrow: "Subscription",
-      title: "Activate KISHIB analysis",
+      eyebrow: "Pricing plans",
+      title: "Choose your KISHIB access",
       text:
-        "Online payment is being activated soon. You can currently contact the KISHIB team to activate your subscription manually.",
-      monthly: "Monthly Plan",
-      yearly: "Yearly Plan",
-      monthPrice: "$7 / month",
-      yearPrice: "$50 / year",
-      save: "Save $34",
-      action: "Contact to subscribe",
-      soon: "Online payment is coming soon.",
+        "Online payment is coming soon. Please contact KISHIB to activate your subscription manually.",
       close: "Close",
-      perks: ["Unlimited evaluations while active", "Saved reports", "Smart follow-up session"],
+      contactNote:
+        "Online payment is coming soon. Please contact KISHIB to activate your subscription manually.",
+      plans: [
+        {
+          id: "free",
+          name: "Free Trial",
+          price: "$0",
+          description: "5 free evaluations",
+          button: "Current Plan",
+          features: ["5 evaluations", "Saved reports", "Smart session preview"],
+        },
+        {
+          id: "monthly",
+          name: "Monthly",
+          price: "$7",
+          period: "/ month",
+          description: "Unlimited evaluations while active",
+          button: "Contact to Subscribe",
+          features: ["Unlimited evaluations", "Saved reports", "Smart follow-up session"],
+        },
+        {
+          id: "yearly",
+          name: "Yearly",
+          price: "$50",
+          period: "/ year",
+          description: "Best value for continuous use",
+          button: "Contact to Subscribe",
+          badge: "Save more",
+          featured: true,
+          features: ["Best yearly value", "Unlimited evaluations", "Priority manual activation"],
+        },
+      ] satisfies Plan[],
     };
   }
 
   return {
-    eyebrow: "الاشتراك",
-    title: "تفعيل تحليل KISHIB",
+    eyebrow: "خطط الاشتراك",
+    title: "اختر وصولك إلى KISHIB",
     text:
-      "الدفع الإلكتروني قيد التفعيل قريبًا. يمكنك حاليًا التواصل مع فريق KISHIB لتفعيل الاشتراك يدويًا.",
-    monthly: "Monthly Plan",
-    yearly: "Yearly Plan",
-    monthPrice: "7$ / month",
-    yearPrice: "50$ / year",
-    save: "وفر 34$",
-    action: "تواصل للاشتراك",
-    soon: "الدفع الإلكتروني قيد التفعيل قريبًا.",
+      "الدفع الإلكتروني قيد التفعيل قريبًا. يرجى التواصل مع KISHIB لتفعيل الاشتراك يدويًا.",
     close: "إغلاق",
-    perks: ["تحليلات غير محدودة أثناء الاشتراك", "حفظ التقارير", "جلسة تقييم ذكية"],
+    contactNote:
+      "الدفع الإلكتروني قيد التفعيل قريبًا. يرجى التواصل مع KISHIB لتفعيل الاشتراك يدويًا.",
+    plans: [
+      {
+        id: "free",
+        name: "Free Trial",
+        price: "0$",
+        description: "5 free evaluations",
+        button: "Current Plan",
+        features: ["5 تقييمات مجانية", "حفظ التقارير", "تجربة الجلسة الذكية"],
+      },
+      {
+        id: "monthly",
+        name: "Monthly",
+        price: "7$",
+        period: "/ month",
+        description: "Unlimited evaluations while active",
+        button: "تواصل للاشتراك",
+        features: ["تقييمات غير محدودة", "حفظ التقارير", "جلسة تقييم ذكية"],
+      },
+      {
+        id: "yearly",
+        name: "Yearly",
+        price: "50$",
+        period: "/ year",
+        description: "Best value for continuous use",
+        button: "تواصل للاشتراك",
+        badge: "Save more",
+        featured: true,
+        features: ["أفضل قيمة سنوية", "تقييمات غير محدودة", "تفعيل يدوي أولوية"],
+      },
+    ] satisfies Plan[],
   };
 }
 
@@ -56,35 +116,33 @@ export default function SubscriptionModal({ open, locale, onClose }: Props) {
   const copy = getCopy(locale);
   const dir = RTL_LOCALES.includes(locale) ? "rtl" : "ltr";
 
-  function contactTeam() {
+  function contactTeam(plan: Plan) {
+    if (plan.id === "free") return;
+
     window.open(KISHIB_SUBSCRIPTION_WHATSAPP_URL, "_blank", "noopener,noreferrer");
   }
 
   return (
     <div
       dir={dir}
-      className="fixed inset-0 z-[99999] grid place-items-center bg-[#241913]/45 px-4 py-6 backdrop-blur-sm"
+      className="fixed inset-0 z-[99999] grid place-items-center overflow-y-auto bg-[#241913]/42 px-3 py-5 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[430px] rounded-[22px] border border-[#d2b98f] bg-[#fff4e2] p-4 text-[#241913] shadow-[0_28px_90px_rgba(36,25,19,0.28)]"
+        className="w-full max-w-5xl rounded-[24px] border border-[#d2b98f]/80 bg-[#fff7ea] p-4 text-[#241913] shadow-[0_26px_80px_rgba(36,25,19,0.24)] sm:p-6"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="mb-4 flex items-start gap-3">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[15px] bg-[#241913] text-[#f5d8a7]">
-            <Crown className="h-5 w-5" />
-          </span>
-
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#986f2e]">
+        <div className="mb-5 flex items-start justify-between gap-4 text-center sm:mb-7">
+          <div className="mx-auto max-w-xl">
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#986f2e]">
               {copy.eyebrow}
             </p>
-            <h2 className="mt-1 text-[20px] font-bold leading-7 text-[#233f32]">
+            <h2 className="mt-2 text-[26px] font-black leading-8 tracking-[-0.04em] text-[#15110d] sm:text-[32px] sm:leading-10">
               {copy.title}
             </h2>
-            <p className="mt-2 text-[13px] leading-6 text-[#735f4b]">
+            <p className="mx-auto mt-2 max-w-lg text-[13px] leading-6 text-[#735f4b]">
               {copy.text}
             </p>
           </div>
@@ -93,83 +151,95 @@ export default function SubscriptionModal({ open, locale, onClose }: Props) {
             type="button"
             onClick={onClose}
             aria-label={copy.close}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[#d2b98f] text-[#735f4b] transition hover:bg-[#efe3cf]"
+            className="absolute end-4 top-4 grid h-9 w-9 place-items-center rounded-full border border-[#d2b98f] bg-[#fffaf3] text-[#735f4b] transition hover:bg-[#efe3cf]"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="grid gap-3">
-          <PlanCard
-            title={copy.monthly}
-            price={copy.monthPrice}
-            action={copy.action}
-            onAction={contactTeam}
-          />
-          <PlanCard
-            title={copy.yearly}
-            price={copy.yearPrice}
-            badge={copy.save}
-            action={copy.action}
-            onAction={contactTeam}
-          />
+        <div className="grid gap-3 md:grid-cols-3 md:gap-4">
+          {copy.plans.map((plan) => (
+            <PlanCard key={plan.id} plan={plan} onAction={() => contactTeam(plan)} />
+          ))}
         </div>
 
-        <div className="mt-4 rounded-[16px] border border-[#d2b98f] bg-[#efe3cf]/60 p-3">
-          <p className="text-[12px] font-semibold text-[#6d241d]">{copy.soon}</p>
-          <div className="mt-2 grid gap-1.5">
-            {copy.perks.map((perk) => (
-              <div
-                key={perk}
-                className="flex items-center gap-2 text-[12px] leading-5 text-[#735f4b]"
-              >
-                <Check className="h-3.5 w-3.5 shrink-0 text-[#986f2e]" />
-                <span>{perk}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <p className="mx-auto mt-5 max-w-2xl rounded-[14px] border border-[#d2b98f]/70 bg-[#efe3cf]/55 px-4 py-3 text-center text-[12px] font-semibold leading-5 text-[#6d241d]">
+          {copy.contactNote}
+        </p>
       </div>
     </div>
   );
 }
 
-function PlanCard({
-  title,
-  price,
-  badge,
-  action,
-  onAction,
-}: {
-  title: string;
-  price: string;
-  badge?: string;
-  action: string;
-  onAction: () => void;
-}) {
+function PlanCard({ plan, onAction }: { plan: Plan; onAction: () => void }) {
   return (
-    <div className="rounded-[18px] border border-[#d2b98f] bg-[#fffaf3] p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-[15px] font-bold text-[#241913]">{title}</h3>
-          <p className="mt-1 text-[18px] font-black text-[#986f2e]">{price}</p>
+    <article
+      className={[
+        "group relative rounded-[22px] border bg-[#fffdf8] p-3.5 shadow-[0_16px_38px_rgba(62,39,22,0.10)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_50px_rgba(62,39,22,0.14)] active:scale-[0.99]",
+        plan.featured
+          ? "border-[#b88a3d] ring-1 ring-[#b88a3d]/25"
+          : "border-[#e1cfad]",
+      ].join(" ")}
+    >
+      {plan.badge ? (
+        <span className="absolute end-4 top-4 rounded-full bg-[#233f32] px-2.5 py-1 text-[10px] font-black text-[#fff8ec]">
+          {plan.badge}
+        </span>
+      ) : null}
+
+      <div
+        className={[
+          "rounded-[17px] p-4",
+          plan.featured ? "bg-[#e4d8c8]" : "bg-[#f0ece6]",
+        ].join(" ")}
+      >
+        <div className="mb-5 inline-flex rounded-full bg-[#fffaf3] px-3 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-[#241913]">
+          {plan.name}
         </div>
 
-        {badge ? (
-          <span className="rounded-full bg-[#233f32] px-2.5 py-1 text-[10px] font-bold text-[#fff4e2]">
-            {badge}
+        <div className="flex items-end gap-1">
+          <span className="text-[32px] font-black leading-none tracking-[-0.05em] text-[#15110d]">
+            {plan.price}
           </span>
-        ) : null}
+          {plan.period ? (
+            <span className="pb-1 text-[13px] font-bold text-[#4d3c2d]">
+              {plan.period}
+            </span>
+          ) : null}
+        </div>
       </div>
+
+      <p className="mt-3 min-h-10 text-[13px] font-semibold leading-5 text-[#4d3c2d]">
+        {plan.description}
+      </p>
 
       <button
         type="button"
         onClick={onAction}
-        className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-[13px] bg-[#6d241d] px-4 text-[12px] font-bold text-[#fff4e2] transition hover:bg-[#7d2d23]"
+        disabled={plan.id === "free"}
+        className={[
+          "mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-[12px] font-black text-[#fff8ec] shadow-[0_10px_22px_rgba(36,25,19,0.18)] transition disabled:cursor-default disabled:opacity-80",
+          plan.id === "free"
+            ? "bg-[#735f4b]"
+            : "bg-[#241913] hover:bg-[#6d241d]",
+        ].join(" ")}
       >
-        <MessageCircle className="h-4 w-4" />
-        {action}
+        {plan.id === "free" ? (
+          <Crown className="h-4 w-4" />
+        ) : (
+          <MessageCircle className="h-4 w-4" />
+        )}
+        {plan.button}
       </button>
-    </div>
+
+      <div className="mt-5 grid gap-2.5 px-1 pb-1">
+        {plan.features.map((feature) => (
+          <div key={feature} className="flex items-center gap-2 text-[12px] text-[#4d3c2d]">
+            <Check className="h-3.5 w-3.5 shrink-0 text-[#986f2e]" />
+            <span>{feature}</span>
+          </div>
+        ))}
+      </div>
+    </article>
   );
 }
