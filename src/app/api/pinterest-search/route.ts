@@ -24,9 +24,20 @@ function getNestedText(item: PinterestRawItem, path: string[]) {
   return text(current);
 }
 
+function debugPinterest(message: string, details?: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "production") return;
+  console.info(`[KISHIB similar][pinterest] ${message}`, details || {});
+}
+
 export async function POST(request: Request) {
   try {
     const { query } = await request.json();
+
+    debugPinterest("request start", {
+      hasQuery: typeof query === "string" && Boolean(query.trim()),
+      query: typeof query === "string" ? query.slice(0, 160) : "",
+      hasScrapeCreatorsKey: Boolean(process.env.SCRAPECREATORS_API_KEY),
+    });
 
     if (!query || typeof query !== "string") {
       return NextResponse.json(
@@ -62,6 +73,11 @@ export async function POST(request: Request) {
       | Record<string, unknown>
       | unknown[];
 
+    debugPinterest("provider response", {
+      status: response.status,
+      ok: response.ok,
+    });
+
     if (!response.ok) {
       return NextResponse.json(
         {
@@ -84,6 +100,8 @@ export async function POST(request: Request) {
         : Array.isArray(data)
           ? (data as PinterestRawItem[])
           : [];
+
+    let excludedMissingImage = 0;
 
     const items: PinterestItem[] = rawItems
       .map((item) => {
@@ -111,11 +129,27 @@ export async function POST(request: Request) {
           source: "Pinterest",
         };
       })
-      .filter((item: PinterestItem) => item.imageUrl)
+      .filter((item: PinterestItem) => {
+        const keep = Boolean(item.imageUrl);
+        if (!keep) excludedMissingImage += 1;
+        return keep;
+      })
       .slice(0, 12);
 
+    debugPinterest("mapped results", {
+      rawCount: rawItems.length,
+      returnedCount: items.length,
+      excludedMissingImage,
+    });
+
     return NextResponse.json({ items });
-  } catch {
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[KISHIB similar][pinterest] route error", {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+
     return NextResponse.json(
       {
         error: "Unexpected Pinterest search error.",

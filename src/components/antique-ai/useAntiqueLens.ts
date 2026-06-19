@@ -469,7 +469,21 @@ function isHouseOfAntiquesSimilarImage(item: SimilarImageResult) {
 }
 
 function filterExternalSimilarImages(items: SimilarImageResult[]) {
-  return items.filter((item) => !isHouseOfAntiquesSimilarImage(item));
+  return items.filter((item) => {
+    const blocked = isHouseOfAntiquesSimilarImage(item);
+
+    if (blocked && process.env.NODE_ENV !== "production") {
+      console.info("[KISHIB similar] excluded internal store image", {
+        title: item.title,
+        source: item.source,
+        hasImageUrl: Boolean(item.imageUrl),
+        hasLink: Boolean(item.link),
+        reason: "house_of_antiques_source",
+      });
+    }
+
+    return !blocked;
+  });
 }
 
 function mergeSimilarImages(
@@ -531,6 +545,13 @@ function normalizeSimilarImageItems(items: unknown): SimilarImageResult[] {
 
 async function safePostJson(url: string, body: unknown) {
   try {
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[KISHIB similar] request start", {
+        url,
+        hasBody: Boolean(body),
+      });
+    }
+
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -547,9 +568,32 @@ async function safePostJson(url: string, body: unknown) {
       data = null;
     }
 
+    if (process.env.NODE_ENV !== "production") {
+      const record =
+        data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+      const items = Array.isArray(record.items) ? record.items : [];
+
+      console.info("[KISHIB similar] response received", {
+        url,
+        status: response.status,
+        ok: response.ok,
+        itemsCount: items.length,
+        rawCount: record.rawCount,
+        error: typeof record.error === "string" ? record.error : undefined,
+      });
+    }
+
     return { ok: response.ok, status: response.status, data };
   } catch (error) {
-    console.warn(`[KISHIB] Optional request skipped: ${url}`);
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[KISHIB similar] optional request failed", {
+        url,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    } else {
+      console.warn(`[KISHIB] Optional request skipped: ${url}`);
+    }
+
     return { ok: false, status: 0, data: null };
   }
 }
@@ -1149,6 +1193,47 @@ async function fetchSimilarImagesByImage(imageUrl: string) {
   }
 }
 
+async function fetchPinterestSimilarImages(result: AnalysisResult) {
+  const query = buildPinterestSearchQuery(result);
+
+  if (process.env.NODE_ENV !== "production") {
+    console.info("[KISHIB similar] pinterest fallback query", {
+      query,
+      hasQuery: Boolean(query),
+    });
+  }
+
+  if (!query) return [];
+
+  try {
+    const { ok, data } = await safePostJson("/api/pinterest-search", { query });
+    const record =
+      data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+    const rawItems = Array.isArray(record.items)
+      ? (record.items as SimilarImageResult[])
+      : [];
+    const items = mergeSimilarImages([], rawItems);
+
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[KISHIB similar] pinterest fallback result", {
+        ok,
+        rawCount: rawItems.length,
+        visibleCount: items.length,
+      });
+    }
+
+    return ok ? items : [];
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[KISHIB similar] pinterest fallback failed", {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    return [];
+  }
+}
+
 async function handleAnalyze() {
   if (!selectedFiles.length && !prompt.trim()) {
     setError(t.emptyError);
@@ -1247,8 +1332,28 @@ async function handleAnalyze() {
       setIsLoadingSimilar(true);
 
       try {
+        if (process.env.NODE_ENV !== "production") {
+          console.info("[KISHIB similar] google lens batch start", {
+            imageCount: uploadedImageUrls.length,
+            searchedImages: Math.min(uploadedImageUrls.length, 4),
+          });
+        }
+
         const lensResults = await Promise.all(
           uploadedImageUrls.slice(0, 4).map(async (imageUrl, imageIndex) => {
+            if (process.env.NODE_ENV !== "production") {
+              console.info("[KISHIB similar] google lens image request", {
+                imageIndex: imageIndex + 1,
+                imageUrlHost: (() => {
+                  try {
+                    return new URL(imageUrl).host;
+                  } catch {
+                    return "invalid-url";
+                  }
+                })(),
+              });
+            }
+
             const { ok, data: lensData } = await safePostJson("/api/google-lens", {
               imageUrl,
             });
@@ -1258,10 +1363,30 @@ async function handleAnalyze() {
                 : {};
 
             if (!ok || !Array.isArray(lensRecord.items)) {
+              if (process.env.NODE_ENV !== "production") {
+                console.info("[KISHIB similar] google lens image skipped", {
+                  imageIndex: imageIndex + 1,
+                  ok,
+                  hasItemsArray: Array.isArray(lensRecord.items),
+                });
+              }
+
               return [];
             }
 
-            return filterExternalSimilarImages(lensRecord.items as SimilarImageResult[]).map((item) => ({
+            const externalItems = filterExternalSimilarImages(
+              lensRecord.items as SimilarImageResult[],
+            );
+
+            if (process.env.NODE_ENV !== "production") {
+              console.info("[KISHIB similar] google lens image results", {
+                imageIndex: imageIndex + 1,
+                rawCount: (lensRecord.items as SimilarImageResult[]).length,
+                visibleCount: externalItems.length,
+              });
+            }
+
+            return externalItems.map((item) => ({
               ...item,
               source: item.source
                 ? `${item.source} · image ${imageIndex + 1}`
@@ -1275,6 +1400,12 @@ async function handleAnalyze() {
             .filter(Boolean) as SimilarImageResult[],
         );
         const items = mergeSimilarImages([], interleavedLensItems).slice(0, 24);
+
+        if (process.env.NODE_ENV !== "production") {
+          console.info("[KISHIB similar] google lens merged results", {
+            visibleCount: items.length,
+          });
+        }
 
         if (items.length > 0) {
           googleLensItems = items;
@@ -1496,10 +1627,25 @@ const resultExternalSimilarImages = filterExternalSimilarImages(resultSimilarIte
 const finalExternalSimilarImages = resultExternalSimilarImages.length
   ? resultExternalSimilarImages
   : googleLensItems;
-const finalSimilarImages = mergeSimilarImages(
+let finalSimilarImages = mergeSimilarImages(
   [],
   finalExternalSimilarImages,
 );
+
+if (finalSimilarImages.length === 0) {
+  setIsLoadingSimilar(true);
+
+  try {
+    const fallbackSimilarImages = await fetchPinterestSimilarImages(finalResult);
+
+    if (fallbackSimilarImages.length > 0) {
+      finalSimilarImages = fallbackSimilarImages;
+      setSimilarImages(fallbackSimilarImages);
+    }
+  } finally {
+    setIsLoadingSimilar(false);
+  }
+}
 
 if (finalSimilarImages.length > 0) {
   finalResult = normalizeResult({

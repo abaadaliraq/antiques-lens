@@ -227,6 +227,32 @@ function getSimilarSourceLabel(locale: Locale) {
   return "مصادر مشابهة";
 }
 
+function getSimilarDisplayTitle(locale: Locale, fallback: string) {
+  if (locale === "ar") return "صور مشابهة للاطلاع";
+  if (locale === "en") return "Similar images for reference";
+  if (locale === "fr") return "Images similaires à consulter";
+  if (locale === "tr") return "Referans için benzer görseller";
+  if (locale === "ru") return "Похожие изображения для ориентира";
+  return fallback;
+}
+
+function getNoSimilarImagesMessage(locale: Locale) {
+  if (locale === "en") {
+    return "Not enough similar images were found for this item right now.";
+  }
+  if (locale === "fr") {
+    return "Pas assez d'images similaires ont été trouvées pour cet objet pour le moment.";
+  }
+  if (locale === "tr") {
+    return "Bu parça için şu anda yeterli benzer görsel bulunamadı.";
+  }
+  if (locale === "ru") {
+    return "Пока не найдено достаточно похожих изображений для этого предмета.";
+  }
+
+  return "لم يتم العثور على صور مشابهة كافية لهذه القطعة حالياً.";
+}
+
 function normalizeSimilarImageItems(items: unknown): SimilarImageResult[] {
   if (!Array.isArray(items)) return [];
 
@@ -993,75 +1019,77 @@ useEffect(() => {
           <SoftList title={labels.valueReducers} items={result.valueReducers} />
         </section>
 
-        {(isLoadingSimilar || resolvedSimilarImages.length > 0) && (
-          <section className="mt-8">
-            <div className="mb-5 flex items-end justify-between gap-4">
-              <div>
-                <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#986f2e]">
-                  {similarSourceLabel}
-                </p>
-                <h2 className="text-[24px] font-medium leading-8 tracking-[-0.035em] text-[#233f32]">
-                  {labels.similar}
-                </h2>
-                <p className="mt-2 max-w-2xl text-[13px] font-normal leading-6 text-[#735f4b]">
-                  {labels.similarHint}
-                </p>
-              </div>
+        <section className="mt-8">
+          <div className="mb-5 flex items-end justify-between gap-4">
+            <div>
+              <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#986f2e]">
+                {similarSourceLabel}
+              </p>
+              <h2 className="text-[24px] font-medium leading-8 tracking-[-0.035em] text-[#233f32]">
+                {getSimilarDisplayTitle(locale, labels.similar)}
+              </h2>
+              <p className="mt-2 max-w-2xl text-[13px] font-normal leading-6 text-[#735f4b]">
+                {labels.similarHint}
+              </p>
             </div>
+          </div>
 
-            {isLoadingSimilar ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                {Array.from({ length: 8 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="aspect-[3/4] animate-pulse rounded-[16px] bg-[#fff4e2]/70"
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                {resolvedSimilarImages.map((item, index) => (
-                  <a
-                    key={`${item.imageUrl}-${index}`}
-                    href={item.link || item.imageUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="group overflow-hidden rounded-[16px] border border-[#d2b98f] bg-[#fff4e2]/88 transition hover:border-[#b88a3d]/55"
-                  >
-                    <div className="aspect-[3/4] overflow-hidden bg-[#d9b59e]">
-                      <img
-                        src={item.imageUrl}
-                        alt={item.title || "Similar result"}
-                        onError={(event) => {
-                          event.currentTarget.style.display = "none";
-                        }}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                      />
-                    </div>
+          {isLoadingSimilar ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="aspect-[3/4] animate-pulse rounded-[16px] bg-[#fff4e2]/70"
+                />
+              ))}
+            </div>
+          ) : resolvedSimilarImages.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+              {resolvedSimilarImages.map((item, index) => (
+                <a
+                  key={`${item.imageUrl}-${index}`}
+                  href={item.link || item.imageUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group overflow-hidden rounded-[16px] border border-[#d2b98f] bg-[#fff4e2]/88 transition hover:border-[#b88a3d]/55"
+                >
+                  <div className="aspect-[3/4] overflow-hidden bg-[#d9b59e]">
+                    <img
+                      src={item.imageUrl}
+                      alt={item.title || "Similar result"}
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                      }}
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
+                  </div>
 
-                    <div className="p-3">
-                      {cleanDisplayText(item.title) ? (
-                        <p className="text-[12px] font-normal leading-5 text-[#241913]">
-                          {cleanDisplayText(item.title)}
-                        </p>
-                      ) : null}
-                      {cleanDisplayText(item.price) ? (
-                        <p className="mt-2 text-[10.5px] font-medium text-[#735f4b]">
-                          {cleanDisplayText(item.price)}
-                        </p>
-                      ) : null}
-                      {cleanDisplayText(item.source) || item.source === undefined ? (
-                        <p className="mt-2 text-[10.5px] font-medium text-[#986f2e]">
-                          {cleanDisplayText(item.source) || "Google Lens"}
-                        </p>
-                      ) : null}
-                    </div>
-                  </a>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
+                  <div className="p-3">
+                    {cleanDisplayText(item.title) ? (
+                      <p className="text-[12px] font-normal leading-5 text-[#241913]">
+                        {cleanDisplayText(item.title)}
+                      </p>
+                    ) : null}
+                    {cleanDisplayText(item.price) ? (
+                      <p className="mt-2 text-[10.5px] font-medium text-[#735f4b]">
+                        {cleanDisplayText(item.price)}
+                      </p>
+                    ) : null}
+                    {cleanDisplayText(item.source) || item.source === undefined ? (
+                      <p className="mt-2 text-[10.5px] font-medium text-[#986f2e]">
+                        {cleanDisplayText(item.source) || "Google Lens"}
+                      </p>
+                    ) : null}
+                  </div>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[16px] border border-[#d2b98f]/70 bg-[#fff4e2]/72 px-4 py-4 text-sm leading-6 text-[#735f4b]">
+              {getNoSimilarImagesMessage(locale)}
+            </div>
+          )}
+        </section>
 
         {canShowBrandAssessment ? (
           <section className="mt-8 border-t border-[#c7b99e] pt-6">
