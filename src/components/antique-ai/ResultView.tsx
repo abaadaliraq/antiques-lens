@@ -268,6 +268,32 @@ function normalizeSimilarImageItems(items: unknown): SimilarImageResult[] {
     .filter((item): item is SimilarImageResult => Boolean(item));
 }
 
+function isHouseStoreSimilarImage(item: SimilarImageResult) {
+  const sourceText = `${item.source || ""} ${item.link || ""} ${item.imageUrl || ""}`
+    .toLowerCase();
+
+  return (
+    item.isHouseOfAntiques === true ||
+    sourceText.includes("house_store") ||
+    sourceText.includes("house of antiques") ||
+    sourceText.includes("houseofantiques.store")
+  );
+}
+
+function filterVisibleSimilarImages(items: SimilarImageResult[]) {
+  const seen = new Set<string>();
+
+  return items
+    .filter((item) => !isHouseStoreSimilarImage(item))
+    .filter((item) => {
+      const key = item.imageUrl || item.link || item.title;
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 24);
+}
+
 function getSimilarItems(result: AnalysisResult | null): SimilarImageResult[] {
   const extendedResult = result as
     | (AnalysisResult & {
@@ -549,8 +575,9 @@ useEffect(() => {
 
   if (!result) return null;
 
-  const resolvedSimilarImages =
-    similarImages.length > 0 ? similarImages : getSimilarItems(result);
+  const resolvedSimilarImages = filterVisibleSimilarImages(
+    similarImages.length > 0 ? similarImages : getSimilarItems(result),
+  );
   const cleanUserNote = cleanDisplayText(userNote);
   const cleanTitle = cleanDisplayText(result.title) || labels.result;
   const canShowBrandAssessment =

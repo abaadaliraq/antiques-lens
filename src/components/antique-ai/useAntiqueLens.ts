@@ -477,9 +477,8 @@ function mergeSimilarImages(
   externalImages: SimilarImageResult[],
 ) {
   const seen = new Set<string>();
-  const visibleHouseImages = houseImages.slice(0, externalImages.length > 0 ? 3 : 6);
 
-  return [...externalImages, ...visibleHouseImages]
+  return filterExternalSimilarImages(externalImages)
     .filter((item) => {
       const key = item.imageUrl || item.link || item.title;
       if (!key || seen.has(key)) return false;
@@ -1492,16 +1491,13 @@ if (locale !== "ar") {
   }
 }
 
-const finalHouseSimilarImages = buildHouseSimilarImages(
-  houseStoreContext?.matches || [],
-);
 const resultSimilarItems = getSimilarItems(finalResult);
 const resultExternalSimilarImages = filterExternalSimilarImages(resultSimilarItems);
 const finalExternalSimilarImages = resultExternalSimilarImages.length
   ? resultExternalSimilarImages
   : googleLensItems;
 const finalSimilarImages = mergeSimilarImages(
-  finalHouseSimilarImages,
+  [],
   finalExternalSimilarImages,
 );
 
