@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   BadgeCheck,
@@ -17,6 +17,7 @@ import {
   Phone,
   ShieldCheck,
   Trash2,
+  Users,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -29,6 +30,16 @@ import {
   type UserProfile,
 } from "@/lib/profilesSupabase";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
+import {
+  countries,
+  countryLabel,
+  getCountryByCode,
+  getProvinceByCode,
+  iraqProvinces,
+  normalizeCountry,
+  normalizeProvince,
+  provinceLabel as getProvinceOptionLabel,
+} from "@/lib/locationOptions";
 import type { Locale } from "./types";
 
 type UserMenuProps = {
@@ -45,7 +56,10 @@ const KISHIB_WEBSITE_URL = "https://kishibapp.com";
 type EditableProfile = {
   name: string;
   phone: string;
+  gender: string;
   country: string;
+  countryCode: string;
+  provinceCode: string;
   city: string;
 };
 
@@ -61,6 +75,9 @@ type MenuCopy = {
   name: string;
   email: string;
   phone: string;
+  gender: string;
+  male: string;
+  female: string;
   country: string;
   province?: string;
   language: string;
@@ -97,42 +114,45 @@ type MenuCopy = {
 
 const COPY: Record<Locale, MenuCopy> = {
   ar: {
-    profile: "الملف الشخصي",
-    account: "الحساب",
-    name: "الاسم",
-    email: "الإيميل",
-    phone: "رقم الهاتف",
-    country: "الدولة",
-    language: "اللغة",
-    subscriptions: "الاشتراكات",
-    support: "الدعم",
-    website: "موقع KISHIB",
-    cookies: "الكوكيز",
-    terms: "الشروط والأحكام",
-    privacy: "سياسة الخصوصية",
-    logout: "تسجيل خروج",
-    deleteAccount: "حذف الحساب",
-    deleteAccountTitle: "حذف الحساب",
-    deleteAccountWarning: "هذا الإجراء نهائي ولا يمكن التراجع عنه.",
-    deleteAccountDataWarning: "سيتم حذف الحساب وبيانات الملف الشخصي وسجل التقييمات والصور والملاحظات المرتبطة بالحساب قدر الإمكان.",
-    deleteAccountConfirmHint: "اكتب DELETE أو حذف لتفعيل الحذف.",
-    deleteAccountConfirmButton: "حذف الحساب نهائيًا",
-    deleteAccountSuccess: "تم حذف الحساب وبياناته بنجاح.",
-    deleteAccountFailed: "تعذر حذف الحساب. حاولي مرة أخرى.",
-    comingSoon: "قريباً",
-    paymentDisabled: "الدفع غير مفعل حالياً",
-    unknown: "غير مضاف",
-    editProfile: "تعديل الملف الشخصي",
-    save: "حفظ",
-    cancel: "إلغاء",
-    saved: "تم الحفظ",
-    supportText: "للدعم والمساعدة تواصل معنا عبر البريد الإلكتروني",
-    close: "إغلاق",
-    monthlyPlan: "الاشتراك الشهري",
-    annualPlan: "الاشتراك السنوي",
-    reportsPack: "باقة التقارير",
-    price: "السعر",
-    includes: "يشمل",
+    profile: "Ø§Ù„Ù…Ù„Ù Ø§Ù„Ø´Ø®ØµÙŠ",
+    account: "Ø§Ù„Ø­Ø³Ø§Ø¨",
+    name: "Ø§Ù„Ø§Ø³Ù…",
+    email: "Ø§Ù„Ø¥ÙŠÙ…ÙŠÙ„",
+    phone: "Ø±Ù‚Ù… Ø§Ù„Ù‡Ø§ØªÙ",
+    gender: "الجنس",
+    male: "ذكر",
+    female: "أنثى",
+    country: "Ø§Ù„Ø¯ÙˆÙ„Ø©",
+    language: "Ø§Ù„Ù„ØºØ©",
+    subscriptions: "Ø§Ù„Ø§Ø´ØªØ±Ø§ÙƒØ§Øª",
+    support: "Ø§Ù„Ø¯Ø¹Ù…",
+    website: "Ù…ÙˆÙ‚Ø¹ KISHIB",
+    cookies: "Ø§Ù„ÙƒÙˆÙƒÙŠØ²",
+    terms: "Ø§Ù„Ø´Ø±ÙˆØ· ÙˆØ§Ù„Ø£Ø­ÙƒØ§Ù…",
+    privacy: "Ø³ÙŠØ§Ø³Ø© Ø§Ù„Ø®ØµÙˆØµÙŠØ©",
+    logout: "ØªØ³Ø¬ÙŠÙ„ Ø®Ø±ÙˆØ¬",
+    deleteAccount: "Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨",
+    deleteAccountTitle: "Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨",
+    deleteAccountWarning: "Ù‡Ø°Ø§ Ø§Ù„Ø¥Ø¬Ø±Ø§Ø¡ Ù†Ù‡Ø§Ø¦ÙŠ ÙˆÙ„Ø§ ÙŠÙ…ÙƒÙ† Ø§Ù„ØªØ±Ø§Ø¬Ø¹ Ø¹Ù†Ù‡.",
+    deleteAccountDataWarning: "Ø³ÙŠØªÙ… Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨ ÙˆØ¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ù„Ù Ø§Ù„Ø´Ø®ØµÙŠ ÙˆØ³Ø¬Ù„ Ø§Ù„ØªÙ‚ÙŠÙŠÙ…Ø§Øª ÙˆØ§Ù„ØµÙˆØ± ÙˆØ§Ù„Ù…Ù„Ø§Ø­Ø¸Ø§Øª Ø§Ù„Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ø§Ù„Ø­Ø³Ø§Ø¨ Ù‚Ø¯Ø± Ø§Ù„Ø¥Ù…ÙƒØ§Ù†.",
+    deleteAccountConfirmHint: "Ø§ÙƒØªØ¨ DELETE Ø£Ùˆ Ø­Ø°Ù Ù„ØªÙØ¹ÙŠÙ„ Ø§Ù„Ø­Ø°Ù.",
+    deleteAccountConfirmButton: "Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨ Ù†Ù‡Ø§Ø¦ÙŠÙ‹Ø§",
+    deleteAccountSuccess: "ØªÙ… Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨ ÙˆØ¨ÙŠØ§Ù†Ø§ØªÙ‡ Ø¨Ù†Ø¬Ø§Ø­.",
+    deleteAccountFailed: "ØªØ¹Ø°Ø± Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨. Ø­Ø§ÙˆÙ„ÙŠ Ù…Ø±Ø© Ø£Ø®Ø±Ù‰.",
+    comingSoon: "Ù‚Ø±ÙŠØ¨Ø§Ù‹",
+    paymentDisabled: "Ø§Ù„Ø¯ÙØ¹ ØºÙŠØ± Ù…ÙØ¹Ù„ Ø­Ø§Ù„ÙŠØ§Ù‹",
+    unknown: "ØºÙŠØ± Ù…Ø¶Ø§Ù",
+    editProfile: "ØªØ¹Ø¯ÙŠÙ„ Ø§Ù„Ù…Ù„Ù Ø§Ù„Ø´Ø®ØµÙŠ",
+    save: "Ø­ÙØ¸",
+    cancel: "Ø¥Ù„ØºØ§Ø¡",
+    saved: "ØªÙ… Ø§Ù„Ø­ÙØ¸",
+    supportText: "Ù„Ù„Ø¯Ø¹Ù… ÙˆØ§Ù„Ù…Ø³Ø§Ø¹Ø¯Ø© ØªÙˆØ§ØµÙ„ Ù…Ø¹Ù†Ø§ Ø¹Ø¨Ø± Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ",
+    close: "Ø¥ØºÙ„Ø§Ù‚",
+    monthlyPlan: "Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ Ø§Ù„Ø´Ù‡Ø±ÙŠ",
+    annualPlan: "Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ Ø§Ù„Ø³Ù†ÙˆÙŠ",
+    reportsPack: "Ø¨Ø§Ù‚Ø© Ø§Ù„ØªÙ‚Ø§Ø±ÙŠØ±",
+    price: "Ø§Ù„Ø³Ø¹Ø±",
+    includes: "ÙŠØ´Ù…Ù„",
   },
   en: {
     profile: "Profile",
@@ -140,6 +160,9 @@ const COPY: Record<Locale, MenuCopy> = {
     name: "Name",
     email: "Email",
     phone: "Phone",
+    gender: "Gender",
+    male: "Male",
+    female: "Female",
     country: "Country",
     language: "Language",
     subscriptions: "Subscriptions",
@@ -153,7 +176,7 @@ const COPY: Record<Locale, MenuCopy> = {
     deleteAccountTitle: "Delete account",
     deleteAccountWarning: "This action is permanent and cannot be undone.",
     deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
+    deleteAccountConfirmHint: "Type DELETE or Ø­Ø°Ù to enable deletion.",
     deleteAccountConfirmButton: "Delete account permanently",
     deleteAccountSuccess: "Account and associated data were deleted successfully.",
     deleteAccountFailed: "Unable to delete account. Please try again.",
@@ -177,7 +200,10 @@ const COPY: Record<Locale, MenuCopy> = {
     account: "Compte",
     name: "Nom",
     email: "E-mail",
-    phone: "Téléphone",
+    phone: "TÃ©lÃ©phone",
+    gender: "Genre",
+    male: "Homme",
+    female: "Femme",
     country: "Pays",
     language: "Langue",
     subscriptions: "Abonnements",
@@ -185,23 +211,23 @@ const COPY: Record<Locale, MenuCopy> = {
     website: "Site KISHIB",
     cookies: "Cookies",
     terms: "Conditions",
-    privacy: "Confidentialité",
-    logout: "Déconnexion",
+    privacy: "ConfidentialitÃ©",
+    logout: "DÃ©connexion",
     deleteAccount: "Delete account",
     deleteAccountTitle: "Delete account",
     deleteAccountWarning: "This action is permanent and cannot be undone.",
     deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
+    deleteAccountConfirmHint: "Type DELETE or Ø­Ø°Ù to enable deletion.",
     deleteAccountConfirmButton: "Delete account permanently",
     deleteAccountSuccess: "Account and associated data were deleted successfully.",
     deleteAccountFailed: "Unable to delete account. Please try again.",
-    comingSoon: "Bientôt",
-    paymentDisabled: "Paiement non activé",
-    unknown: "Non ajouté",
+    comingSoon: "BientÃ´t",
+    paymentDisabled: "Paiement non activÃ©",
+    unknown: "Non ajoutÃ©",
     editProfile: "Modifier le profil",
     save: "Enregistrer",
     cancel: "Annuler",
-    saved: "Enregistré",
+    saved: "EnregistrÃ©",
     supportText: "Pour obtenir de l'aide, contactez-nous par e-mail",
     close: "Fermer",
     monthlyPlan: "Abonnement mensuel",
@@ -211,80 +237,86 @@ const COPY: Record<Locale, MenuCopy> = {
     includes: "Comprend",
   },
   hi: {
-    profile: "प्रोफ़ाइल",
-    account: "खाता",
-    name: "नाम",
-    email: "ईमेल",
-    phone: "फ़ोन",
-    country: "देश",
-    language: "भाषा",
-    subscriptions: "सदस्यता",
+    profile: "à¤ªà¥à¤°à¥‹à¤«à¤¼à¤¾à¤‡à¤²",
+    account: "à¤–à¤¾à¤¤à¤¾",
+    name: "à¤¨à¤¾à¤®",
+    email: "à¤ˆà¤®à¥‡à¤²",
+    phone: "à¤«à¤¼à¥‹à¤¨",
+    gender: "Gender",
+    male: "Male",
+    female: "Female",
+    country: "à¤¦à¥‡à¤¶",
+    language: "à¤­à¤¾à¤·à¤¾",
+    subscriptions: "à¤¸à¤¦à¤¸à¥à¤¯à¤¤à¤¾",
     support: "Support",
     website: "KISHIB Website",
-    cookies: "कुकीज़",
-    terms: "नियम और शर्तें",
-    privacy: "गोपनीयता नीति",
-    logout: "लॉग आउट",
+    cookies: "à¤•à¥à¤•à¥€à¤œà¤¼",
+    terms: "à¤¨à¤¿à¤¯à¤® à¤”à¤° à¤¶à¤°à¥à¤¤à¥‡à¤‚",
+    privacy: "à¤—à¥‹à¤ªà¤¨à¥€à¤¯à¤¤à¤¾ à¤¨à¥€à¤¤à¤¿",
+    logout: "à¤²à¥‰à¤— à¤†à¤‰à¤Ÿ",
     deleteAccount: "Delete account",
     deleteAccountTitle: "Delete account",
     deleteAccountWarning: "This action is permanent and cannot be undone.",
     deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
+    deleteAccountConfirmHint: "Type DELETE or Ø­Ø°Ù to enable deletion.",
     deleteAccountConfirmButton: "Delete account permanently",
     deleteAccountSuccess: "Account and associated data were deleted successfully.",
     deleteAccountFailed: "Unable to delete account. Please try again.",
-    comingSoon: "जल्द",
-    paymentDisabled: "भुगतान अभी सक्रिय नहीं है",
-    unknown: "जोड़ा नहीं गया",
-    editProfile: "प्रोफ़ाइल संपादित करें",
-    save: "सहेजें",
-    cancel: "रद्द करें",
-    saved: "सहेजा गया",
-    supportText: "सहायता के लिए हमें ईमेल से संपर्क करें",
-    close: "बंद करें",
-    monthlyPlan: "मासिक सदस्यता",
-    annualPlan: "वार्षिक सदस्यता",
-    reportsPack: "रिपोर्ट पैकेज",
-    price: "मूल्य",
-    includes: "शामिल",
+    comingSoon: "à¤œà¤²à¥à¤¦",
+    paymentDisabled: "à¤­à¥à¤—à¤¤à¤¾à¤¨ à¤…à¤­à¥€ à¤¸à¤•à¥à¤°à¤¿à¤¯ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ",
+    unknown: "à¤œà¥‹à¤¡à¤¼à¤¾ à¤¨à¤¹à¥€à¤‚ à¤—à¤¯à¤¾",
+    editProfile: "à¤ªà¥à¤°à¥‹à¤«à¤¼à¤¾à¤‡à¤² à¤¸à¤‚à¤ªà¤¾à¤¦à¤¿à¤¤ à¤•à¤°à¥‡à¤‚",
+    save: "à¤¸à¤¹à¥‡à¤œà¥‡à¤‚",
+    cancel: "à¤°à¤¦à¥à¤¦ à¤•à¤°à¥‡à¤‚",
+    saved: "à¤¸à¤¹à¥‡à¤œà¤¾ à¤—à¤¯à¤¾",
+    supportText: "à¤¸à¤¹à¤¾à¤¯à¤¤à¤¾ à¤•à¥‡ à¤²à¤¿à¤ à¤¹à¤®à¥‡à¤‚ à¤ˆà¤®à¥‡à¤² à¤¸à¥‡ à¤¸à¤‚à¤ªà¤°à¥à¤• à¤•à¤°à¥‡à¤‚",
+    close: "à¤¬à¤‚à¤¦ à¤•à¤°à¥‡à¤‚",
+    monthlyPlan: "à¤®à¤¾à¤¸à¤¿à¤• à¤¸à¤¦à¤¸à¥à¤¯à¤¤à¤¾",
+    annualPlan: "à¤µà¤¾à¤°à¥à¤·à¤¿à¤• à¤¸à¤¦à¤¸à¥à¤¯à¤¤à¤¾",
+    reportsPack: "à¤°à¤¿à¤ªà¥‹à¤°à¥à¤Ÿ à¤ªà¥ˆà¤•à¥‡à¤œ",
+    price: "à¤®à¥‚à¤²à¥à¤¯",
+    includes: "à¤¶à¤¾à¤®à¤¿à¤²",
   },
   fa: {
-    profile: "پروفایل",
-    account: "حساب",
-    name: "نام",
-    email: "ایمیل",
-    phone: "شماره تلفن",
-    country: "کشور",
-    language: "زبان",
-    subscriptions: "اشتراک‌ها",
-    support: "پشتیبانی",
-    website: "وب‌سایت KISHIB",
-    cookies: "کوکی‌ها",
-    terms: "شرایط و قوانین",
-    privacy: "حریم خصوصی",
-    logout: "خروج",
+    profile: "Ù¾Ø±ÙˆÙØ§ÛŒÙ„",
+    account: "Ø­Ø³Ø§Ø¨",
+    name: "Ù†Ø§Ù…",
+    email: "Ø§ÛŒÙ…ÛŒÙ„",
+    phone: "Ø´Ù…Ø§Ø±Ù‡ ØªÙ„ÙÙ†",
+    gender: "جنسیت",
+    male: "مرد",
+    female: "زن",
+    country: "Ú©Ø´ÙˆØ±",
+    language: "Ø²Ø¨Ø§Ù†",
+    subscriptions: "Ø§Ø´ØªØ±Ø§Ú©â€ŒÙ‡Ø§",
+    support: "Ù¾Ø´ØªÛŒØ¨Ø§Ù†ÛŒ",
+    website: "ÙˆØ¨â€ŒØ³Ø§ÛŒØª KISHIB",
+    cookies: "Ú©ÙˆÚ©ÛŒâ€ŒÙ‡Ø§",
+    terms: "Ø´Ø±Ø§ÛŒØ· Ùˆ Ù‚ÙˆØ§Ù†ÛŒÙ†",
+    privacy: "Ø­Ø±ÛŒÙ… Ø®ØµÙˆØµÛŒ",
+    logout: "Ø®Ø±ÙˆØ¬",
     deleteAccount: "Delete account",
     deleteAccountTitle: "Delete account",
     deleteAccountWarning: "This action is permanent and cannot be undone.",
     deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
+    deleteAccountConfirmHint: "Type DELETE or Ø­Ø°Ù to enable deletion.",
     deleteAccountConfirmButton: "Delete account permanently",
     deleteAccountSuccess: "Account and associated data were deleted successfully.",
     deleteAccountFailed: "Unable to delete account. Please try again.",
-    comingSoon: "به‌زودی",
-    paymentDisabled: "پرداخت فعلاً فعال نیست",
-    unknown: "اضافه نشده",
-    editProfile: "ویرایش پروفایل",
-    save: "ذخیره",
-    cancel: "لغو",
-    saved: "ذخیره شد",
-    supportText: "برای پشتیبانی و کمک از طریق ایمیل با ما تماس بگیرید",
-    close: "بستن",
-    monthlyPlan: "اشتراک ماهانه",
-    annualPlan: "اشتراک سالانه",
-    reportsPack: "بسته گزارش‌ها",
-    price: "قیمت",
-    includes: "شامل",
+    comingSoon: "Ø¨Ù‡â€ŒØ²ÙˆØ¯ÛŒ",
+    paymentDisabled: "Ù¾Ø±Ø¯Ø§Ø®Øª ÙØ¹Ù„Ø§Ù‹ ÙØ¹Ø§Ù„ Ù†ÛŒØ³Øª",
+    unknown: "Ø§Ø¶Ø§ÙÙ‡ Ù†Ø´Ø¯Ù‡",
+    editProfile: "ÙˆÛŒØ±Ø§ÛŒØ´ Ù¾Ø±ÙˆÙØ§ÛŒÙ„",
+    save: "Ø°Ø®ÛŒØ±Ù‡",
+    cancel: "Ù„ØºÙˆ",
+    saved: "Ø°Ø®ÛŒØ±Ù‡ Ø´Ø¯",
+    supportText: "Ø¨Ø±Ø§ÛŒ Ù¾Ø´ØªÛŒØ¨Ø§Ù†ÛŒ Ùˆ Ú©Ù…Ú© Ø§Ø² Ø·Ø±ÛŒÙ‚ Ø§ÛŒÙ…ÛŒÙ„ Ø¨Ø§ Ù…Ø§ ØªÙ…Ø§Ø³ Ø¨Ú¯ÛŒØ±ÛŒØ¯",
+    close: "Ø¨Ø³ØªÙ†",
+    monthlyPlan: "Ø§Ø´ØªØ±Ø§Ú© Ù…Ø§Ù‡Ø§Ù†Ù‡",
+    annualPlan: "Ø§Ø´ØªØ±Ø§Ú© Ø³Ø§Ù„Ø§Ù†Ù‡",
+    reportsPack: "Ø¨Ø³ØªÙ‡ Ú¯Ø²Ø§Ø±Ø´â€ŒÙ‡Ø§",
+    price: "Ù‚ÛŒÙ…Øª",
+    includes: "Ø´Ø§Ù…Ù„",
   },
   tr: {
     profile: "Profil",
@@ -292,125 +324,134 @@ const COPY: Record<Locale, MenuCopy> = {
     name: "Ad",
     email: "E-posta",
     phone: "Telefon",
-    country: "Ülke",
+    gender: "Cinsiyet",
+    male: "Erkek",
+    female: "Kadın",
+    country: "Ãœlke",
     language: "Dil",
     subscriptions: "Abonelikler",
     support: "Destek",
     website: "KISHIB Website",
-    cookies: "Çerezler",
-    terms: "Şartlar ve Koşullar",
-    privacy: "Gizlilik Politikası",
-    logout: "Çıkış yap",
+    cookies: "Ã‡erezler",
+    terms: "Åžartlar ve KoÅŸullar",
+    privacy: "Gizlilik PolitikasÄ±",
+    logout: "Ã‡Ä±kÄ±ÅŸ yap",
     deleteAccount: "Delete account",
     deleteAccountTitle: "Delete account",
     deleteAccountWarning: "This action is permanent and cannot be undone.",
     deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
+    deleteAccountConfirmHint: "Type DELETE or Ø­Ø°Ù to enable deletion.",
     deleteAccountConfirmButton: "Delete account permanently",
     deleteAccountSuccess: "Account and associated data were deleted successfully.",
     deleteAccountFailed: "Unable to delete account. Please try again.",
-    comingSoon: "Yakında",
-    paymentDisabled: "Ödeme şu anda etkin değil",
+    comingSoon: "YakÄ±nda",
+    paymentDisabled: "Ã–deme ÅŸu anda etkin deÄŸil",
     unknown: "Eklenmedi",
-    editProfile: "Profili düzenle",
+    editProfile: "Profili dÃ¼zenle",
     save: "Kaydet",
-    cancel: "İptal",
+    cancel: "Ä°ptal",
     saved: "Kaydedildi",
-    supportText: "Destek ve yardım için bize e-posta ile ulaşın",
+    supportText: "Destek ve yardÄ±m iÃ§in bize e-posta ile ulaÅŸÄ±n",
     close: "Kapat",
-    monthlyPlan: "Aylık abonelik",
-    annualPlan: "Yıllık abonelik",
+    monthlyPlan: "AylÄ±k abonelik",
+    annualPlan: "YÄ±llÄ±k abonelik",
     reportsPack: "Rapor paketi",
     price: "Fiyat",
-    includes: "İçerir",
+    includes: "Ä°Ã§erir",
   },
   ru: {
-    profile: "Профиль",
-    account: "Аккаунт",
-    name: "Имя",
+    profile: "ÐŸÑ€Ð¾Ñ„Ð¸Ð»ÑŒ",
+    account: "ÐÐºÐºÐ°ÑƒÐ½Ñ‚",
+    name: "Ð˜Ð¼Ñ",
     email: "Email",
-    phone: "Телефон",
-    country: "Страна",
-    language: "Язык",
-    subscriptions: "Подписки",
-    support: "Поддержка",
+    phone: "Ð¢ÐµÐ»ÐµÑ„Ð¾Ð½",
+    gender: "Пол",
+    male: "Мужской",
+    female: "Женский",
+    country: "Ð¡Ñ‚Ñ€Ð°Ð½Ð°",
+    language: "Ð¯Ð·Ñ‹Ðº",
+    subscriptions: "ÐŸÐ¾Ð´Ð¿Ð¸ÑÐºÐ¸",
+    support: "ÐŸÐ¾Ð´Ð´ÐµÑ€Ð¶ÐºÐ°",
     website: "KISHIB Website",
     cookies: "Cookies",
-    terms: "Условия",
-    privacy: "Политика конфиденциальности",
-    logout: "Выйти",
+    terms: "Ð£ÑÐ»Ð¾Ð²Ð¸Ñ",
+    privacy: "ÐŸÐ¾Ð»Ð¸Ñ‚Ð¸ÐºÐ° ÐºÐ¾Ð½Ñ„Ð¸Ð´ÐµÐ½Ñ†Ð¸Ð°Ð»ÑŒÐ½Ð¾ÑÑ‚Ð¸",
+    logout: "Ð’Ñ‹Ð¹Ñ‚Ð¸",
     deleteAccount: "Delete account",
     deleteAccountTitle: "Delete account",
     deleteAccountWarning: "This action is permanent and cannot be undone.",
     deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
+    deleteAccountConfirmHint: "Type DELETE or Ø­Ø°Ù to enable deletion.",
     deleteAccountConfirmButton: "Delete account permanently",
     deleteAccountSuccess: "Account and associated data were deleted successfully.",
     deleteAccountFailed: "Unable to delete account. Please try again.",
-    comingSoon: "Скоро",
-    paymentDisabled: "Оплата пока не включена",
-    unknown: "Не добавлено",
-    editProfile: "Редактировать профиль",
-    save: "Сохранить",
-    cancel: "Отмена",
-    saved: "Сохранено",
-    supportText: "Для поддержки и помощи свяжитесь с нами по электронной почте",
-    close: "Закрыть",
-    monthlyPlan: "Месячная подписка",
-    annualPlan: "Годовая подписка",
-    reportsPack: "Пакет отчетов",
-    price: "Цена",
-    includes: "Включает",
+    comingSoon: "Ð¡ÐºÐ¾Ñ€Ð¾",
+    paymentDisabled: "ÐžÐ¿Ð»Ð°Ñ‚Ð° Ð¿Ð¾ÐºÐ° Ð½Ðµ Ð²ÐºÐ»ÑŽÑ‡ÐµÐ½Ð°",
+    unknown: "ÐÐµ Ð´Ð¾Ð±Ð°Ð²Ð»ÐµÐ½Ð¾",
+    editProfile: "Ð ÐµÐ´Ð°ÐºÑ‚Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð¿Ñ€Ð¾Ñ„Ð¸Ð»ÑŒ",
+    save: "Ð¡Ð¾Ñ…Ñ€Ð°Ð½Ð¸Ñ‚ÑŒ",
+    cancel: "ÐžÑ‚Ð¼ÐµÐ½Ð°",
+    saved: "Ð¡Ð¾Ñ…Ñ€Ð°Ð½ÐµÐ½Ð¾",
+    supportText: "Ð”Ð»Ñ Ð¿Ð¾Ð´Ð´ÐµÑ€Ð¶ÐºÐ¸ Ð¸ Ð¿Ð¾Ð¼Ð¾Ñ‰Ð¸ ÑÐ²ÑÐ¶Ð¸Ñ‚ÐµÑÑŒ Ñ Ð½Ð°Ð¼Ð¸ Ð¿Ð¾ ÑÐ»ÐµÐºÑ‚Ñ€Ð¾Ð½Ð½Ð¾Ð¹ Ð¿Ð¾Ñ‡Ñ‚Ðµ",
+    close: "Ð—Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ",
+    monthlyPlan: "ÐœÐµÑÑÑ‡Ð½Ð°Ñ Ð¿Ð¾Ð´Ð¿Ð¸ÑÐºÐ°",
+    annualPlan: "Ð“Ð¾Ð´Ð¾Ð²Ð°Ñ Ð¿Ð¾Ð´Ð¿Ð¸ÑÐºÐ°",
+    reportsPack: "ÐŸÐ°ÐºÐµÑ‚ Ð¾Ñ‚Ñ‡ÐµÑ‚Ð¾Ð²",
+    price: "Ð¦ÐµÐ½Ð°",
+    includes: "Ð’ÐºÐ»ÑŽÑ‡Ð°ÐµÑ‚",
   },
   ku: {
-    profile: "پرۆفایل",
-    account: "هەژمار",
-    name: "ناو",
-    email: "ئیمەیل",
-    phone: "ژمارەی تەلەفۆن",
-    country: "وڵات",
-    language: "زمان",
-    subscriptions: "بەشداربوونەکان",
-    support: "پاڵپشتی",
-    website: "ماڵپەڕی KISHIB",
-    cookies: "کوکیز",
-    terms: "مەرج و ڕێساکان",
-    privacy: "تایبەتمەندی",
-    logout: "چوونەدەرەوە",
+    profile: "Ù¾Ø±Û†ÙØ§ÛŒÙ„",
+    account: "Ù‡Û•Ú˜Ù…Ø§Ø±",
+    name: "Ù†Ø§Ùˆ",
+    email: "Ø¦ÛŒÙ…Û•ÛŒÙ„",
+    phone: "Ú˜Ù…Ø§Ø±Û•ÛŒ ØªÛ•Ù„Û•ÙÛ†Ù†",
+    gender: "ڕەگەز",
+    male: "نێر",
+    female: "مێ",
+    country: "ÙˆÚµØ§Øª",
+    language: "Ø²Ù…Ø§Ù†",
+    subscriptions: "Ø¨Û•Ø´Ø¯Ø§Ø±Ø¨ÙˆÙˆÙ†Û•Ú©Ø§Ù†",
+    support: "Ù¾Ø§ÚµÙ¾Ø´ØªÛŒ",
+    website: "Ù…Ø§ÚµÙ¾Û•Ú•ÛŒ KISHIB",
+    cookies: "Ú©ÙˆÚ©ÛŒØ²",
+    terms: "Ù…Û•Ø±Ø¬ Ùˆ Ú•ÛŽØ³Ø§Ú©Ø§Ù†",
+    privacy: "ØªØ§ÛŒØ¨Û•ØªÙ…Û•Ù†Ø¯ÛŒ",
+    logout: "Ú†ÙˆÙˆÙ†Û•Ø¯Û•Ø±Û•ÙˆÛ•",
     deleteAccount: "Delete account",
     deleteAccountTitle: "Delete account",
     deleteAccountWarning: "This action is permanent and cannot be undone.",
     deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
+    deleteAccountConfirmHint: "Type DELETE or Ø­Ø°Ù to enable deletion.",
     deleteAccountConfirmButton: "Delete account permanently",
     deleteAccountSuccess: "Account and associated data were deleted successfully.",
     deleteAccountFailed: "Unable to delete account. Please try again.",
-    comingSoon: "بەم زووانە",
-    paymentDisabled: "پارەدان لە ئێستادا چالاک نییە",
-    unknown: "زیاد نەکراوە",
-    editProfile: "دەستکاری پرۆفایل",
-    save: "پاشەکەوت",
-    cancel: "هەڵوەشاندنەوە",
-    saved: "پاشەکەوت کرا",
-    supportText: "بۆ پاڵپشتی و یارمەتی لە ڕێگەی ئیمەیل پەیوەندیمان پێوە بکە",
-    close: "داخستن",
-    monthlyPlan: "بەشداربوونی مانگانە",
-    annualPlan: "بەشداربوونی ساڵانە",
-    reportsPack: "پاکێجی ڕاپۆرتەکان",
-    price: "نرخ",
-    includes: "لەخۆدەگرێت",
+    comingSoon: "Ø¨Û•Ù… Ø²ÙˆÙˆØ§Ù†Û•",
+    paymentDisabled: "Ù¾Ø§Ø±Û•Ø¯Ø§Ù† Ù„Û• Ø¦ÛŽØ³ØªØ§Ø¯Ø§ Ú†Ø§Ù„Ø§Ú© Ù†ÛŒÛŒÛ•",
+    unknown: "Ø²ÛŒØ§Ø¯ Ù†Û•Ú©Ø±Ø§ÙˆÛ•",
+    editProfile: "Ø¯Û•Ø³ØªÚ©Ø§Ø±ÛŒ Ù¾Ø±Û†ÙØ§ÛŒÙ„",
+    save: "Ù¾Ø§Ø´Û•Ú©Û•ÙˆØª",
+    cancel: "Ù‡Û•ÚµÙˆÛ•Ø´Ø§Ù†Ø¯Ù†Û•ÙˆÛ•",
+    saved: "Ù¾Ø§Ø´Û•Ú©Û•ÙˆØª Ú©Ø±Ø§",
+    supportText: "Ø¨Û† Ù¾Ø§ÚµÙ¾Ø´ØªÛŒ Ùˆ ÛŒØ§Ø±Ù…Û•ØªÛŒ Ù„Û• Ú•ÛŽÚ¯Û•ÛŒ Ø¦ÛŒÙ…Û•ÛŒÙ„ Ù¾Û•ÛŒÙˆÛ•Ù†Ø¯ÛŒÙ…Ø§Ù† Ù¾ÛŽÙˆÛ• Ø¨Ú©Û•",
+    close: "Ø¯Ø§Ø®Ø³ØªÙ†",
+    monthlyPlan: "Ø¨Û•Ø´Ø¯Ø§Ø±Ø¨ÙˆÙˆÙ†ÛŒ Ù…Ø§Ù†Ú¯Ø§Ù†Û•",
+    annualPlan: "Ø¨Û•Ø´Ø¯Ø§Ø±Ø¨ÙˆÙˆÙ†ÛŒ Ø³Ø§ÚµØ§Ù†Û•",
+    reportsPack: "Ù¾Ø§Ú©ÛŽØ¬ÛŒ Ú•Ø§Ù¾Û†Ø±ØªÛ•Ú©Ø§Ù†",
+    price: "Ù†Ø±Ø®",
+    includes: "Ù„Û•Ø®Û†Ø¯Û•Ú¯Ø±ÛŽØª",
   },
 };
 
 const MENU_LANGUAGES: { code: Locale; label: string; short: string }[] = [
-  { code: "ar", label: "العربية", short: "AR" },
+  { code: "ar", label: "Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©", short: "AR" },
   { code: "en", label: "English", short: "EN" },
-  { code: "fa", label: "فارسی", short: "FA" },
-  { code: "tr", label: "Türkçe", short: "TR" },
-  { code: "fr", label: "Français", short: "FR" },
-  { code: "hi", label: "हिन्दी", short: "HI" },
-  { code: "ku", label: "Kurdî", short: "KU" },
-  { code: "ru", label: "Русский", short: "RU" },
+  { code: "fa", label: "ÙØ§Ø±Ø³ÛŒ", short: "FA" },
+  { code: "tr", label: "TÃ¼rkÃ§e", short: "TR" },
+  { code: "fr", label: "FranÃ§ais", short: "FR" },
+  { code: "hi", label: "à¤¹à¤¿à¤¨à¥à¤¦à¥€", short: "HI" },
+  { code: "ku", label: "KurdÃ®", short: "KU" },
+  { code: "ru", label: "Ð ÑƒÑÑÐºÐ¸Ð¹", short: "RU" },
 ];
 
 function isRtl(locale: Locale) {
@@ -451,7 +492,12 @@ function readCachedProfile(userId: string): EditableProfile | null {
     return {
       name: typeof parsed.name === "string" ? parsed.name : "",
       phone: typeof parsed.phone === "string" ? parsed.phone : "",
+      gender: typeof parsed.gender === "string" ? parsed.gender : "",
       country: typeof parsed.country === "string" ? parsed.country : "",
+      countryCode:
+        typeof parsed.countryCode === "string" ? parsed.countryCode : "",
+      provinceCode:
+        typeof parsed.provinceCode === "string" ? parsed.provinceCode : "",
       city: typeof parsed.city === "string" ? parsed.city : "",
     };
   } catch {
@@ -486,6 +532,12 @@ function buildProfileInfo(
     "name",
     "display_name",
   ]);
+  const normalizedCountry =
+    getCountryByCode(profile?.country_code) ||
+    normalizeCountry(profile?.country || cached?.country || readMetadataText(metadata, ["country_code", "country", "country_name"]));
+  const normalizedProvince =
+    getProvinceByCode(profile?.province_code) ||
+    normalizeProvince(profile?.province || profile?.city || cached?.city || readMetadataText(metadata, ["province_code", "city", "province", "governorate"]));
 
   return {
     userId,
@@ -495,15 +547,23 @@ function buildProfileInfo(
       profile?.phone ||
       cached?.phone ||
       readMetadataText(metadata, ["phone", "phone_number", "mobile"]),
+    gender:
+      profile?.gender ||
+      cached?.gender ||
+      readMetadataText(metadata, ["gender"]),
     country:
+      normalizedCountry?.nameEn ||
       profile?.country ||
       cached?.country ||
       readMetadataText(metadata, ["country", "country_name"]),
+    countryCode: normalizedCountry?.code || "",
     city:
+      normalizedProvince?.nameEn ||
       profile?.city ||
       profile?.province ||
       cached?.city ||
       readMetadataText(metadata, ["city", "province", "governorate"]),
+    provinceCode: normalizedProvince?.code || "",
     avatarUrl:
       profile?.avatar_url ||
       readMetadataText(metadata, ["avatar_url", "picture", "photo_url"]),
@@ -514,9 +574,16 @@ function isProfileIncomplete(profile: ProfileInfo | null) {
   return (
     !profile?.name?.trim() ||
     !profile.phone.trim() ||
-    !profile.country.trim() ||
-    !profile.city.trim()
+    !profile.gender.trim() ||
+    !profile.countryCode.trim() ||
+    (profile.countryCode === "IQ" && !profile.provinceCode.trim())
   );
+}
+
+function getGenderLabel(value: string | undefined, copy: MenuCopy) {
+  if (value === "male") return copy.male;
+  if (value === "female") return copy.female;
+  return copy.unknown;
 }
 
 function Avatar({
@@ -572,7 +639,10 @@ export default function UserMenu({
   const [formProfile, setFormProfile] = useState<EditableProfile>({
     name: "",
     phone: "",
+    gender: "",
     country: "",
+    countryCode: "",
+    provinceCode: "",
     city: "",
   });
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -587,10 +657,10 @@ const panelRef = useRef<HTMLDivElement | null>(null);
   const avatarUrl = profileInfo?.avatarUrl || "";
   const profileIncomplete = isProfileIncomplete(profileInfo);
   const provinceLabel =
-    copy.province || (locale === "ar" ? "المدينة / المحافظة" : "City / Province");
+    copy.province || (locale === "ar" ? "Ø§Ù„Ù…Ø¯ÙŠÙ†Ø© / Ø§Ù„Ù…Ø­Ø§ÙØ¸Ø©" : "City / Province");
   const canConfirmAccountDeletion =
     deleteConfirmation.trim().toUpperCase() === "DELETE" ||
-    deleteConfirmation.trim() === "حذف";
+    deleteConfirmation.trim() === "Ø­Ø°Ù";
 
   useEffect(() => {
     let mounted = true;
@@ -607,7 +677,10 @@ const panelRef = useRef<HTMLDivElement | null>(null);
         setFormProfile({
           name: nextProfile.name,
           phone: nextProfile.phone,
+          gender: nextProfile.gender,
           country: nextProfile.country,
+          countryCode: nextProfile.countryCode,
+          provinceCode: nextProfile.provinceCode,
           city: nextProfile.city,
         });
         setEditOpen(isProfileIncomplete(nextProfile));
@@ -647,7 +720,10 @@ const panelRef = useRef<HTMLDivElement | null>(null);
         setFormProfile({
           name: nextProfile.name,
           phone: nextProfile.phone,
+          gender: nextProfile.gender,
           country: nextProfile.country,
+          countryCode: nextProfile.countryCode,
+          provinceCode: nextProfile.provinceCode,
           city: nextProfile.city,
         });
       }
@@ -732,7 +808,7 @@ const panelRef = useRef<HTMLDivElement | null>(null);
 
     if (
       normalizedConfirmation !== "DELETE" &&
-      deleteConfirmation.trim() !== "حذف"
+      deleteConfirmation.trim() !== "Ø­Ø°Ù"
     ) {
       return;
     }
@@ -786,7 +862,10 @@ const panelRef = useRef<HTMLDivElement | null>(null);
     const nextProfile = {
       name: formProfile.name.trim(),
       phone: formProfile.phone.trim(),
+      gender: formProfile.gender.trim(),
       country: formProfile.country.trim(),
+      countryCode: formProfile.countryCode.trim(),
+      provinceCode: formProfile.provinceCode.trim(),
       city: formProfile.city.trim(),
     };
 
@@ -799,7 +878,10 @@ const panelRef = useRef<HTMLDivElement | null>(null);
       const { profile } = await updateCurrentUserProfile({
         full_name: nextProfile.name,
         phone: nextProfile.phone,
+        gender: nextProfile.gender,
         country: nextProfile.country,
+        country_code: nextProfile.countryCode,
+        province_code: nextProfile.provinceCode,
         city: nextProfile.city,
       });
 
@@ -811,7 +893,10 @@ const panelRef = useRef<HTMLDivElement | null>(null);
             user_metadata: {
               full_name: nextProfile.name,
               phone: nextProfile.phone,
+              gender: nextProfile.gender,
               country: nextProfile.country,
+              country_code: nextProfile.countryCode,
+              province_code: nextProfile.provinceCode,
               city: nextProfile.city,
             },
           },
@@ -920,6 +1005,11 @@ const panelRef = useRef<HTMLDivElement | null>(null);
                     value={profileInfo?.phone || copy.unknown}
                   />
                   <ProfileLine
+                    icon={<Users className="h-3.5 w-3.5" />}
+                    label={copy.gender}
+                    value={getGenderLabel(profileInfo?.gender, copy)}
+                  />
+                  <ProfileLine
                     icon={<MapPin className="h-3.5 w-3.5" />}
                     label={copy.country}
                     value={profileInfo?.country || copy.unknown}
@@ -978,22 +1068,54 @@ const panelRef = useRef<HTMLDivElement | null>(null);
                     }
                     autoComplete="tel"
                   />
-                  <ProfileInput
+                  <ProfileSelect
+                    label={copy.gender}
+                    value={formProfile.gender}
+                    onChange={(value) =>
+                      setFormProfile((current) => ({ ...current, gender: value }))
+                    }
+                    options={[
+                      { value: "male", label: copy.male },
+                      { value: "female", label: copy.female },
+                    ]}
+                  />
+                  <ProfileSelect
                     label={copy.country}
-                    value={formProfile.country}
-                    onChange={(value) =>
-                      setFormProfile((current) => ({ ...current, country: value }))
-                    }
-                    autoComplete="country-name"
+                    value={formProfile.countryCode}
+                    onChange={(value) => {
+                      const selectedCountry = getCountryByCode(value);
+                      setFormProfile((current) => ({
+                        ...current,
+                        countryCode: value,
+                        country: selectedCountry?.nameEn || "",
+                        provinceCode:
+                          value === "IQ" ? current.provinceCode : "",
+                        city: value === "IQ" ? current.city : "",
+                      }));
+                    }}
+                    options={countries.map((country) => ({
+                      value: country.code,
+                      label: countryLabel(country, locale),
+                    }))}
                   />
-                  <ProfileInput
-                    label={provinceLabel}
-                    value={formProfile.city}
-                    onChange={(value) =>
-                      setFormProfile((current) => ({ ...current, city: value }))
-                    }
-                    autoComplete="address-level2"
-                  />
+                  {formProfile.countryCode === "IQ" ? (
+                    <ProfileSelect
+                      label={provinceLabel}
+                      value={formProfile.provinceCode}
+                      onChange={(value) => {
+                        const selectedProvince = getProvinceByCode(value);
+                        setFormProfile((current) => ({
+                          ...current,
+                          provinceCode: value,
+                          city: selectedProvince?.nameEn || "",
+                        }));
+                      }}
+                      options={iraqProvinces.map((province) => ({
+                        value: province.code,
+                        label: getProvinceOptionLabel(province, locale),
+                      }))}
+                    />
+                  ) : null}
 
                   <div className="mt-2 flex gap-2">
                     <button
@@ -1162,21 +1284,21 @@ const panelRef = useRef<HTMLDivElement | null>(null);
                     title={copy.monthlyPlan}
                     price="5$"
                     copy={copy}
-                    features={["استخدام شهري", "إمكانية طباعة 5 تقارير"]}
+                    features={["Ø§Ø³ØªØ®Ø¯Ø§Ù… Ø´Ù‡Ø±ÙŠ", "Ø¥Ù…ÙƒØ§Ù†ÙŠØ© Ø·Ø¨Ø§Ø¹Ø© 5 ØªÙ‚Ø§Ø±ÙŠØ±"]}
                   />
                   <PlanCard
                     title={copy.annualPlan}
                     price="45$"
                     copy={copy}
-                    features={["استخدام سنوي", "75 تقرير قابل للطباعة"]}
+                    features={["Ø§Ø³ØªØ®Ø¯Ø§Ù… Ø³Ù†ÙˆÙŠ", "75 ØªÙ‚Ø±ÙŠØ± Ù‚Ø§Ø¨Ù„ Ù„Ù„Ø·Ø¨Ø§Ø¹Ø©"]}
                   />
                   <PlanCard
                     title={copy.reportsPack}
                     price="20$"
                     copy={copy}
                     features={[
-                      "150 تقرير",
-                      "يمكن شراؤها بشكل منفصل عن الاشتراك",
+                      "150 ØªÙ‚Ø±ÙŠØ±",
+                      "ÙŠÙ…ÙƒÙ† Ø´Ø±Ø§Ø¤Ù‡Ø§ Ø¨Ø´ÙƒÙ„ Ù…Ù†ÙØµÙ„ Ø¹Ù† Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ",
                     ]}
                   />
                 </div>
@@ -1298,6 +1420,45 @@ function ProfileInput({
         required
         className="h-9 w-full rounded-[11px] border border-[#d2b98f] bg-[#fffaf0] px-3 text-[12px] font-medium text-[#241913] outline-none transition focus:border-[#b88a3d] focus:ring-2 focus:ring-[#b88a3d]/18"
       />
+    </label>
+  );
+}
+
+function ProfileSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <label className="mb-2 block">
+      <span className="mb-1 block text-[10.5px] font-semibold text-[#735f4b]">
+        {label}
+      </span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        required
+        className="h-9 w-full rounded-[11px] border border-[#d2b98f] bg-[#fffaf0] px-3 text-[12px] font-medium text-[#241913] outline-none transition focus:border-[#b88a3d] focus:ring-2 focus:ring-[#b88a3d]/18"
+      >
+        <option value="" className="bg-[#fff4e2] text-[#241913]">
+          {label}
+        </option>
+        {options.map((option) => (
+          <option
+            key={option.value}
+            value={option.value}
+            className="bg-[#fff4e2] text-[#241913]"
+          >
+            {option.label}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }

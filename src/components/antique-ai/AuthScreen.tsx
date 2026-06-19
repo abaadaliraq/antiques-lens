@@ -24,6 +24,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
+import {
+  countries,
+  countryLabel,
+  getCountryByCode,
+  getProvinceByCode,
+  iraqProvinces,
+  provinceLabel,
+} from "@/lib/locationOptions";
 import LanguagePills from "./LanguagePills";
 import type { Locale } from "./types";
 
@@ -474,7 +482,9 @@ export default function AuthScreen({
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
   const [country, setCountry] = useState("");
+  const [countryCode, setCountryCode] = useState("");
   const [province, setProvince] = useState("");
+  const [provinceCode, setProvinceCode] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState("");
   const [phoneCode, setPhoneCode] = useState<string>(PHONE_CODES[0].code);
@@ -591,7 +601,11 @@ export default function AuthScreen({
             data: {
               full_name: fullName.trim(),
               country: country.trim(),
+              country_code: countryCode,
+              country_name_en: country.trim(),
               province: province.trim(),
+              province_code: provinceCode,
+              province_name_en: province.trim() || null,
               birth_date: birthDate,
               gender,
               phone_code: phoneCode,
@@ -866,7 +880,20 @@ export default function AuthScreen({
               {mode === "signup" && (
                 <div className="grid gap-2.5 md:grid-cols-2">
                   <AuthInput icon={<User />} value={fullName} onChange={setFullName} placeholder={copy.name} autoComplete="name" required />
-                  <AuthInput icon={<Globe2 />} value={country} onChange={setCountry} placeholder={copy.country} autoComplete="country-name" required />
+                  <CountryInput
+                    value={countryCode}
+                    onChange={(value) => {
+                      const selectedCountry = getCountryByCode(value);
+                      setCountryCode(value);
+                      setCountry(selectedCountry?.nameEn || "");
+                      if (value !== "IQ") {
+                        setProvinceCode("");
+                        setProvince("");
+                      }
+                    }}
+                    label={copy.country}
+                    locale={locale}
+                  />
                   <GenderInput
                     value={gender}
                     onChange={setGender}
@@ -874,7 +901,18 @@ export default function AuthScreen({
                     male={copy.male}
                     female={copy.female}
                   />
-                  <AuthInput icon={<MapPin />} value={province} onChange={setProvince} placeholder={copy.province} autoComplete="address-level1" required />
+                  {countryCode === "IQ" ? (
+                    <ProvinceInput
+                      value={provinceCode}
+                      onChange={(value) => {
+                        const selectedProvince = getProvinceByCode(value);
+                        setProvinceCode(value);
+                        setProvince(selectedProvince?.nameEn || "");
+                      }}
+                      label={copy.province}
+                      locale={locale}
+                    />
+                  ) : null}
                   <PhoneInput
                     phoneCode={phoneCode}
                     phone={phone}
@@ -1128,6 +1166,82 @@ function GenderInput({
         <option value="female" className="bg-[#fff4e2] text-[#241913]">
           {female}
         </option>
+      </select>
+    </label>
+  );
+}
+
+function CountryInput({
+  value,
+  onChange,
+  label,
+  locale,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+  locale: Locale;
+}) {
+  return (
+    <label className="flex h-11 items-center gap-3 rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/78 px-4 backdrop-blur-md">
+      <Globe2 className="h-4 w-4 shrink-0 text-[#b88a3d]" />
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        required
+        aria-label={label}
+        className="min-w-0 flex-1 bg-transparent text-[13px] text-[#241913] outline-none"
+      >
+        <option value="" className="bg-[#fff4e2] text-[#241913]">
+          {label}
+        </option>
+        {countries.map((country) => (
+          <option
+            key={country.code}
+            value={country.code}
+            className="bg-[#fff4e2] text-[#241913]"
+          >
+            {countryLabel(country, locale)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function ProvinceInput({
+  value,
+  onChange,
+  label,
+  locale,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+  locale: Locale;
+}) {
+  return (
+    <label className="flex h-11 items-center gap-3 rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/78 px-4 backdrop-blur-md">
+      <MapPin className="h-4 w-4 shrink-0 text-[#b88a3d]" />
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        required
+        aria-label={label}
+        className="min-w-0 flex-1 bg-transparent text-[13px] text-[#241913] outline-none"
+      >
+        <option value="" className="bg-[#fff4e2] text-[#241913]">
+          {label}
+        </option>
+        {iraqProvinces.map((province) => (
+          <option
+            key={province.code}
+            value={province.code}
+            className="bg-[#fff4e2] text-[#241913]"
+          >
+            {provinceLabel(province, locale)}
+          </option>
+        ))}
       </select>
     </label>
   );

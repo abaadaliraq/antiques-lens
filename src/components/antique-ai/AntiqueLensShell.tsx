@@ -11,6 +11,7 @@ import EvaluationComposer from "@/components/antique-ai/EvaluationComposer";
 import ExpertContactButton from "@/components/antique-ai/ExpertContactButton";
 import FollowUpEvaluationPanel from "@/components/antique-ai/FollowUpEvaluationPanel";
 import KishibLoader from "@/components/antique-ai/KishibLoader";
+import NotificationsButton from "@/components/antique-ai/NotificationsButton";
 import PlatformNewsTicker from "@/components/antique-ai/PlatformNewsTicker";
 import ResultView from "@/components/antique-ai/ResultView";
 import SubscriptionModal from "@/components/antique-ai/SubscriptionModal";
@@ -580,11 +581,14 @@ export default function AntiqueLensShell() {
             dir="ltr"
             className="kishib-app-chrome fixed inset-x-0 top-[34px] z-40 flex items-center gap-2 border-y ... border-white/10 bg-[#241913]/18 px-2 py-1 shadow-[0_8px_22px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:top-[34px] sm:px-3"
           >
-            <UserMenu
-              locale={lens.locale}
-              setLocale={lens.changeLocale}
-              compact
-            />
+            <div className="flex shrink-0 items-center gap-1.5">
+              <NotificationsButton locale={lens.locale} compact />
+              <UserMenu
+                locale={lens.locale}
+                setLocale={lens.changeLocale}
+                compact
+              />
+            </div>
 
             <div
               dir={lens.t.dir}
@@ -604,7 +608,8 @@ export default function AntiqueLensShell() {
           </div>
         ) : (
           <>
-           <div className="kishib-app-chrome fixed right-4 top-4 z-40 lg:right-8 lg:top-8">
+           <div className="kishib-app-chrome fixed right-4 top-4 z-40 flex items-center gap-2 lg:right-8 lg:top-8">
+              <NotificationsButton locale={lens.locale} />
               <UserMenu
                 locale={lens.locale}
                 setLocale={lens.changeLocale}

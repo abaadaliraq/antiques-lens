@@ -1,12 +1,22 @@
-"use client";
+﻿"use client";
 
-import { MapPin, Phone, ShieldCheck, UserRound } from "lucide-react";
+import { MapPin, Phone, ShieldCheck, UserRound, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   updateCurrentUserProfile,
   type RequiredProfileInput,
   type UserProfile,
 } from "@/lib/profilesSupabase";
+import {
+  countries,
+  countryLabel,
+  getCountryByCode,
+  getProvinceByCode,
+  iraqProvinces,
+  provinceLabel,
+  normalizeCountry,
+  normalizeProvince,
+} from "@/lib/locationOptions";
 import type { Locale } from "./types";
 
 type CompleteProfileModalProps = {
@@ -17,21 +27,27 @@ type CompleteProfileModalProps = {
 
 const COPY = {
   ar: {
-    title: "أكمل بيانات حسابك",
-    text: "لأمان التقييمات وحفظ سجلك داخل KISHIB، يجب إكمال رقم الهاتف والموقع قبل استخدام المنصة.",
-    name: "الاسم الكامل",
-    phone: "رقم الهاتف",
-    country: "الدولة",
-    city: "المدينة / المحافظة",
-    save: "حفظ ومتابعة",
-    required: "جميع الحقول مطلوبة.",
-    failed: "تعذر حفظ البيانات حالياً، حاول مرة أخرى.",
+    title: "Ø£ÙƒÙ…Ù„ Ø¨ÙŠØ§Ù†Ø§Øª Ø­Ø³Ø§Ø¨Ùƒ",
+    text: "Ù„Ø£Ù…Ø§Ù† Ø§Ù„ØªÙ‚ÙŠÙŠÙ…Ø§Øª ÙˆØ­ÙØ¸ Ø³Ø¬Ù„Ùƒ Ø¯Ø§Ø®Ù„ KISHIBØŒ ÙŠØ¬Ø¨ Ø¥ÙƒÙ…Ø§Ù„ Ø±Ù‚Ù… Ø§Ù„Ù‡Ø§ØªÙ ÙˆØ§Ù„Ù…ÙˆÙ‚Ø¹ Ù‚Ø¨Ù„ Ø§Ø³ØªØ®Ø¯Ø§Ù… Ø§Ù„Ù…Ù†ØµØ©.",
+    name: "Ø§Ù„Ø§Ø³Ù… Ø§Ù„ÙƒØ§Ù…Ù„",
+    phone: "Ø±Ù‚Ù… Ø§Ù„Ù‡Ø§ØªÙ",
+    gender: "الجنس",
+    male: "ذكر",
+    female: "أنثى",
+    country: "Ø§Ù„Ø¯ÙˆÙ„Ø©",
+    city: "Ø§Ù„Ù…Ø¯ÙŠÙ†Ø© / Ø§Ù„Ù…Ø­Ø§ÙØ¸Ø©",
+    save: "Ø­ÙØ¸ ÙˆÙ…ØªØ§Ø¨Ø¹Ø©",
+    required: "Ø¬Ù…ÙŠØ¹ Ø§Ù„Ø­Ù‚ÙˆÙ„ Ù…Ø·Ù„ÙˆØ¨Ø©.",
+    failed: "ØªØ¹Ø°Ø± Ø­ÙØ¸ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø­Ø§Ù„ÙŠØ§Ù‹ØŒ Ø­Ø§ÙˆÙ„ Ù…Ø±Ø© Ø£Ø®Ø±Ù‰.",
   },
   en: {
     title: "Complete your account details",
     text: "To keep evaluations secure and save your KISHIB history, phone number and location are required before using the platform.",
     name: "Full name",
     phone: "Phone number",
+    gender: "Gender",
+    male: "Male",
+    female: "Female",
     country: "Country",
     city: "City / Province",
     save: "Save and continue",
@@ -57,17 +73,30 @@ export default function CompleteProfileModal({
   const [form, setForm] = useState<RequiredProfileInput>({
     full_name: "",
     phone: "",
+    gender: "",
     country: "",
+    country_code: "",
+    province_code: "",
     city: "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const normalizedCountry = profile?.country_code
+      ? getCountryByCode(profile.country_code)
+      : normalizeCountry(profile?.country);
+    const normalizedProvince = profile?.province_code
+      ? getProvinceByCode(profile.province_code)
+      : normalizeProvince(profile?.province || profile?.city);
+
     setForm({
       full_name: profile?.full_name || "",
       phone: profile?.phone || "",
-      country: profile?.country || "",
+      gender: profile?.gender || "",
+      country: normalizedCountry?.nameEn || profile?.country || "",
+      country_code: normalizedCountry?.code || "",
+      province_code: normalizedProvince?.code || "",
       city: profile?.city || profile?.province || "",
     });
   }, [profile]);
@@ -78,15 +107,19 @@ export default function CompleteProfileModal({
     const nextForm = {
       full_name: form.full_name.trim(),
       phone: form.phone.trim(),
+      gender: form.gender.trim(),
       country: form.country.trim(),
+      country_code: form.country_code.trim(),
+      province_code: form.province_code?.trim() || "",
       city: form.city.trim(),
     };
 
     if (
       !nextForm.full_name ||
       !nextForm.phone ||
-      !nextForm.country ||
-      !nextForm.city
+      !nextForm.gender ||
+      !nextForm.country_code ||
+      (nextForm.country_code === "IQ" && !nextForm.province_code)
     ) {
       setError(copy.required);
       return;
@@ -156,24 +189,45 @@ export default function CompleteProfileModal({
             autoComplete="tel"
             inputMode="tel"
           />
-          <ProfileField
-            icon={<MapPin />}
-            value={form.country}
+          <GenderField
+            value={form.gender}
             onChange={(value) =>
-              setForm((current) => ({ ...current, country: value }))
+              setForm((current) => ({ ...current, gender: value }))
             }
-            placeholder={copy.country}
-            autoComplete="country-name"
+            label={copy.gender}
+            male={copy.male}
+            female={copy.female}
           />
-          <ProfileField
-            icon={<MapPin />}
-            value={form.city}
-            onChange={(value) =>
-              setForm((current) => ({ ...current, city: value }))
-            }
-            placeholder={copy.city}
-            autoComplete="address-level1"
+          <CountryField
+            value={form.country_code}
+            onChange={(value) => {
+              const country = getCountryByCode(value);
+              setForm((current) => ({
+                ...current,
+                country_code: value,
+                country: country?.nameEn || "",
+                province_code: value === "IQ" ? current.province_code : "",
+                city: value === "IQ" ? current.city : "",
+              }));
+            }}
+            label={copy.country}
+            locale={locale}
           />
+          {form.country_code === "IQ" ? (
+            <ProvinceField
+              value={form.province_code || ""}
+              onChange={(value) => {
+                const province = getProvinceByCode(value);
+                setForm((current) => ({
+                  ...current,
+                  province_code: value,
+                  city: province?.nameEn || "",
+                }));
+              }}
+              label={copy.city}
+              locale={locale}
+            />
+          ) : null}
         </div>
 
         {error ? (
@@ -191,6 +245,119 @@ export default function CompleteProfileModal({
         </button>
       </form>
     </div>
+  );
+}
+
+function GenderField({
+  value,
+  onChange,
+  label,
+  male,
+  female,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+  male: string;
+  female: string;
+}) {
+  return (
+    <label className="flex h-11 items-center gap-3 rounded-[12px] border border-[#d2b98f] bg-[#fffaf0] px-4">
+      <Users className="h-4 w-4 shrink-0 text-[#b88a3d]" />
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        required
+        aria-label={label}
+        className="min-w-0 flex-1 bg-transparent text-[13px] text-[#241913] outline-none"
+      >
+        <option value="" className="bg-[#fff4e2] text-[#241913]">
+          {label}
+        </option>
+        <option value="male" className="bg-[#fff4e2] text-[#241913]">
+          {male}
+        </option>
+        <option value="female" className="bg-[#fff4e2] text-[#241913]">
+          {female}
+        </option>
+      </select>
+    </label>
+  );
+}
+
+function CountryField({
+  value,
+  onChange,
+  label,
+  locale,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+  locale: Locale;
+}) {
+  return (
+    <label className="flex h-11 items-center gap-3 rounded-[12px] border border-[#d2b98f] bg-[#fffaf0] px-4">
+      <MapPin className="h-4 w-4 shrink-0 text-[#b88a3d]" />
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        required
+        aria-label={label}
+        className="min-w-0 flex-1 bg-transparent text-[13px] text-[#241913] outline-none"
+      >
+        <option value="" className="bg-[#fff4e2] text-[#241913]">
+          {label}
+        </option>
+        {countries.map((country) => (
+          <option
+            key={country.code}
+            value={country.code}
+            className="bg-[#fff4e2] text-[#241913]"
+          >
+            {countryLabel(country, locale)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function ProvinceField({
+  value,
+  onChange,
+  label,
+  locale,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+  locale: Locale;
+}) {
+  return (
+    <label className="flex h-11 items-center gap-3 rounded-[12px] border border-[#d2b98f] bg-[#fffaf0] px-4">
+      <MapPin className="h-4 w-4 shrink-0 text-[#b88a3d]" />
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        required
+        aria-label={label}
+        className="min-w-0 flex-1 bg-transparent text-[13px] text-[#241913] outline-none"
+      >
+        <option value="" className="bg-[#fff4e2] text-[#241913]">
+          {label}
+        </option>
+        {iraqProvinces.map((province) => (
+          <option
+            key={province.code}
+            value={province.code}
+            className="bg-[#fff4e2] text-[#241913]"
+          >
+            {provinceLabel(province, locale)}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 

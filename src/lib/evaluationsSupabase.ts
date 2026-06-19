@@ -30,8 +30,13 @@ type EvaluationRow = {
   user_name: string | null;
   user_phone: string | null;
   user_country: string | null;
+  user_country_code?: string | null;
+  user_country_name_en?: string | null;
   user_city: string | null;
   user_province: string | null;
+  user_province_code?: string | null;
+  user_province_name_en?: string | null;
+  user_gender?: string | null;
   title: string | null;
   locale: string | null;
   item_type: string | null;
@@ -140,7 +145,7 @@ export async function loadEvaluationArchiveItemsFromSupabase() {
     const { data, error } = await (supabase as unknown as SupabaseTableClient)
       .from("evaluations")
       .select(
-        "id,user_id,user_email,user_name,user_phone,user_country,user_city,user_province,title,locale,item_type,image_url,cloudinary_public_id,analysis_result,created_at,updated_at",
+        "id,user_id,user_email,user_name,user_phone,user_country,user_country_code,user_country_name_en,user_city,user_province,user_province_code,user_province_name_en,user_gender,title,locale,item_type,image_url,cloudinary_public_id,analysis_result,created_at,updated_at",
       )
       .eq("user_id", userData.user.id)
       .order("created_at", { ascending: false })
@@ -183,9 +188,14 @@ export async function saveEvaluationToSupabase({
       cloudinaryPublicId: finalCloudinaryPublicId || undefined,
       userProfile: {
         phone: profile?.phone ?? null,
+        gender: profile?.gender ?? null,
         country: profile?.country ?? null,
+        country_code: profile?.country_code ?? null,
+        country_name_en: profile?.country_name_en ?? null,
         city: profile?.city ?? null,
         province: profile?.province ?? null,
+        province_code: profile?.province_code ?? null,
+        province_name_en: profile?.province_name_en ?? null,
       },
     };
 
@@ -196,8 +206,13 @@ export async function saveEvaluationToSupabase({
       user_name: profile?.full_name || userName || null,
       user_phone: profile?.phone ?? null,
       user_country: profile?.country ?? null,
+      user_country_code: profile?.country_code ?? null,
+      user_country_name_en: profile?.country_name_en ?? null,
       user_city: profile?.city ?? null,
       user_province: profile?.province ?? null,
+      user_province_code: profile?.province_code ?? null,
+      user_province_name_en: profile?.province_name_en ?? null,
+      user_gender: profile?.gender ?? null,
       title: archiveItem.title || result.title || null,
       locale,
       item_type: result.itemType || result.lookup || null,

@@ -1,6 +1,12 @@
 "use client";
 
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
+import {
+  getCountryByCode,
+  getProvinceByCode,
+  normalizeCountry,
+  normalizeProvince,
+} from "@/lib/locationOptions";
 
 export const PROFILE_UPDATED_EVENT = "kishib:profile-updated";
 
@@ -10,9 +16,14 @@ export type UserProfile = {
   full_name: string | null;
   avatar_url: string | null;
   phone: string | null;
+  gender: string | null;
   country: string | null;
+  country_code: string | null;
+  country_name_en: string | null;
   city: string | null;
   province: string | null;
+  province_code: string | null;
+  province_name_en: string | null;
   provider: string | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -21,7 +32,10 @@ export type UserProfile = {
 export type RequiredProfileInput = {
   full_name: string;
   phone: string;
+  gender: string;
   country: string;
+  country_code: string;
+  province_code?: string;
   city: string;
 };
 
@@ -42,6 +56,9 @@ type SupabaseProfilesClient = {
     };
   };
 };
+
+const PROFILE_SELECT =
+  "id,email,full_name,avatar_url,phone,gender,country,country_code,country_name_en,city,province,province_code,province_name_en,provider,created_at,updated_at";
 
 function readText(record: Record<string, unknown>, keys: string[]) {
   for (const key of keys) {
@@ -80,9 +97,22 @@ function profileFromUnknown(value: unknown): UserProfile | null {
     avatar_url:
       typeof record.avatar_url === "string" ? record.avatar_url : null,
     phone: typeof record.phone === "string" ? record.phone : null,
+    gender: typeof record.gender === "string" ? record.gender : null,
     country: typeof record.country === "string" ? record.country : null,
+    country_code:
+      typeof record.country_code === "string" ? record.country_code : null,
+    country_name_en:
+      typeof record.country_name_en === "string"
+        ? record.country_name_en
+        : null,
     city: typeof record.city === "string" ? record.city : null,
     province: typeof record.province === "string" ? record.province : null,
+    province_code:
+      typeof record.province_code === "string" ? record.province_code : null,
+    province_name_en:
+      typeof record.province_name_en === "string"
+        ? record.province_name_en
+        : null,
     provider: typeof record.provider === "string" ? record.provider : null,
     created_at:
       typeof record.created_at === "string" ? record.created_at : null,
@@ -95,8 +125,11 @@ export function isProfileComplete(profile: UserProfile | null) {
   return Boolean(
     profile?.full_name?.trim() &&
       profile.phone?.trim() &&
-      profile.country?.trim() &&
-      (profile.city?.trim() || profile.province?.trim()),
+      profile.gender?.trim() &&
+      (profile.country_code?.trim() || profile.country?.trim()) &&
+      ((profile.country_code || normalizeCountry(profile.country)?.code) !== "IQ" ||
+        profile.province_code?.trim() ||
+        normalizeProvince(profile.city || profile.province)?.code),
   );
 }
 
@@ -111,9 +144,7 @@ export async function getCurrentUserProfile() {
 
     const { data, error } = await (supabase as unknown as SupabaseProfilesClient)
       .from("profiles")
-      .select(
-        "id,email,full_name,avatar_url,phone,country,city,province,provider,created_at,updated_at",
-      )
+      .select(PROFILE_SELECT)
       .eq("id", userData.user.id)
       .maybeSingle();
 
@@ -147,6 +178,16 @@ export async function ensureCurrentUserProfile() {
 
     if (existing.profile) return existing;
 
+    const metadataCountry = readText(metadata, ["country_code", "country", "country_name"]);
+    const metadataProvince = readText(metadata, [
+      "province_code",
+      "province",
+      "governorate",
+      "city",
+    ]);
+    const normalizedCountry = normalizeCountry(metadataCountry);
+    const normalizedProvince = normalizeProvince(metadataProvince);
+
     const baseProfile = {
       id: user.id,
       email: user.email ?? null,
@@ -154,9 +195,14 @@ export async function ensureCurrentUserProfile() {
         readText(metadata, ["full_name", "name", "display_name"]) || null,
       avatar_url: readText(metadata, ["avatar_url", "picture", "photo_url"]) || null,
       phone: readText(metadata, ["phone", "phone_number", "mobile"]) || null,
-      country: readText(metadata, ["country", "country_name"]) || null,
-      city: readText(metadata, ["city"]) || null,
-      province: readText(metadata, ["province", "governorate"]) || null,
+      gender: readText(metadata, ["gender"]) || null,
+      country: normalizedCountry?.nameEn || readText(metadata, ["country", "country_name"]) || null,
+      country_code: normalizedCountry?.code || null,
+      country_name_en: normalizedCountry?.nameEn || null,
+      city: normalizedProvince?.nameEn || readText(metadata, ["city"]) || null,
+      province: normalizedProvince?.nameEn || readText(metadata, ["province", "governorate"]) || null,
+      province_code: normalizedProvince?.code || null,
+      province_name_en: normalizedProvince?.nameEn || null,
       provider: getProvider(user) || null,
       updated_at: new Date().toISOString(),
     };
@@ -164,9 +210,7 @@ export async function ensureCurrentUserProfile() {
     const { data, error } = await (supabase as unknown as SupabaseProfilesClient)
       .from("profiles")
       .upsert(baseProfile, { onConflict: "id" })
-      .select(
-        "id,email,full_name,avatar_url,phone,country,city,province,provider,created_at,updated_at",
-      )
+      .select(PROFILE_SELECT)
       .single();
 
     if (error) throw error;
@@ -192,15 +236,26 @@ export async function updateCurrentUserProfile(input: RequiredProfileInput) {
 
   const user = userData.user;
   const metadata = user.user_metadata ?? {};
+  const country = getCountryByCode(input.country_code) || normalizeCountry(input.country);
+  const province =
+    input.country_code === "IQ"
+      ? getProvinceByCode(input.province_code) ||
+        normalizeProvince(input.city)
+      : null;
   const payload = {
     id: user.id,
     email: user.email ?? null,
     full_name: input.full_name.trim(),
     avatar_url: readText(metadata, ["avatar_url", "picture", "photo_url"]) || null,
     phone: input.phone.trim(),
-    country: input.country.trim(),
-    city: input.city.trim(),
-    province: input.city.trim(),
+    gender: input.gender.trim(),
+    country: country?.nameEn || input.country.trim(),
+    country_code: country?.code || input.country_code.trim(),
+    country_name_en: country?.nameEn || input.country.trim(),
+    city: province?.nameEn || input.city.trim(),
+    province: province?.nameEn || input.city.trim(),
+    province_code: province?.code || input.province_code?.trim() || null,
+    province_name_en: province?.nameEn || (input.country_code === "IQ" ? input.city.trim() : null),
     provider: getProvider(user) || null,
     updated_at: new Date().toISOString(),
   };
@@ -208,9 +263,7 @@ export async function updateCurrentUserProfile(input: RequiredProfileInput) {
   const { data, error } = await (supabase as unknown as SupabaseProfilesClient)
     .from("profiles")
     .upsert(payload, { onConflict: "id" })
-    .select(
-      "id,email,full_name,avatar_url,phone,country,city,province,provider,created_at,updated_at",
-    )
+    .select(PROFILE_SELECT)
     .single();
 
   if (error) throw error;
@@ -221,9 +274,14 @@ export async function updateCurrentUserProfile(input: RequiredProfileInput) {
       full_name: payload.full_name,
       name: payload.full_name,
       phone: payload.phone,
+      gender: payload.gender,
       country: payload.country,
+      country_code: payload.country_code,
+      country_name_en: payload.country_name_en,
       city: payload.city,
       province: payload.province,
+      province_code: payload.province_code,
+      province_name_en: payload.province_name_en,
     },
   });
 
