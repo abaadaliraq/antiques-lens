@@ -12,6 +12,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import type { AnalysisResult, Locale, SimilarImageResult } from "./types";
 import AntiqueReportDocument from "./AntiqueReportDocument";
+import ValuationRangeCard from "./ValuationRangeCard";
 type ResultLabels = {
   result: string;
   lookup: string;
@@ -345,35 +346,135 @@ function getSimilarItems(result: AnalysisResult | null): SimilarImageResult[] {
 
 function getItemTypeLabel(locale: Locale) {
   if (locale === "en") return "Object type";
-  if (locale === "fr") return "Type dâ€™objet";
-  if (locale === "hi") return "à¤µà¤¸à¥à¤¤à¥ à¤•à¤¾ à¤ªà¥à¤°à¤•à¤¾à¤°";
-  if (locale === "fa") return "Ù†ÙˆØ¹ Ø´ÛŒØ¡";
-  if (locale === "tr") return "Nesne tÃ¼rÃ¼";
-  if (locale === "ru") return "Ð¢Ð¸Ð¿ Ð¿Ñ€ÐµÐ´Ð¼ÐµÑ‚Ð°";
-  if (locale === "ku") return "Ø¬Û†Ø±ÛŒ Ù¾Ø§Ø±Ú†Û•";
+  if (locale === "fr") return "Type d'objet";
+  if (locale === "hi") return "Object type";
+  if (locale === "fa") return "Object type";
+  if (locale === "tr") return "Nesne türü";
+  if (locale === "ru") return "Object type";
+  if (locale === "ku") return "Object type";
   return "نوع القطعة";
 }
 
 function getSilverScenarioLabels(locale: Locale) {
-  if (locale === "en") {
-    return {
+  const labels: Record<Locale, {
+    title: string;
+    note: string;
+    weight: string;
+    melt: string;
+    antique: string;
+    indicator: string;
+    possibleMetal: string;
+    marketPrice: string;
+    weightUsed: string;
+    rawEstimate: string;
+  }> = {
+    ar: {
+      title: "احتمالات قيمة الفضة حسب الوزن",
+      note:
+        "هذه سيناريوهات مشروطة حسب سعر السوق اليوم. التقييم النهائي يحتاج وزنًا دقيقًا وعيارًا أو ختمًا واضحًا.",
+      weight: "الوزن المفترض",
+      melt: "قيمة الفضة الخام",
+      antique: "مع قيمة الأنتيك",
+      indicator: "مؤشر سعر المعدن",
+      possibleMetal: "المعدن المحتمل",
+      marketPrice: "سعر السوق",
+      weightUsed: "الوزن المستخدم",
+      rawEstimate: "تقدير المعدن الخام",
+    },
+    en: {
       title: "Silver value scenarios by weight",
       note:
-        "No exact weight was entered, so these are scenario estimates. Final valuation requires weighing the item and checking purity marks.",
+        "These are conditional scenarios from today's market rate. Final valuation requires exact weight and a clear purity mark or hallmark.",
       weight: "Assumed weight",
       melt: "Raw silver value",
       antique: "With antique value",
-    };
-  }
-
-  return {
-    title: "Ø§Ø­ØªÙ…Ø§Ù„Ø§Øª Ù‚ÙŠÙ…Ø© Ø§Ù„ÙØ¶Ø© Ø­Ø³Ø¨ Ø§Ù„ÙˆØ²Ù†",
-    note:
-      "Ù„Ù… ÙŠØªÙ… Ø¥Ø¯Ø®Ø§Ù„ ÙˆØ²Ù† Ø¯Ù‚ÙŠÙ‚ØŒ Ù„Ø°Ù„Ùƒ Ù‡Ø°Ù‡ ØªÙ‚Ø¯ÙŠØ±Ø§Øª Ø§Ø­ØªÙ…Ø§Ù„ÙŠØ©. Ø§Ù„ÙˆØ²Ù† ÙˆØ§Ù„Ø¹ÙŠØ§Ø± Ø¶Ø±ÙˆØ±ÙŠØ§Ù† Ù„ØªÙ‚ÙŠÙŠÙ… Ù†Ù‡Ø§Ø¦ÙŠ.",
-    weight: "Ø§Ù„ÙˆØ²Ù† Ø§Ù„Ù…ÙØªØ±Ø¶",
-    melt: "Ù‚ÙŠÙ…Ø© Ø§Ù„ÙØ¶Ø© Ø§Ù„Ø®Ø§Ù…",
-    antique: "Ù…Ø¹ Ù‚ÙŠÙ…Ø© Ø§Ù„Ø£Ù†ØªÙŠÙƒ",
+      indicator: "Metal price indicator",
+      possibleMetal: "Possible metal",
+      marketPrice: "Market price",
+      weightUsed: "Weight used",
+      rawEstimate: "Raw metal estimate",
+    },
+    ku: {
+      title: "سیناریۆکانی نرخی زیو بەپێی کێش",
+      note:
+        "ئەمە سیناریۆی مەرجدارە بەپێی نرخی بازاڕی ئەمڕۆ. خەمڵاندنی کۆتایی پێویستی بە کێشی ورد و نیشانەی پاکی یان مۆری ڕوون هەیە.",
+      weight: "کێشی دانراو",
+      melt: "نرخی زیوی خاو",
+      antique: "لەگەڵ نرخی ئانتیک",
+      indicator: "نیشاندەری نرخی کانزا",
+      possibleMetal: "کانزای ئەگەری",
+      marketPrice: "نرخی بازاڕ",
+      weightUsed: "کێشی بەکارهاتوو",
+      rawEstimate: "خەمڵاندنی کانزای خاو",
+    },
+    fr: {
+      title: "Scénarios de valeur de l'argent selon le poids",
+      note:
+        "Ces scénarios sont conditionnels selon le cours du jour. L'évaluation finale exige un poids exact et un poinçon ou une pureté claire.",
+      weight: "Poids supposé",
+      melt: "Valeur brute de l'argent",
+      antique: "Avec valeur d'antiquité",
+      indicator: "Indicateur du prix du métal",
+      possibleMetal: "Métal possible",
+      marketPrice: "Prix du marché",
+      weightUsed: "Poids utilisé",
+      rawEstimate: "Estimation du métal brut",
+    },
+    hi: {
+      title: "वजन के अनुसार चांदी मूल्य परिदृश्य",
+      note:
+        "ये आज के बाजार भाव पर आधारित शर्तीय अनुमान हैं. अंतिम मूल्यांकन के लिए सही वजन और स्पष्ट शुद्धता/हॉलमार्क चाहिए.",
+      weight: "अनुमानित वजन",
+      melt: "कच्ची चांदी का मूल्य",
+      antique: "एंटीक मूल्य सहित",
+      indicator: "धातु मूल्य संकेतक",
+      possibleMetal: "संभावित धातु",
+      marketPrice: "बाजार भाव",
+      weightUsed: "उपयोग किया गया वजन",
+      rawEstimate: "कच्ची धातु का अनुमान",
+    },
+    fa: {
+      title: "سناریوهای ارزش نقره بر اساس وزن",
+      note:
+        "این سناریوها بر اساس نرخ امروز بازار مشروط هستند. ارزیابی نهایی به وزن دقیق و مهر یا عیار روشن نیاز دارد.",
+      weight: "وزن فرضی",
+      melt: "ارزش خام نقره",
+      antique: "با ارزش آنتیک",
+      indicator: "شاخص قیمت فلز",
+      possibleMetal: "فلز احتمالی",
+      marketPrice: "قیمت بازار",
+      weightUsed: "وزن استفاده‌شده",
+      rawEstimate: "برآورد فلز خام",
+    },
+    tr: {
+      title: "Ağırlığa göre gümüş değer senaryoları",
+      note:
+        "Bunlar bugünkü piyasa fiyatına göre koşullu senaryolardır. Nihai değer için kesin ağırlık ve net ayar/damga gerekir.",
+      weight: "Varsayılan ağırlık",
+      melt: "Ham gümüş değeri",
+      antique: "Antika değeriyle",
+      indicator: "Metal fiyat göstergesi",
+      possibleMetal: "Olası metal",
+      marketPrice: "Piyasa fiyatı",
+      weightUsed: "Kullanılan ağırlık",
+      rawEstimate: "Ham metal tahmini",
+    },
+    ru: {
+      title: "Сценарии стоимости серебра по весу",
+      note:
+        "Это условные сценарии по сегодняшней рыночной цене. Для окончательной оценки нужен точный вес и четкая проба или клеймо.",
+      weight: "Предполагаемый вес",
+      melt: "Стоимость сырого серебра",
+      antique: "С антикварной ценностью",
+      indicator: "Индикатор цены металла",
+      possibleMetal: "Возможный металл",
+      marketPrice: "Рыночная цена",
+      weightUsed: "Использованный вес",
+      rawEstimate: "Оценка сырого металла",
+    },
   };
+
+  return labels[locale] || labels.en;
 }
 
 const luxuryCategoryKeywords = [
@@ -614,7 +715,13 @@ useEffect(() => {
         cleanDisplayText(result.brandAssessment?.priceScenario),
     );
   const metalScenarios = result.metalValue?.scenarios || [];
-  const shouldShowMetalValue = Boolean(result.metalValue);
+  const shouldShowMetalValue = Boolean(
+    result.metalValue &&
+      (metalScenarios.length > 0 ||
+        result.metalValue.spotPricePerGramUsd ||
+        result.metalValue.meltValueUsdLow ||
+        result.metalValue.meltValueUsdHigh),
+  );
   const markAnalysis = result.markAnalysis?.hasMark ? result.markAnalysis : null;
   const markReferenceMatches =
     markAnalysis?.referenceMatches?.filter(
@@ -670,7 +777,7 @@ useEffect(() => {
   const canShowAddInfoButton = Boolean(onAddInfo && !followUpPanel && !hasOpenedFollowUp);
 
   return (
-    <article className="kishib-result-view relative pb-12 text-[#241913]">
+    <article className="kishib-result-view relative pb-32 text-[#241913]">
       <div className="mx-auto w-full max-w-6xl px-3 pt-2 sm:px-5 md:pt-5">
         <header className="kishib-primary-result-card">
           {mainImage ? (
@@ -802,7 +909,12 @@ useEffect(() => {
           </section>
         ) : null}
 
-        <section className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5 border-y border-[#c7b99e] py-5 md:grid-cols-5">
+        <ValuationRangeCard
+          result={result}
+          locale={locale}
+        />
+
+        <section className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5 border-y border-[#c7b99e] py-5 md:grid-cols-4">
           <MetricBlock
             label={itemTypeLabel}
             value={result.itemType}
@@ -812,12 +924,6 @@ useEffect(() => {
             label={labels.age}
             value={result.timePeriod || result.period}
             fallback={fallbackText}
-          />
-          <MetricBlock
-            label={labels.value}
-            value={result.estimatedValue || result.priceRange}
-            fallback={fallbackText}
-            gold
           />
           <MetricBlock
             label={labels.material}
@@ -832,7 +938,7 @@ useEffect(() => {
         </section>
 
         {shouldShowMetalValue ? (
-          <section className="mt-5 rounded-[20px] border border-[#c7b99e] bg-[#fff4e2]/90 p-4">
+          <section className="-mx-3 mt-4 border-y border-[#c7b99e]/70 bg-[#fff4e2]/72 px-3 py-4 sm:mx-0 sm:rounded-[18px] sm:border sm:px-4">
             <p className="text-xs font-semibold text-[#986f2e]">
               {silverScenarioLabels.title}
             </p>
@@ -842,11 +948,11 @@ useEffect(() => {
             </p>
 
             {metalScenarios.length > 0 ? (
-              <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <div className="mt-3 grid gap-2 md:grid-cols-3">
                 {metalScenarios.map((scenario) => (
                   <div
                     key={scenario.label}
-                    className="rounded-[16px] border border-[#d2b98f] bg-[#efe3cf]/75 p-3"
+                    className="rounded-[12px] border border-[#d2b98f] bg-[#efe3cf]/72 p-3"
                   >
                     <p className="text-sm font-bold text-[#233f32]">
                       {locale === "en" ? scenario.label : scenario.labelAr}
@@ -876,30 +982,30 @@ useEffect(() => {
                 ))}
               </div>
             ) : (
-              <div className="mt-4 rounded-[16px] border border-[#d2b98f] bg-[#efe3cf]/75 p-3 text-sm leading-6 text-[#735f4b]">
+              <div className="mt-3 rounded-[12px] border border-[#d2b98f] bg-[#efe3cf]/72 p-3 text-sm leading-6 text-[#735f4b]">
                 <p className="font-bold text-[#233f32]">
-                  {locale === "en" ? "Metal price indicator" : "مؤشر سعر المعدن"}
+                  {silverScenarioLabels.indicator}
                 </p>
                 <p className="mt-2">
-                  {locale === "en" ? "Possible metal" : "المعدن المحتمل"}:{" "}
+                  {silverScenarioLabels.possibleMetal}:{" "}
                   {result.metalValue?.metal}
                 </p>
                 {result.metalValue?.spotPricePerGramUsd ? (
                   <p>
-                    {locale === "en" ? "Market price" : "سعر السوق"}: $
+                    {silverScenarioLabels.marketPrice}: $
                     {result.metalValue.spotPricePerGramUsd} / g
                   </p>
                 ) : null}
                 {result.metalValue?.weightGrams ? (
                   <p>
-                    {locale === "en" ? "Weight used" : "الوزن المستخدم"}:{" "}
+                    {silverScenarioLabels.weightUsed}:{" "}
                     {result.metalValue.weightGrams}g
                   </p>
                 ) : null}
                 {result.metalValue?.meltValueUsdLow &&
                 result.metalValue?.meltValueUsdHigh ? (
                   <p className="font-bold text-[#8a642f]">
-                    {locale === "en" ? "Raw metal estimate" : "تقدير المعدن الخام"}: $
+                    {silverScenarioLabels.rawEstimate}: $
                     {result.metalValue.meltValueUsdLow} - $
                     {result.metalValue.meltValueUsdHigh}
                   </p>
@@ -916,7 +1022,7 @@ useEffect(() => {
           <section className="mt-5 rounded-[20px] border border-[#c7b99e] bg-[#fff4e2]/90 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-semibold text-[#986f2e]">
-                {locale === "en" ? "Mark or signature" : "الختم أو التوقيع"}
+                {locale === "en" ? "Hallmark / signature analysis" : "تحليل الختم / التوقيع"}
               </p>
               <span className="rounded-full border border-[#d2b98f] bg-[#efe3cf]/80 px-2.5 py-1 text-[11px] font-bold text-[#735f4b]">
                 {markAnalysis.clarity}

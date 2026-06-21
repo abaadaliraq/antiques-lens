@@ -1,4 +1,10 @@
 import { NextResponse } from "next/server";
+import {
+  getGoogleLensDailyLimit,
+  getGoogleLensUsageCount,
+  getSimilarImageUser,
+  logSimilarImageUsage,
+} from "@/lib/similarImageUsageServer";
 
 export const runtime = "nodejs";
 
@@ -29,14 +35,27 @@ function debugGoogleLens(message: string, details?: Record<string, unknown>) {
 }
 
 export async function POST(request: Request) {
+  let userId: string | null = null;
+
   try {
     const apiKey = process.env.SERPAPI_KEY;
+    const userContext = await getSimilarImageUser(request);
+    userId = userContext.userId;
 
     debugGoogleLens("request start", {
       hasSerpApiKey: Boolean(apiKey),
+      hasUser: Boolean(userId),
     });
 
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Authentication is required for Google Lens search." },
+        { status: 401 },
+      );
+    }
+
     if (!apiKey) {
+      await logSimilarImageUsage(userId, "google_lens", "failed", "missing_serpapi_key");
       return NextResponse.json(
         { error: "Missing SERPAPI_KEY environment variable." },
         { status: 500 }
@@ -52,10 +71,30 @@ export async function POST(request: Request) {
         reason: "missing_image_url",
       });
 
+      await logSimilarImageUsage(userId, "google_lens", "failed", "missing_image_url");
       return NextResponse.json(
         { error: "Missing imageUrl for Google Lens search." },
         { status: 400 }
       );
+    }
+
+    const { accessType, limit } = await getGoogleLensDailyLimit(userId);
+    const usedToday = await getGoogleLensUsageCount(userId);
+
+    if (usedToday >= limit) {
+      debugGoogleLens("skipped by usage limit", {
+        accessType,
+        usedToday,
+        limit,
+      });
+
+      await logSimilarImageUsage(userId, "google_lens", "skipped_limit");
+      return NextResponse.json({
+        items: [],
+        skippedLimit: true,
+        limit,
+        usedToday,
+      });
     }
 
     debugGoogleLens("search query", {
@@ -91,6 +130,13 @@ export async function POST(request: Request) {
     });
 
     if (!response.ok) {
+      await logSimilarImageUsage(
+        userId,
+        "google_lens",
+        "failed",
+        data?.error || `provider_status_${response.status}`,
+      );
+
       return NextResponse.json(
         { error: data?.error || "Google Lens search failed." },
         { status: response.status }
@@ -141,6 +187,8 @@ export async function POST(request: Request) {
       excludedMissingImageOrLink,
     });
 
+    await logSimilarImageUsage(userId, "google_lens", "success");
+
     return NextResponse.json({
       items,
       rawCount: visualMatches.length,
@@ -148,7 +196,11 @@ export async function POST(request: Request) {
  } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
 
-  console.error("Google Lens route error:", error);
+  if (process.env.NODE_ENV !== "production") {
+    console.error("Google Lens route error:", error);
+  }
+
+  await logSimilarImageUsage(userId, "google_lens", "failed", message);
 
   return NextResponse.json(
     {

@@ -306,6 +306,15 @@ function sanitizeResultForArchive(result: any, images: {
         ? repaired.followUpQuestion
         : "",
     brandAssessment: repaired.brandAssessment,
+    valuation_scenarios: Array.isArray(repaired.valuation_scenarios)
+      ? repaired.valuation_scenarios
+      : undefined,
+    valuationScenarios: Array.isArray(repaired.valuationScenarios)
+      ? repaired.valuationScenarios
+      : undefined,
+    evidenceUsed: repaired.evidenceUsed,
+    hallmarkAnalysis: repaired.hallmarkAnalysis,
+    markAnalysis: repaired.markAnalysis,
     metalValue: repaired.metalValue,
     houseOfAntiques: repaired.houseOfAntiques
       ? {

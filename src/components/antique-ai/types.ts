@@ -62,6 +62,10 @@ export type AnalysisResult = {
     requiredPhotos: string[];
     priceScenario: string;
   };
+  valuation_scenarios?: ValuationScenario[];
+  valuationScenarios?: ValuationScenario[];
+  evidenceUsed?: EvidenceUsed | null;
+  hallmarkAnalysis?: HallmarkAnalysis | null;
   markAnalysis?: MarkAnalysis | null;
   metalValue?: {
     metal: "silver" | "gold" | "platinum" | "palladium" | "copper" | "unknown";
@@ -87,6 +91,29 @@ export type AnalysisResult = {
       note: string;
     }[];
   };
+};
+
+export type ValuationScenario = {
+  label: string;
+  labelAr?: string;
+  min?: number;
+  max?: number;
+  currency?: string;
+  confidence?: "low" | "medium" | "high" | string;
+  note?: string;
+  materialValueMin?: number;
+  materialValueMax?: number;
+  antiquePremiumMin?: number;
+  antiquePremiumMax?: number;
+};
+
+export type EvidenceUsed = {
+  images?: "available" | "missing" | string;
+  userAgeClaim?: "available" | "missing" | string;
+  hallmark?: "detected" | "missing" | "unclear" | string;
+  weight?: "available" | "missing" | string;
+  metalMarketPrice?: "used" | "not_used" | string;
+  similarItems?: "found" | "not_found" | string;
 };
 
 export type AntiqueChatMessage = {
@@ -133,6 +160,23 @@ export type MarkAnalysis = {
     confidence: number;
     confidenceNotes: string;
   }[];
+};
+
+export type HallmarkAnalysis = {
+  hallmark_detected?: true | false | "unclear";
+  readable_text?: string;
+  possible_type?:
+    | "gold_karat"
+    | "silver_purity"
+    | "maker_mark"
+    | "artist_signature"
+    | "serial_number"
+    | "decorative_mark"
+    | "unclear"
+    | string;
+  clarity?: "high" | "medium" | "low" | string;
+  interpretation?: string;
+  recommendation?: string;
 };
 
 export type SimilarImageResult = {

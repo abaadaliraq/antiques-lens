@@ -46,6 +46,8 @@ function copy(locale: Locale) {
       suggestions: [
         "I have a signature",
         "I want to upload a stamp photo",
+        "I know the exact weight",
+        "I have a 925 / 750 mark",
         "I want to update the price",
         "I think it is by a known artist",
         "Should I sell it now?",
@@ -77,6 +79,8 @@ function copy(locale: Locale) {
     suggestions: [
       "عندي توقيع",
       "أريد رفع صورة ختم",
+      "أعرف الوزن بالغرام",
+      "عندي ختم 925 / 750",
       "أريد تحديث السعر",
       "أعتقد أنها من فنان معروف",
       "أريد معرفة هل أبيعها الآن",

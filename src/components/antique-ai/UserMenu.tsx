@@ -114,45 +114,46 @@ type MenuCopy = {
 
 const COPY: Record<Locale, MenuCopy> = {
   ar: {
-    profile: "Ø§Ù„Ù…Ù„Ù Ø§Ù„Ø´Ø®ØµÙŠ",
-    account: "Ø§Ù„Ø­Ø³Ø§Ø¨",
-    name: "Ø§Ù„Ø§Ø³Ù…",
-    email: "Ø§Ù„Ø¥ÙŠÙ…ÙŠÙ„",
-    phone: "Ø±Ù‚Ù… Ø§Ù„Ù‡Ø§ØªÙ",
+    profile: "الملف الشخصي",
+    account: "الحساب",
+    name: "الاسم",
+    email: "الإيميل",
+    phone: "رقم الهاتف",
     gender: "الجنس",
     male: "ذكر",
     female: "أنثى",
-    country: "Ø§Ù„Ø¯ÙˆÙ„Ø©",
-    language: "Ø§Ù„Ù„ØºØ©",
-    subscriptions: "Ø§Ù„Ø§Ø´ØªØ±Ø§ÙƒØ§Øª",
-    support: "Ø§Ù„Ø¯Ø¹Ù…",
-    website: "Ù…ÙˆÙ‚Ø¹ KISHIB",
-    cookies: "Ø§Ù„ÙƒÙˆÙƒÙŠØ²",
-    terms: "Ø§Ù„Ø´Ø±ÙˆØ· ÙˆØ§Ù„Ø£Ø­ÙƒØ§Ù…",
-    privacy: "Ø³ÙŠØ§Ø³Ø© Ø§Ù„Ø®ØµÙˆØµÙŠØ©",
-    logout: "ØªØ³Ø¬ÙŠÙ„ Ø®Ø±ÙˆØ¬",
-    deleteAccount: "Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨",
-    deleteAccountTitle: "Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨",
-    deleteAccountWarning: "Ù‡Ø°Ø§ Ø§Ù„Ø¥Ø¬Ø±Ø§Ø¡ Ù†Ù‡Ø§Ø¦ÙŠ ÙˆÙ„Ø§ ÙŠÙ…ÙƒÙ† Ø§Ù„ØªØ±Ø§Ø¬Ø¹ Ø¹Ù†Ù‡.",
-    deleteAccountDataWarning: "Ø³ÙŠØªÙ… Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨ ÙˆØ¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ù„Ù Ø§Ù„Ø´Ø®ØµÙŠ ÙˆØ³Ø¬Ù„ Ø§Ù„ØªÙ‚ÙŠÙŠÙ…Ø§Øª ÙˆØ§Ù„ØµÙˆØ± ÙˆØ§Ù„Ù…Ù„Ø§Ø­Ø¸Ø§Øª Ø§Ù„Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ø§Ù„Ø­Ø³Ø§Ø¨ Ù‚Ø¯Ø± Ø§Ù„Ø¥Ù…ÙƒØ§Ù†.",
-    deleteAccountConfirmHint: "Ø§ÙƒØªØ¨ DELETE Ø£Ùˆ Ø­Ø°Ù Ù„ØªÙØ¹ÙŠÙ„ Ø§Ù„Ø­Ø°Ù.",
-    deleteAccountConfirmButton: "Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨ Ù†Ù‡Ø§Ø¦ÙŠÙ‹Ø§",
-    deleteAccountSuccess: "ØªÙ… Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨ ÙˆØ¨ÙŠØ§Ù†Ø§ØªÙ‡ Ø¨Ù†Ø¬Ø§Ø­.",
-    deleteAccountFailed: "ØªØ¹Ø°Ø± Ø­Ø°Ù Ø§Ù„Ø­Ø³Ø§Ø¨. Ø­Ø§ÙˆÙ„ÙŠ Ù…Ø±Ø© Ø£Ø®Ø±Ù‰.",
-    comingSoon: "Ù‚Ø±ÙŠØ¨Ø§Ù‹",
-    paymentDisabled: "Ø§Ù„Ø¯ÙØ¹ ØºÙŠØ± Ù…ÙØ¹Ù„ Ø­Ø§Ù„ÙŠØ§Ù‹",
-    unknown: "ØºÙŠØ± Ù…Ø¶Ø§Ù",
-    editProfile: "ØªØ¹Ø¯ÙŠÙ„ Ø§Ù„Ù…Ù„Ù Ø§Ù„Ø´Ø®ØµÙŠ",
-    save: "Ø­ÙØ¸",
-    cancel: "Ø¥Ù„ØºØ§Ø¡",
-    saved: "ØªÙ… Ø§Ù„Ø­ÙØ¸",
-    supportText: "Ù„Ù„Ø¯Ø¹Ù… ÙˆØ§Ù„Ù…Ø³Ø§Ø¹Ø¯Ø© ØªÙˆØ§ØµÙ„ Ù…Ø¹Ù†Ø§ Ø¹Ø¨Ø± Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ",
-    close: "Ø¥ØºÙ„Ø§Ù‚",
-    monthlyPlan: "Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ Ø§Ù„Ø´Ù‡Ø±ÙŠ",
-    annualPlan: "Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ Ø§Ù„Ø³Ù†ÙˆÙŠ",
-    reportsPack: "Ø¨Ø§Ù‚Ø© Ø§Ù„ØªÙ‚Ø§Ø±ÙŠØ±",
-    price: "Ø§Ù„Ø³Ø¹Ø±",
-    includes: "ÙŠØ´Ù…Ù„",
+    country: "الدولة",
+    province: "المحافظة",
+    language: "اللغة",
+    subscriptions: "الاشتراكات",
+    support: "الدعم",
+    website: "موقع KISHIB",
+    cookies: "الكوكيز",
+    terms: "الشروط والأحكام",
+    privacy: "سياسة الخصوصية",
+    logout: "تسجيل خروج",
+    deleteAccount: "حذف الحساب",
+    deleteAccountTitle: "حذف الحساب",
+    deleteAccountWarning: "هذا الإجراء نهائي ولا يمكن التراجع عنه.",
+    deleteAccountDataWarning: "سيتم حذف الحساب وبيانات الملف الشخصي وسجل التقييمات والصور والملاحظات المرتبطة بالحساب قدر الإمكان.",
+    deleteAccountConfirmHint: "اكتب DELETE أو حذف لتفعيل الحذف.",
+    deleteAccountConfirmButton: "حذف الحساب نهائيًا",
+    deleteAccountSuccess: "تم حذف الحساب وبياناته بنجاح.",
+    deleteAccountFailed: "تعذر حذف الحساب. حاول مرة أخرى.",
+    comingSoon: "قريبًا",
+    paymentDisabled: "الدفع غير مفعل حاليًا",
+    unknown: "غير مضاف",
+    editProfile: "تعديل الملف الشخصي",
+    save: "حفظ",
+    cancel: "إلغاء",
+    saved: "تم الحفظ",
+    supportText: "للدعم والمساعدة تواصل معنا عبر البريد الإلكتروني",
+    close: "إغلاق",
+    monthlyPlan: "الاشتراك الشهري",
+    annualPlan: "الاشتراك السنوي",
+    reportsPack: "باقة التقارير",
+    price: "السعر",
+    includes: "يشمل",
   },
   en: {
     profile: "Profile",
@@ -176,7 +177,7 @@ const COPY: Record<Locale, MenuCopy> = {
     deleteAccountTitle: "Delete account",
     deleteAccountWarning: "This action is permanent and cannot be undone.",
     deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or Ø­Ø°Ù to enable deletion.",
+    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
     deleteAccountConfirmButton: "Delete account permanently",
     deleteAccountSuccess: "Account and associated data were deleted successfully.",
     deleteAccountFailed: "Unable to delete account. Please try again.",
@@ -217,7 +218,7 @@ const COPY: Record<Locale, MenuCopy> = {
     deleteAccountTitle: "Delete account",
     deleteAccountWarning: "This action is permanent and cannot be undone.",
     deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or Ø­Ø°Ù to enable deletion.",
+    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
     deleteAccountConfirmButton: "Delete account permanently",
     deleteAccountSuccess: "Account and associated data were deleted successfully.",
     deleteAccountFailed: "Unable to delete account. Please try again.",
@@ -258,7 +259,7 @@ const COPY: Record<Locale, MenuCopy> = {
     deleteAccountTitle: "Delete account",
     deleteAccountWarning: "This action is permanent and cannot be undone.",
     deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or Ø­Ø°Ù to enable deletion.",
+    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
     deleteAccountConfirmButton: "Delete account permanently",
     deleteAccountSuccess: "Account and associated data were deleted successfully.",
     deleteAccountFailed: "Unable to delete account. Please try again.",
@@ -299,7 +300,7 @@ const COPY: Record<Locale, MenuCopy> = {
     deleteAccountTitle: "Delete account",
     deleteAccountWarning: "This action is permanent and cannot be undone.",
     deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or Ø­Ø°Ù to enable deletion.",
+    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
     deleteAccountConfirmButton: "Delete account permanently",
     deleteAccountSuccess: "Account and associated data were deleted successfully.",
     deleteAccountFailed: "Unable to delete account. Please try again.",
@@ -340,7 +341,7 @@ const COPY: Record<Locale, MenuCopy> = {
     deleteAccountTitle: "Delete account",
     deleteAccountWarning: "This action is permanent and cannot be undone.",
     deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or Ø­Ø°Ù to enable deletion.",
+    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
     deleteAccountConfirmButton: "Delete account permanently",
     deleteAccountSuccess: "Account and associated data were deleted successfully.",
     deleteAccountFailed: "Unable to delete account. Please try again.",
@@ -381,7 +382,7 @@ const COPY: Record<Locale, MenuCopy> = {
     deleteAccountTitle: "Delete account",
     deleteAccountWarning: "This action is permanent and cannot be undone.",
     deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or Ø­Ø°Ù to enable deletion.",
+    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
     deleteAccountConfirmButton: "Delete account permanently",
     deleteAccountSuccess: "Account and associated data were deleted successfully.",
     deleteAccountFailed: "Unable to delete account. Please try again.",
@@ -444,14 +445,14 @@ const COPY: Record<Locale, MenuCopy> = {
 };
 
 const MENU_LANGUAGES: { code: Locale; label: string; short: string }[] = [
-  { code: "ar", label: "Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©", short: "AR" },
+  { code: "ar", label: "Arabic", short: "AR" },
   { code: "en", label: "English", short: "EN" },
-  { code: "fa", label: "ÙØ§Ø±Ø³ÛŒ", short: "FA" },
-  { code: "tr", label: "TÃ¼rkÃ§e", short: "TR" },
-  { code: "fr", label: "FranÃ§ais", short: "FR" },
-  { code: "hi", label: "à¤¹à¤¿à¤¨à¥à¤¦à¥€", short: "HI" },
-  { code: "ku", label: "KurdÃ®", short: "KU" },
-  { code: "ru", label: "Ð ÑƒÑÑÐºÐ¸Ð¹", short: "RU" },
+  { code: "fa", label: "Persian", short: "FA" },
+  { code: "tr", label: "Turkish", short: "TR" },
+  { code: "fr", label: "French", short: "FR" },
+  { code: "hi", label: "Hindi", short: "HI" },
+  { code: "ku", label: "Kurdish", short: "KU" },
+  { code: "ru", label: "Russian", short: "RU" },
 ];
 
 function isRtl(locale: Locale) {
@@ -647,7 +648,7 @@ export default function UserMenu({
   });
   const menuRef = useRef<HTMLDivElement | null>(null);
 const panelRef = useRef<HTMLDivElement | null>(null);
-  const copy = COPY[locale];
+  const copy = locale === "ar" ? COPY.ar : COPY.en;
   const rtl = isRtl(locale);
   const activeLanguage =
     MENU_LANGUAGES.find((item) => item.code === locale) ?? MENU_LANGUAGES[0];
@@ -657,10 +658,10 @@ const panelRef = useRef<HTMLDivElement | null>(null);
   const avatarUrl = profileInfo?.avatarUrl || "";
   const profileIncomplete = isProfileIncomplete(profileInfo);
   const provinceLabel =
-    copy.province || (locale === "ar" ? "Ø§Ù„Ù…Ø¯ÙŠÙ†Ø© / Ø§Ù„Ù…Ø­Ø§ÙØ¸Ø©" : "City / Province");
+    copy.province || (locale === "ar" ? "المحافظة" : "City / Province");
   const canConfirmAccountDeletion =
     deleteConfirmation.trim().toUpperCase() === "DELETE" ||
-    deleteConfirmation.trim() === "Ø­Ø°Ù";
+    deleteConfirmation.trim() === "حذف";
 
   useEffect(() => {
     let mounted = true;
@@ -808,7 +809,7 @@ const panelRef = useRef<HTMLDivElement | null>(null);
 
     if (
       normalizedConfirmation !== "DELETE" &&
-      deleteConfirmation.trim() !== "Ø­Ø°Ù"
+      deleteConfirmation.trim() !== "حذف"
     ) {
       return;
     }
@@ -1284,22 +1285,31 @@ const panelRef = useRef<HTMLDivElement | null>(null);
                     title={copy.monthlyPlan}
                     price="5$"
                     copy={copy}
-                    features={["Ø§Ø³ØªØ®Ø¯Ø§Ù… Ø´Ù‡Ø±ÙŠ", "Ø¥Ù…ÙƒØ§Ù†ÙŠØ© Ø·Ø¨Ø§Ø¹Ø© 5 ØªÙ‚Ø§Ø±ÙŠØ±"]}
+                    features={
+                      locale === "ar"
+                        ? ["استخدام شهري", "إمكانية طباعة 5 تقارير"]
+                        : ["Monthly use", "Print up to 5 reports"]
+                    }
                   />
                   <PlanCard
                     title={copy.annualPlan}
                     price="45$"
                     copy={copy}
-                    features={["Ø§Ø³ØªØ®Ø¯Ø§Ù… Ø³Ù†ÙˆÙŠ", "75 ØªÙ‚Ø±ÙŠØ± Ù‚Ø§Ø¨Ù„ Ù„Ù„Ø·Ø¨Ø§Ø¹Ø©"]}
+                    features={
+                      locale === "ar"
+                        ? ["استخدام سنوي", "75 تقرير قابل للطباعة"]
+                        : ["Annual use", "75 printable reports"]
+                    }
                   />
                   <PlanCard
                     title={copy.reportsPack}
                     price="20$"
                     copy={copy}
-                    features={[
-                      "150 ØªÙ‚Ø±ÙŠØ±",
-                      "ÙŠÙ…ÙƒÙ† Ø´Ø±Ø§Ø¤Ù‡Ø§ Ø¨Ø´ÙƒÙ„ Ù…Ù†ÙØµÙ„ Ø¹Ù† Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ",
-                    ]}
+                    features={
+                      locale === "ar"
+                        ? ["150 تقرير", "يمكن شراؤها بشكل منفصل عن الاشتراك"]
+                        : ["150 reports", "Can be purchased separately from subscription"]
+                    }
                   />
                 </div>
               </MenuModal>

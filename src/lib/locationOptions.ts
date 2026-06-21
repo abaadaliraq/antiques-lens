@@ -110,11 +110,13 @@ export function getProvinceByCode(code?: string | null) {
 }
 
 export function countryLabel(country: CountryOption, locale: Locale) {
-  return country.labels?.[locale] || country.nameEn;
+  void locale;
+  return country.nameEn;
 }
 
 export function provinceLabel(province: ProvinceOption, locale: Locale) {
-  return province.labels?.[locale] || province.nameEn;
+  void locale;
+  return province.nameEn;
 }
 
 export function genderLabel(value: string | undefined | null, locale: Locale) {

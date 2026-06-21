@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  getSimilarImageUser,
+  logSimilarImageUsage,
+} from "@/lib/similarImageUsageServer";
 
 type PinterestItem = {
   title: string;
@@ -30,16 +34,22 @@ function debugPinterest(message: string, details?: Record<string, unknown>) {
 }
 
 export async function POST(request: Request) {
+  let userId: string | null = null;
+
   try {
+    const userContext = await getSimilarImageUser(request);
+    userId = userContext.userId;
     const { query } = await request.json();
 
     debugPinterest("request start", {
       hasQuery: typeof query === "string" && Boolean(query.trim()),
       query: typeof query === "string" ? query.slice(0, 160) : "",
       hasScrapeCreatorsKey: Boolean(process.env.SCRAPECREATORS_API_KEY),
+      hasUser: Boolean(userId),
     });
 
     if (!query || typeof query !== "string") {
+      await logSimilarImageUsage(userId, "pinterest", "failed", "missing_query");
       return NextResponse.json(
         { error: "Missing Pinterest search query." },
         { status: 400 },
@@ -49,6 +59,7 @@ export async function POST(request: Request) {
     const apiKey = process.env.SCRAPECREATORS_API_KEY;
 
     if (!apiKey) {
+      await logSimilarImageUsage(userId, "pinterest", "failed", "missing_scrapecreators_key");
       return NextResponse.json(
         { error: "Missing SCRAPECREATORS_API_KEY." },
         { status: 500 },
@@ -79,6 +90,8 @@ export async function POST(request: Request) {
     });
 
     if (!response.ok) {
+      await logSimilarImageUsage(userId, "pinterest", "failed", `provider_status_${response.status}`);
+
       return NextResponse.json(
         {
           error: "Pinterest search failed.",
@@ -142,6 +155,8 @@ export async function POST(request: Request) {
       excludedMissingImage,
     });
 
+    await logSimilarImageUsage(userId, "pinterest", "success");
+
     return NextResponse.json({ items });
   } catch (error) {
     if (process.env.NODE_ENV !== "production") {
@@ -149,6 +164,13 @@ export async function POST(request: Request) {
         message: error instanceof Error ? error.message : String(error),
       });
     }
+
+    await logSimilarImageUsage(
+      userId,
+      "pinterest",
+      "failed",
+      error instanceof Error ? error.message : String(error),
+    );
 
     return NextResponse.json(
       {

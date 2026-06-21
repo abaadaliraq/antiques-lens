@@ -30,6 +30,7 @@ import { useEffect, useState } from "react";
 import { formatArchiveDate, type ArchiveItem } from "./archiveStore";
 import type { Locale, SimilarImageResult } from "./types";
 import { useAntiqueLens } from "./useAntiqueLens";
+import { useUserActivityHeartbeat } from "./useUserActivityHeartbeat";
 
 const SUPPORTED_AUTH_LOCALES: Locale[] = [
   "ar",
@@ -473,6 +474,20 @@ export default function AntiqueLensShell() {
       window.removeEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdated);
   }, []);
 
+  const currentPage = lens.isSubscriptionModalOpen
+    ? "pricing"
+    : lens.isAnalyzing
+      ? "evaluation"
+      : lens.result
+        ? "result"
+        : "home";
+
+  useUserActivityHeartbeat({
+    enabled: hasSession && profileComplete,
+    currentPage,
+    deviceLocale: String(lens.locale),
+  });
+
   if (!authReady) {
     return <KishibLoader />;
   }
@@ -616,17 +631,6 @@ export default function AntiqueLensShell() {
               />
             </div>
 
-           <div className="kishib-app-chrome fixed left-3 top-3 z-40 flex max-w-[calc(100vw-7.25rem)] items-center gap-0.5 rounded-full border border-[#d2b98f]/20 bg-[#11100f]/28 p-0.5 shadow-[0_10px_24px_rgba(0,0,0,0.12)] backdrop-blur-2xl lg:left-8 lg:top-8 lg:gap-1 lg:p-1">
-              <Link
-                href="/metal-prices"
-                className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2 text-[11px] font-semibold text-[#fff4e2]/90 transition hover:bg-[#fff4e2]/10 sm:px-2.5 sm:text-xs lg:h-9 lg:gap-1.5 lg:px-3 lg:text-sm"
-              >
-                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#fff4e2]/10 text-[#dcc18a] lg:h-6 lg:w-6">
-                  <Coins className="h-3 w-3 lg:h-3.5 lg:w-3.5" />
-                </span>
-                {getMetalPricesNavLabel(lens.locale)}
-              </Link>
-            </div>
           </>
         )}
 

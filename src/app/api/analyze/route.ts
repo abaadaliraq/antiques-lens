@@ -65,8 +65,50 @@ type AnalysisResult = {
     requiredPhotos: string[];
     priceScenario: string;
   };
+  valuation_scenarios?: {
+    label: string;
+    labelAr?: string;
+    min?: number;
+    max?: number;
+    currency?: string;
+    confidence?: "high" | "medium" | "low" | string;
+    note?: string;
+    materialValueMin?: number;
+    materialValueMax?: number;
+    antiquePremiumMin?: number;
+    antiquePremiumMax?: number;
+  }[];
+  valuationScenarios?: {
+    label: string;
+    labelAr?: string;
+    min?: number;
+    max?: number;
+    currency?: string;
+    confidence?: "high" | "medium" | "low" | string;
+    note?: string;
+    materialValueMin?: number;
+    materialValueMax?: number;
+    antiquePremiumMin?: number;
+    antiquePremiumMax?: number;
+  }[];
+  evidenceUsed?: {
+    images?: string;
+    userAgeClaim?: string;
+    hallmark?: string;
+    weight?: string;
+    metalMarketPrice?: string;
+    similarItems?: string;
+  } | null;
+  hallmarkAnalysis?: {
+    hallmark_detected?: true | false | "unclear";
+    readable_text?: string;
+    possible_type?: string;
+    clarity?: string;
+    interpretation?: string;
+    recommendation?: string;
+  } | null;
   markAnalysis?: MarkAnalysis | null;
-    metalValue?: {
+  metalValue?: {
     metal: "silver" | "gold" | "platinum" | "palladium" | "copper" | "unknown";
     weightGrams?: number;
     purityAssumption?: string;
@@ -1190,6 +1232,19 @@ For silver with 999, 958, 925, 900, 880, or 800 marks, use the matching purity f
 If the item is only possible gold, say: "لا يمكن تأكيد أن القطعة ذهب صلب من الصورة فقط. نحتاج صورة قريبة للختم أو الوزن والعيار."
 Add this note for gold, silver, platinum, or palladium results: "تم استخدام سعر المعدن المباشر بالدولار للأونصة وتحويله إلى سعر الغرام. التقييم يبقى تقديرياً وقد يختلف حسب العيار والوزن والحالة."
 
+VALUATION DISPLAY AND SCENARIO RULES:
+- Always make the price useful first. The UI will show your value data as a finance-style range card, so provide structured ranges whenever possible.
+- Add "valuation_scenarios" with at least one practical scenario. Use two or three scenarios when the value depends on unverified hallmark, signature, artist, brand, karat, weight, provenance, or documentation.
+- Use clear labels such as "Current visual estimate", "If the hallmark is verified", "If artist attribution is verified", "Material value only", or their natural equivalent in ${language}.
+- Do not present unverified information as certified fact. Use softer wording: information that needs verification, if confirmed, if verified.
+- Do not use the word "claim" or the Arabic word "ادعاء".
+- For precious metals, separate raw material value from antique/collector premium when enough information exists. If weight, purity, or hallmark is missing, keep material values null and explain what is needed.
+- For gold, silver, platinum, or palladium, ask for exact weight in grams and a close photo of hallmark/karat/purity if those are missing.
+- For hallmarks/signatures, give a cautious "hallmarkAnalysis" object. A visible mark can raise confidence, but it is not proof alone.
+- Silver objects may be genuine silver even without a visible hallmark, but confidence must be lower until tested or documented.
+- If visual evidence is weak but user-supplied history is plausible, keep a conservative range and a conditional higher range instead of dismissing the item.
+- The "evidenceUsed" object should summarize which evidence influenced value: images, user age information, hallmark, weight, live metal price, and similar/internal references.
+
 INTERNAL KISHIB MARKET REFERENCES FROM SUPABASE:
 ${internalMarketReferences}
 
@@ -1400,7 +1455,32 @@ Required JSON shape:
   "condition": "visible condition and what still needs checking",
   "authenticity": "authenticity indicators without certainty",
   "estimatedValue": "preliminary USD price range. If an exact strong internal reference is provided, consider its listed price as one comparable reference only",
-"priceReasoning": "why this value range was suggested. If an exact strong internal reference affected the range, mention it as a very close reference item, not as the only basis.",  "history": "short historical/contextual explanation about this kind of object",
+  "valuation_scenarios": [
+    {
+      "label": "current visual estimate",
+      "labelAr": "التقدير الحالي من الصورة",
+      "min": 150,
+      "max": 350,
+      "currency": "USD",
+      "confidence": "low | medium | high",
+      "note": "short practical note for this scenario",
+      "materialValueMin": null,
+      "materialValueMax": null,
+      "antiquePremiumMin": null,
+      "antiquePremiumMax": null
+    }
+  ],
+  "evidenceUsed": {
+    "images": "available | missing",
+    "userAgeClaim": "available | missing",
+    "hallmark": "detected | unclear | missing",
+    "weight": "available | missing",
+    "metalMarketPrice": "used | not_used",
+    "similarItems": "found | not_found"
+  },
+  "hallmarkAnalysis": null,
+  "priceReasoning": "why this value range was suggested. If an exact strong internal reference affected the range, mention it as a very close reference item, not as the only basis.",
+  "history": "short historical/contextual explanation about this kind of object",
   "valueDrivers": ["things that may increase value"],
   "valueReducers": ["things that may reduce value"],
   "visualSearchKeywords": ["short search keyword for finding similar items online"],
@@ -1409,8 +1489,8 @@ Required JSON shape:
   "confidence": 1,
   "confidenceNote": "why confidence is low, medium, or high",
   "markAnalysis": null,
-    "metalValue": null,
-    "brandAssessment": null,
+  "metalValue": null,
+  "brandAssessment": null,
 
 If a visible mark/signature/stamp/number/label exists, set "markAnalysis" as:
 {
@@ -1427,6 +1507,17 @@ If a visible mark/signature/stamp/number/label exists, set "markAnalysis" as:
 
 If no visible mark/signature/stamp/number/label exists, use:
 "markAnalysis": null
+"hallmarkAnalysis": null
+
+If a visible hallmark, maker mark, purity mark, artist signature, stamp, number, or label exists, also set "hallmarkAnalysis" as:
+{
+  "hallmark_detected": true,
+  "readable_text": "exact visible letters/numbers only, or empty if unreadable",
+  "possible_type": "gold_karat | silver_purity | maker_mark | artist_signature | serial_number | decorative_mark | unclear",
+  "clarity": "high | medium | low",
+  "interpretation": "what it may indicate, without certifying it",
+  "recommendation": "one practical verification step"
+}
 
 If a precious metal value was provided, set "metalValue" as an object:
 {
@@ -1550,6 +1641,10 @@ Artist, signature, and attribution handling:
 - If an artist or maker name is added, do not dismiss them just because global references are limited.
 - Say the attribution needs signature comparison, provenance, labels, invoices, or supporting documents.
 - Local or regional attribution may need local market or expert confirmation.
+- Always keep price first in substance: update the valuation range clearly and provide scenario ranges when the new information affects value.
+- Add "valuation_scenarios" for current value and conditional verified value when relevant.
+- Add "evidenceUsed" and "hallmarkAnalysis" just like the initial analysis.
+- Never use the word "claim" or the Arabic word "ادعاء".
 
 Return JSON only, with this exact shape:
 {
@@ -1563,6 +1658,30 @@ Return JSON only, with this exact shape:
   "condition": "condition notes",
   "authenticity": "authenticity or attribution notes without certainty",
   "estimatedValue": "preliminary USD value range",
+  "valuation_scenarios": [
+    {
+      "label": "updated estimate",
+      "labelAr": "التقدير المحدث",
+      "min": 150,
+      "max": 350,
+      "currency": "USD",
+      "confidence": "low | medium | high",
+      "note": "short practical note for this scenario",
+      "materialValueMin": null,
+      "materialValueMax": null,
+      "antiquePremiumMin": null,
+      "antiquePremiumMax": null
+    }
+  ],
+  "evidenceUsed": {
+    "images": "available | missing",
+    "userAgeClaim": "available | missing",
+    "hallmark": "detected | unclear | missing",
+    "weight": "available | missing",
+    "metalMarketPrice": "used | not_used",
+    "similarItems": "found | not_found"
+  },
+  "hallmarkAnalysis": null,
   "priceReasoning": "short reason for the updated value",
   "history": "short context",
   "valueDrivers": ["up to five concise drivers"],
@@ -1591,6 +1710,16 @@ If a visible mark/signature/stamp/number/label appears in the added images or th
   "needsCloseup": true
 }
 If no mark is visible, keep "markAnalysis": null.
+"hallmarkAnalysis": null.
+If a visible hallmark, maker mark, purity mark, artist signature, stamp, number, or label exists, also set "hallmarkAnalysis" as:
+{
+  "hallmark_detected": true,
+  "readable_text": "exact visible letters/numbers only, or empty if unreadable",
+  "possible_type": "gold_karat | silver_purity | maker_mark | artist_signature | serial_number | decorative_mark | unclear",
+  "clarity": "high | medium | low",
+  "interpretation": "what it may indicate, without certifying it",
+  "recommendation": "one practical verification step"
+}
 Do not treat a mark as final proof of maker, artist, material, purity, authenticity, or price.
 
 All user-facing JSON values must be in ${language}.
@@ -1927,6 +2056,116 @@ function normalizeMarkAnalysis(value: unknown, locale: Locale): MarkAnalysis | n
   return normalized;
 }
 
+function normalizeNullableNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/[^0-9.-]/g, ""));
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
+function normalizeValuationScenarios(
+  value: unknown,
+  locale: Locale,
+): AnalysisResult["valuation_scenarios"] {
+  if (!Array.isArray(value)) return undefined;
+
+  const scenarios = value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const data = item as Record<string, unknown>;
+      const label = rewriteRespectfulUserWording(
+        normalizeString(data.label, ""),
+        locale,
+      );
+      const min = normalizeNullableNumber(data.min);
+      const max = normalizeNullableNumber(data.max);
+
+      if (!label && min === undefined && max === undefined) return null;
+
+      const confidence =
+        data.confidence === "high" ||
+        data.confidence === "medium" ||
+        data.confidence === "low"
+          ? data.confidence
+          : undefined;
+
+      return {
+        label: label || (locale === "en" ? "Estimated range" : "نطاق التقدير"),
+        labelAr: rewriteRespectfulUserWording(
+          normalizeString(data.labelAr, ""),
+          locale,
+        ),
+        min,
+        max,
+        currency: normalizeString(data.currency, "USD").toUpperCase(),
+        confidence,
+        note: rewriteRespectfulUserWording(normalizeString(data.note, ""), locale),
+        materialValueMin: normalizeNullableNumber(data.materialValueMin),
+        materialValueMax: normalizeNullableNumber(data.materialValueMax),
+        antiquePremiumMin: normalizeNullableNumber(data.antiquePremiumMin),
+        antiquePremiumMax: normalizeNullableNumber(data.antiquePremiumMax),
+      };
+    })
+    .filter(Boolean) as NonNullable<AnalysisResult["valuation_scenarios"]>;
+
+  return scenarios.length ? scenarios : undefined;
+}
+
+function normalizeEvidenceUsed(value: unknown): AnalysisResult["evidenceUsed"] {
+  if (!value || typeof value !== "object") return null;
+  const data = value as Record<string, unknown>;
+  return {
+    images: normalizeString(data.images, ""),
+    userAgeClaim: normalizeString(data.userAgeClaim, ""),
+    hallmark: normalizeString(data.hallmark, ""),
+    weight: normalizeString(data.weight, ""),
+    metalMarketPrice: normalizeString(data.metalMarketPrice, ""),
+    similarItems: normalizeString(data.similarItems, ""),
+  };
+}
+
+function normalizeHallmarkAnalysis(
+  value: unknown,
+  locale: Locale,
+): AnalysisResult["hallmarkAnalysis"] {
+  if (!value || typeof value !== "object") return null;
+  const data = value as Record<string, unknown>;
+  const detected = data.hallmark_detected;
+  const hallmarkDetected: true | false | "unclear" =
+    detected === true || detected === false || detected === "unclear"
+      ? detected
+      : "unclear";
+  const normalized = {
+    hallmark_detected: hallmarkDetected,
+    readable_text: rewriteRespectfulUserWording(
+      normalizeString(data.readable_text, ""),
+      locale,
+    ),
+    possible_type: normalizeString(data.possible_type, "unclear"),
+    clarity: normalizeString(data.clarity, "low"),
+    interpretation: rewriteRespectfulUserWording(
+      normalizeString(data.interpretation, ""),
+      locale,
+    ),
+    recommendation: rewriteRespectfulUserWording(
+      normalizeString(data.recommendation, ""),
+      locale,
+    ),
+  };
+
+  if (
+    normalized.hallmark_detected !== true &&
+    !normalized.readable_text &&
+    !normalized.interpretation
+  ) {
+    return null;
+  }
+
+  return normalized;
+}
+
 function normalizeResult(
   parsed: Partial<AnalysisResult>,
   fallback: AnalysisResult,
@@ -1972,11 +2211,21 @@ function normalizeResult(
       normalizeString(parsed.confidenceNote, fallback.confidenceNote),
       locale,
     ),
+    valuation_scenarios: normalizeValuationScenarios(
+      parsed.valuation_scenarios || parsed.valuationScenarios,
+      locale,
+    ),
+    valuationScenarios: normalizeValuationScenarios(
+      parsed.valuationScenarios || parsed.valuation_scenarios,
+      locale,
+    ),
+    evidenceUsed: normalizeEvidenceUsed(parsed.evidenceUsed),
+    hallmarkAnalysis: normalizeHallmarkAnalysis(parsed.hallmarkAnalysis, locale),
     disclaimer: rewriteRespectfulUserWording(
       normalizeString(parsed.disclaimer, fallback.disclaimer),
       locale,
     ),
-        metalValue: parsed.metalValue,
+    metalValue: parsed.metalValue,
     brandAssessment: normalizeBrandAssessment(parsed.brandAssessment, locale),
     markAnalysis: normalizeMarkAnalysis(parsed.markAnalysis, locale),
   };
@@ -2353,8 +2602,33 @@ ${hasFollowUpClaim ? "Important: Present this as according to the information ad
 This raw metal value is not the final antique appraisal.
 It must be separated from age, origin, rarity, craftsmanship, condition, documentation, and market demand.
 If the piece is antique, engraved, handmade, signed, rare, or collectible, explain the antique/craft premium or discount separately.
-`;
+`; 
   } else {
+    if (
+      metalClassification.confidenceLevel !== "likely_plated" &&
+      !weightGrams &&
+      (detectedMetal === "silver" || detectedMetal === "gold")
+    ) {
+      const scenarioWeights =
+        detectedMetal === "silver" ? [100, 250, 500] : [10, 30, 80];
+      const scenarios = buildGenericMetalScenarios({
+        metal: detectedMetal,
+        scenarioWeights,
+        purity,
+        pricePerGramUsd,
+      });
+
+      preciousMetalValue = {
+        metal: detectedMetal,
+        purityAssumption: getPurityAssumption(detectedMetal, purity),
+        spotPricePerGramUsd: roundMoney(pricePerGramUsd),
+        note:
+          "Conditional spot-price scenarios only. Exact valuation requires gram weight, purity or hallmark, and direct testing.",
+        scenarios,
+        warning: spotPrices.warning,
+      };
+    }
+
     preciousMetalMarketContext = `
 The item may contain ${metalLabel}, but it is not confirmed_precious_metal.
 
@@ -2391,6 +2665,7 @@ Selected metal calculation:
 - USD per gram: ${roundMoney(pricePerGramUsd)}
 - Purity hint, if any: ${purity ? getPurityAssumption(detectedMetal, purity) : "not confirmed"}
 - Weight provided: ${weightGrams ? `${roundMoney(weightGrams)} grams` : "not confirmed"}
+${preciousMetalValue?.scenarios?.length ? `- Conditional weight scenarios were prepared from today's ${metalLabel} spot price: ${preciousMetalValue.scenarios.map((scenario) => `${scenario.weightGrams}g: raw $${scenario.meltValueUsdMid}, antique range $${scenario.antiqueEstimateUsdLow}-$${scenario.antiqueEstimateUsdHigh}`).join("; ")}` : ""}
 
 Strict rule:
 Do NOT calculate the estimated value from ${metalLabel} spot price.
@@ -2622,6 +2897,62 @@ if (brandAssessment && !normalized.brandAssessment) {
     priceScenario:
       "السعر مشروط: يختلف إذا كانت القطعة أصلية وموثقة، أو مستوحاة/مقلدة، أو Vintage مرغوبة، وحسب الحالة والملحقات.",
   };
+}
+
+if (!preciousMetalValue) {
+  const normalizedMetalText = [
+    normalized.title,
+    normalized.itemType,
+    normalized.material,
+    normalized.lookup,
+    normalized.priceReasoning,
+    normalized.authenticity,
+    notes,
+    followUpClaim,
+    hasMark,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const scenarioMetal =
+    detectPreciousMetal(normalizedMetalText) ??
+    (normalizedMetalText.includes("فضة") ||
+    normalizedMetalText.includes("فضي") ||
+    normalizedMetalText.includes("نقره") ||
+    normalizedMetalText.includes("زیو")
+      ? "silver"
+      : normalizedMetalText.includes("ذهب") ||
+          normalizedMetalText.includes("ذهبي") ||
+          normalizedMetalText.includes("طلا")
+        ? "gold"
+        : null);
+
+  if (
+    (scenarioMetal === "silver" || scenarioMetal === "gold") &&
+    !hasPlatedOrCostumeEvidence(normalizedMetalText)
+  ) {
+    const spotPrices = await getMetalSpotPrices();
+    if (spotPrices) {
+      const pricePerGramUsd = getMetalGramPrice(spotPrices, scenarioMetal);
+      const purity = detectMetalPurity(scenarioMetal, normalizedMetalText);
+      const scenarioWeights = scenarioMetal === "silver" ? [100, 250, 500] : [10, 30, 80];
+
+      preciousMetalValue = {
+        metal: scenarioMetal,
+        purityAssumption: getPurityAssumption(scenarioMetal, purity),
+        spotPricePerGramUsd: roundMoney(pricePerGramUsd),
+        note:
+          "Conditional market-price scenarios only. Exact valuation requires gram weight, purity or hallmark, and direct testing.",
+        scenarios: buildGenericMetalScenarios({
+          metal: scenarioMetal,
+          scenarioWeights,
+          purity,
+          pricePerGramUsd,
+        }),
+        warning: spotPrices.warning,
+      };
+    }
+  }
 }
 
 if (preciousMetalValue) {

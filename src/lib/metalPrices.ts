@@ -19,7 +19,7 @@ export type DisplayMetalPrice = {
 
 export type MetalPricesResponse = Record<DisplayMetalKey, DisplayMetalPrice> & {
   updatedAt: string;
-  source: "metals.dev";
+  source: "metals.dev" | "fallback";
   stale?: boolean;
   warning?: string;
 };
@@ -40,6 +40,16 @@ export type MetalSpotPrices = MetalPricesResponse & {
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 8000;
 const UNAVAILABLE_WARNING = "Live Metals.dev prices are unavailable";
+const FALLBACK_WARNING =
+  "Live metal prices are temporarily unavailable; showing indicative fallback prices.";
+
+const FALLBACK_PRICES: Record<MetalSymbol, number> = {
+  XAU: 2350,
+  XAG: 30,
+  XPT: 980,
+  XPD: 950,
+  XCU: 0.28,
+};
 
 const DISPLAY_METALS: Array<{
   key: DisplayMetalKey;
@@ -162,7 +172,11 @@ async function fetchMetalsDevPrices() {
 
 function buildSpotPrices(
   prices: Record<MetalSymbol, number>,
-  options?: { stale?: boolean; warning?: string },
+  options?: {
+    stale?: boolean;
+    warning?: string;
+    source?: MetalPricesResponse["source"];
+  },
 ): MetalSpotPrices {
   const updatedAt = new Date().toISOString();
   const displayPrices = Object.fromEntries(
@@ -191,10 +205,18 @@ function buildSpotPrices(
     palladiumOunceUSD: roundMoney(prices.XPD),
     palladiumGramUSD: roundMoney(prices.XPD / TROY_OUNCE_GRAMS),
     updatedAt,
-    source: "metals.dev",
+    source: options?.source ?? "metals.dev",
     stale: options?.stale,
     warning: options?.warning,
   };
+}
+
+function buildFallbackSpotPrices() {
+  return buildSpotPrices(FALLBACK_PRICES, {
+    source: "fallback",
+    stale: true,
+    warning: FALLBACK_WARNING,
+  });
 }
 
 export async function getMetalSpotPrices(): Promise<MetalSpotPrices | null> {
@@ -215,7 +237,7 @@ export async function getMetalSpotPrices(): Promise<MetalSpotPrices | null> {
             stale: true,
             warning: UNAVAILABLE_WARNING,
           }
-        : null;
+        : buildFallbackSpotPrices();
     }
 
     const value = buildSpotPrices(prices);
@@ -239,6 +261,6 @@ export async function getMetalSpotPrices(): Promise<MetalSpotPrices | null> {
       };
     }
 
-    return null;
+    return buildFallbackSpotPrices();
   }
 }

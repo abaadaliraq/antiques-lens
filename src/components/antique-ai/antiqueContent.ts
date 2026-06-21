@@ -510,6 +510,24 @@ export function normalizeResult(data: Partial<AnalysisResult>): AnalysisResult {
     matches: repairedData.matches,
     houseOfAntiques: repairedData.houseOfAntiques,
     brandAssessment: cleanBrandAssessment(repairedData.brandAssessment),
+    valuation_scenarios: Array.isArray(repairedData.valuation_scenarios)
+      ? repairedData.valuation_scenarios
+      : undefined,
+    valuationScenarios: Array.isArray(repairedData.valuationScenarios)
+      ? repairedData.valuationScenarios
+      : undefined,
+    evidenceUsed:
+      repairedData.evidenceUsed && typeof repairedData.evidenceUsed === "object"
+        ? repairedData.evidenceUsed
+        : null,
+    hallmarkAnalysis:
+      repairedData.hallmarkAnalysis && typeof repairedData.hallmarkAnalysis === "object"
+        ? repairedData.hallmarkAnalysis
+        : null,
+    markAnalysis:
+      repairedData.markAnalysis && typeof repairedData.markAnalysis === "object"
+        ? repairedData.markAnalysis
+        : null,
     metalValue: repairedData.metalValue,
   };
 }

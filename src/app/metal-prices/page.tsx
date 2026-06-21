@@ -204,6 +204,43 @@ const copy = {
   },
 } satisfies Partial<Record<Locale, Record<string, string>>>;
 
+const arabicCopy: Record<keyof typeof copy.en, string> = {
+  eyebrow: "بورصة المعادن",
+  title: "أسعار المعادن",
+  subtitle:
+    "مرجع إرشادي لأسعار المعادن الخام، يستخدم كعامل مساعد في تقييم القطع وليس كتقييم نهائي.",
+  back: "الرئيسية",
+  refresh: "تحديث الأسعار",
+  refreshing: "جار التحديث",
+  loading: "جار تحميل أسعار المعادن...",
+  empty: "الأسعار غير متاحة حاليًا.",
+  error: "الأسعار غير متاحة حاليًا.",
+  globalTitle: "الأسعار العالمية للمعادن",
+  goldTitle: "أسعار الذهب حسب العيار",
+  silverTitle: "أسعار الفضة حسب النقاوة",
+  metal: "المعدن",
+  symbol: "الرمز",
+  ouncePrice: "السعر للأونصة",
+  gramPrice: "السعر للغرام",
+  unit: "الوحدة",
+  updated: "آخر تحديث",
+  karat: "العيار",
+  purity: "النقاوة",
+  description: "الوصف",
+  noteColumn: "ملاحظة",
+  usd: "دولار",
+  troyOunce: "أونصة تروية",
+  gram: "غرام",
+  lastUpdated: "آخر تحديث",
+  source: "المصدر",
+  copperNote:
+    "النحاس يعرض كمؤشر خام تقريبي، وقد تختلف وحدة تسعيره حسب السوق.",
+  footerNote:
+    "هذه الأسعار تمثل قيمة المعدن الخام التقريبية حسب السعر العالمي، ولا تمثل القيمة النهائية للقطعة. قيمة التحف والمقتنيات قد تختلف حسب العمر، الصنعة، الندرة، الحالة، التوقيع، الختم، والمصدر.",
+  stale:
+    "تعذر الاتصال بالمصدر الحي حاليًا، لذلك نعرض أسعارًا إرشادية مؤقتة إلى أن يعود التحديث المباشر.",
+};
+
 const metalNames = {
   ar: {
     gold: "الذهب",
@@ -228,12 +265,28 @@ const metalNames = {
   },
 } satisfies Partial<Record<Locale, Record<MetalKey, string>>>;
 
+const arabicMetalNames: Record<MetalKey, string> = {
+  gold: "الذهب",
+  silver: "الفضة",
+  platinum: "البلاتين",
+  palladium: "البلاديوم",
+  copper: "النحاس",
+};
+
 const goldPurities = [
   { labelAr: "ذهب عيار 24", labelEn: "24K gold", purity: "999", factor: 1, noteAr: "ذهب نقي تقريبًا", noteEn: "Nearly pure gold" },
   { labelAr: "ذهب عيار 22", labelEn: "22K gold", purity: "916", factor: 0.916, noteAr: "شائع في بعض الأسواق", noteEn: "Common in some markets" },
   { labelAr: "ذهب عيار 21", labelEn: "21K gold", purity: "875", factor: 0.875, noteAr: "شائع في العراق والمنطقة", noteEn: "Common in Iraq and the region" },
   { labelAr: "ذهب عيار 18", labelEn: "18K gold", purity: "750", factor: 0.75, noteAr: "شائع في المجوهرات", noteEn: "Common in jewelry" },
   { labelAr: "ذهب عيار 14", labelEn: "14K gold", purity: "585", factor: 0.585, noteAr: "نقاوة أقل", noteEn: "Lower purity" },
+];
+
+const arabicGoldPurities = [
+  { label: "ذهب عيار 24", purity: "999", factor: 1, note: "ذهب نقي تقريبًا" },
+  { label: "ذهب عيار 22", purity: "916", factor: 0.916, note: "شائع في بعض الأسواق" },
+  { label: "ذهب عيار 21", purity: "875", factor: 0.875, note: "شائع في العراق والمنطقة" },
+  { label: "ذهب عيار 18", purity: "750", factor: 0.75, note: "شائع في المجوهرات" },
+  { label: "ذهب عيار 14", purity: "585", factor: 0.585, note: "نقاوة أقل" },
 ];
 
 const silverPurities = [
@@ -245,15 +298,21 @@ const silverPurities = [
   { purity: "800", description: "فضة 800", descriptionEn: "800 silver", factor: 0.8, noteAr: "شائعة في بعض القطع القديمة", noteEn: "Common in some older pieces" },
 ];
 
+const arabicSilverPurities = [
+  { purity: "999", label: "فضة نقية تقريبًا", factor: 0.999, note: "أعلى نقاوة" },
+  { purity: "958", label: "Britannia Silver", factor: 0.958, note: "نقاوة بريطانية" },
+  { purity: "925", label: "Sterling Silver", factor: 0.925, note: "الأكثر شيوعًا" },
+  { purity: "900", label: "Coin Silver", factor: 0.9, note: "شائعة في بعض العملات والقطع" },
+  { purity: "880", label: "فضة 880", factor: 0.88, note: "نقاوة متوسطة" },
+  { purity: "800", label: "فضة 800", factor: 0.8, note: "شائعة في بعض القطع القديمة" },
+];
+
 function getCopy(locale: Locale) {
-  return (copy as Partial<Record<Locale, typeof copy.en>>)[locale] ?? copy.en;
+  return locale === "ar" ? arabicCopy : copy.en;
 }
 
 function getMetalNames(locale: Locale) {
-  return (
-    (metalNames as Partial<Record<Locale, typeof metalNames.en>>)[locale] ??
-    metalNames.en
-  );
+  return locale === "ar" ? arabicMetalNames : metalNames.en;
 }
 
 function formatMoney(locale: Locale, value?: number) {
@@ -350,21 +409,39 @@ export default function MetalPricesPage() {
 
   const goldRows = useMemo<PurityRow[]>(() => {
     const gramPrice = data?.gold?.priceUsdPerGram;
+    if (locale === "ar") {
+      return arabicGoldPurities.map((item) => ({
+        label: item.label,
+        purity: item.purity,
+        price: gramPrice ? gramPrice * item.factor : 0,
+        note: item.note,
+      }));
+    }
+
     return goldPurities.map((item) => ({
-      label: locale === "en" ? item.labelEn : item.labelAr,
+      label: item.labelEn,
       purity: item.purity,
       price: gramPrice ? gramPrice * item.factor : 0,
-      note: locale === "en" ? item.noteEn : item.noteAr,
+      note: item.noteEn,
     }));
   }, [data?.gold?.priceUsdPerGram, locale]);
 
   const silverRows = useMemo<PurityRow[]>(() => {
     const gramPrice = data?.silver?.priceUsdPerGram;
+    if (locale === "ar") {
+      return arabicSilverPurities.map((item) => ({
+        label: item.label,
+        purity: item.purity,
+        price: gramPrice ? gramPrice * item.factor : 0,
+        note: item.note,
+      }));
+    }
+
     return silverPurities.map((item) => ({
-      label: locale === "en" ? item.descriptionEn : item.description,
+      label: item.descriptionEn,
       purity: item.purity,
       price: gramPrice ? gramPrice * item.factor : 0,
-      note: locale === "en" ? item.noteEn : item.noteAr,
+      note: item.noteEn,
     }));
   }, [data?.silver?.priceUsdPerGram, locale]);
 
