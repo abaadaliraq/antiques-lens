@@ -45,6 +45,7 @@ import type {
   SimilarImageResult,
   HouseOfAntiquesContext,
   HouseOfAntiquesMatch,
+  ShareCardData,
 } from "./types";
 const MAX_IMAGES = 6;
 const MAX_IMAGE_SIZE_MB = 8;
@@ -1827,16 +1828,16 @@ await saveEvaluationToSupabase({
 
 }
 
-async function handleShare() {
+async function handleShare(options?: ShareCardData) {
   if (!result) return;
 
   const shareUrl = getUsefulShareUrl();
   const shareText = buildShareSummary(result, shareUrl);
-  const shareTitle = locale === "en" ? "KISHIB Report" : "تقرير KISHIB";
+  const shareTitle = locale === "en" ? "KISHIB Result" : "نتيجة KISHIB";
   const shareImageMessage =
     locale === "en"
-      ? "Report images were downloaded. You can share them from your downloads."
-      : "تم تنزيل صور التقرير، يمكنك مشاركتها من التنزيلات.";
+      ? "Share image downloaded. You can post it from your downloads."
+      : "تم حفظ صورة المشاركة، يمكنك نشرها من التنزيلات.";
   const fallbackMessage =
     locale === "en"
       ? "Report summary copied. You can paste and share it."
@@ -1860,12 +1861,19 @@ async function handleShare() {
         null,
       labels: t,
       locale,
+      variant: options?.variant || "with_price",
+      size: options?.size || "story",
     });
     const shareData = {
       title: shareTitle,
       text: shareTitle,
       files: shareImages,
     } as ShareData;
+
+    if (options?.action === "download") {
+      shareImages.forEach(downloadFile);
+      return;
+    }
 
     if (
       typeof navigator !== "undefined" &&

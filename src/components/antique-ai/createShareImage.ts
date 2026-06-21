@@ -1,4 +1,9 @@
-import type { AnalysisResult, Locale } from "./types";
+import type {
+  AnalysisResult,
+  Locale,
+  ShareCardSize,
+  ShareCardVariant,
+} from "./types";
 
 type ShareLabels = {
   result: string;
@@ -27,6 +32,8 @@ type CreateShareImageArgs = {
   imagePreview: string | null;
   labels: ShareLabels;
   locale: Locale;
+  variant?: ShareCardVariant;
+  size?: ShareCardSize;
 };
 
 const REPORT_WIDTH = 1200;
@@ -36,6 +43,11 @@ const PADDING = 64;
 
 const FONT =
   'Arial, "Tahoma", "Segoe UI", "Noto Sans Arabic", sans-serif';
+
+const SOCIAL_CARD_SIZES: Record<ShareCardSize, { width: number; height: number }> = {
+  story: { width: 1080, height: 1920 },
+  post: { width: 1080, height: 1080 },
+};
 
 function isRtlLocale(locale: Locale) {
   return locale === "ar" || locale === "ku";
@@ -417,12 +429,239 @@ function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
+function getShareLabels(locale: Locale) {
+  const ar = locale === "ar";
+
+  return {
+    evaluatedBy: ar ? "تم التقييم عبر KISHIB" : "Evaluated by KISHIB",
+    tryKishib: ar ? "جرّب KISHIB" : "Try KISHIB",
+    withPrice: ar ? "القيمة التقديرية" : "Estimated value",
+    noPrice: ar ? "تقييم أولي بدون عرض السعر" : "Evaluation without price",
+    guess: ar ? "احزر قيمة هذه القطعة؟" : "Guess the value of this antique?",
+    scan: ar ? "قيّم قطعتك عبر KISHIB" : "Scan yours with KISHIB",
+    historical: ar ? "معلومة تاريخية" : "Historical note",
+    before: ar ? "قبل كيشيب" : "Before KISHIB",
+    after: ar ? "بعد كيشيب" : "After KISHIB",
+    unknown: ar ? "قطعة غير معروفة" : "Unknown item",
+    type: ar ? "النوع" : "Type",
+    era: ar ? "الحقبة" : "Era",
+    material: ar ? "الخامة" : "Material",
+    value: ar ? "القيمة" : "Value",
+    confidence: ar ? "الثقة" : "Confidence",
+    low: ar ? "منخفضة" : "Low",
+    medium: ar ? "متوسطة" : "Medium",
+    high: ar ? "عالية" : "High",
+  };
+}
+
+function getConfidenceText(result: AnalysisResult, locale: Locale) {
+  const labels = getShareLabels(locale);
+  if (result.confidence <= 3) return labels.low;
+  if (result.confidence <= 6) return labels.medium;
+  return labels.high;
+}
+
+function getCurrentPriceText(result: AnalysisResult) {
+  const scenario = result.valuation_scenarios?.[0] || result.valuationScenarios?.[0];
+  if (
+    scenario &&
+    typeof scenario.min === "number" &&
+    typeof scenario.max === "number"
+  ) {
+    const symbol =
+      scenario.currency === "EUR" ? "€" : scenario.currency === "GBP" ? "£" : "$";
+    return `${symbol}${scenario.min.toLocaleString("en-US")} - ${symbol}${scenario.max.toLocaleString("en-US")}`;
+  }
+
+  return safeText(result.estimatedValue || result.priceRange);
+}
+
+function drawSocialBadge(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  rtl: boolean,
+) {
+  const paddingX = 26;
+  ctx.font = `700 25px ${FONT}`;
+  const width = Math.min(520, ctx.measureText(text).width + paddingX * 2);
+  const left = rtl ? x - width : x;
+
+  roundedRect(ctx, left, y, width, 56, 28);
+  ctx.fillStyle = "rgba(255, 244, 226, 0.92)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(214, 181, 118, 0.75)";
+  ctx.stroke();
+
+  ctx.fillStyle = "#4d1b17";
+  ctx.textAlign = rtl ? "right" : "left";
+  ctx.fillText(text, rtl ? left + width - paddingX : left + paddingX, y + 37);
+}
+
+async function createSocialShareImage({
+  result,
+  imagePreview,
+  locale,
+  variant,
+  size,
+}: {
+  result: AnalysisResult;
+  imagePreview: string | null;
+  locale: Locale;
+  variant: ShareCardVariant;
+  size: ShareCardSize;
+}) {
+  const rtl = isRtlLocale(locale);
+  const labels = getShareLabels(locale);
+  const dimensions = SOCIAL_CARD_SIZES[size];
+  const canvas = document.createElement("canvas");
+  canvas.width = dimensions.width;
+  canvas.height = dimensions.height;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas is not supported");
+
+  ctx.direction = rtl ? "rtl" : "ltr";
+  ctx.fillStyle = "#f3eadf";
+  ctx.fillRect(0, 0, dimensions.width, dimensions.height);
+
+  const gradient = ctx.createLinearGradient(0, 0, dimensions.width, dimensions.height);
+  gradient.addColorStop(0, "#fff4e2");
+  gradient.addColorStop(0.48, "#7a2f25");
+  gradient.addColorStop(1, "#3d1412");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, dimensions.width, dimensions.height);
+
+  const margin = size === "story" ? 74 : 58;
+  const imageH = size === "story" ? 920 : 510;
+  const imageY = size === "story" ? 160 : 92;
+  const textX = rtl ? dimensions.width - margin : margin;
+  const contentW = dimensions.width - margin * 2;
+
+  if (imagePreview) {
+    try {
+      const image = await loadImage(imagePreview);
+      drawCoverImage(ctx, image, margin, imageY, contentW, imageH, 38);
+    } catch {
+      roundedRect(ctx, margin, imageY, contentW, imageH, 38);
+      ctx.fillStyle = "#2a1713";
+      ctx.fill();
+    }
+  } else {
+    roundedRect(ctx, margin, imageY, contentW, imageH, 38);
+    ctx.fillStyle = "#2a1713";
+    ctx.fill();
+  }
+
+  ctx.textAlign = rtl ? "right" : "left";
+  drawSocialBadge(ctx, "KISHIB", textX, size === "story" ? 70 : 36, rtl);
+
+  const title = trimText(result.title || result.itemType || "Antique", 86);
+  const price = getCurrentPriceText(result);
+  let cursorY = imageY + imageH + (size === "story" ? 92 : 58);
+
+  ctx.fillStyle = "#fff4e2";
+  ctx.font = `800 ${size === "story" ? 62 : 48}px ${FONT}`;
+
+  if (variant === "guess_value") {
+    cursorY = drawWrappedText(ctx, labels.guess, textX, cursorY, contentW, 74, 3, rtl) + 12;
+    ctx.fillStyle = "#f0cf83";
+    ctx.font = `700 ${size === "story" ? 36 : 30}px ${FONT}`;
+    drawWrappedText(ctx, labels.scan, textX, cursorY, contentW, 46, 2, rtl);
+  } else if (variant === "before_after") {
+    ctx.font = `800 ${size === "story" ? 48 : 38}px ${FONT}`;
+    ctx.fillText(labels.before, textX, cursorY);
+    ctx.font = `500 ${size === "story" ? 36 : 28}px ${FONT}`;
+    ctx.fillText(labels.unknown, textX, cursorY + 58);
+    cursorY += size === "story" ? 158 : 118;
+    ctx.fillStyle = "#f0cf83";
+    ctx.font = `800 ${size === "story" ? 48 : 38}px ${FONT}`;
+    ctx.fillText(labels.after, textX, cursorY);
+    ctx.fillStyle = "#fff4e2";
+    ctx.font = `600 ${size === "story" ? 34 : 27}px ${FONT}`;
+    const afterLines = [
+      `${labels.type}: ${safeText(result.itemType || result.title)}`,
+      `${labels.era}: ${safeText(result.timePeriod || result.period)}`,
+      `${labels.material}: ${safeText(result.material)}`,
+      `${labels.value}: ${price}`,
+    ];
+    drawWrappedText(ctx, afterLines.join(" / "), textX, cursorY + 58, contentW, 44, 4, rtl);
+  } else {
+    cursorY = drawWrappedText(ctx, title, textX, cursorY, contentW, size === "story" ? 72 : 58, 2, rtl) + 8;
+
+    if (variant === "with_price") {
+      ctx.fillStyle = "#f0cf83";
+      ctx.font = `800 ${size === "story" ? 64 : 52}px ${FONT}`;
+      ctx.fillText(price, textX, cursorY + 70);
+      ctx.fillStyle = "#fff4e2";
+      ctx.font = `600 ${size === "story" ? 30 : 24}px ${FONT}`;
+      ctx.fillText(`${labels.confidence}: ${getConfidenceText(result, locale)}`, textX, cursorY + 122);
+    } else if (variant === "without_price") {
+      ctx.fillStyle = "#f0cf83";
+      ctx.font = `700 ${size === "story" ? 34 : 28}px ${FONT}`;
+      drawWrappedText(
+        ctx,
+        `${labels.type}: ${safeText(result.itemType || result.title)} / ${labels.material}: ${safeText(result.material)} / ${labels.era}: ${safeText(result.timePeriod || result.period)}`,
+        textX,
+        cursorY + 42,
+        contentW,
+        44,
+        3,
+        rtl,
+      );
+    } else {
+      ctx.fillStyle = "#f0cf83";
+      ctx.font = `700 ${size === "story" ? 34 : 28}px ${FONT}`;
+      drawWrappedText(
+        ctx,
+        `${labels.historical}: ${trimText(result.history || result.lookup || result.description, 170)}`,
+        textX,
+        cursorY + 42,
+        contentW,
+        44,
+        4,
+        rtl,
+      );
+    }
+  }
+
+  ctx.textAlign = rtl ? "right" : "left";
+  ctx.fillStyle = "rgba(255, 244, 226, 0.86)";
+  ctx.font = `700 ${size === "story" ? 27 : 22}px ${FONT}`;
+  ctx.fillText(labels.evaluatedBy, textX, dimensions.height - margin - 44);
+  ctx.font = `500 ${size === "story" ? 23 : 19}px ${FONT}`;
+  ctx.fillText("kishibapp.com", textX, dimensions.height - margin);
+
+  const blob = await canvasToBlob(canvas);
+  const privacySafe = variant === "with_price" || variant === "before_after";
+  const fileName = privacySafe
+    ? `kishib-${variant}-${size}-${Date.now()}.png`
+    : `kishib-share-${variant}-${size}-${Date.now()}.png`;
+
+  return new File([blob], fileName, { type: "image/png" });
+}
+
 export async function createShareImage({
   result,
   imagePreview,
   labels,
   locale,
+  variant,
+  size = "story",
 }: CreateShareImageArgs): Promise<File[]> {
+  if (variant) {
+    return [
+      await createSocialShareImage({
+        result,
+        imagePreview,
+        locale,
+        variant,
+        size,
+      }),
+    ];
+  }
+
   const rtl = isRtlLocale(locale);
   const timestamp = Date.now();
   const files: File[] = [];

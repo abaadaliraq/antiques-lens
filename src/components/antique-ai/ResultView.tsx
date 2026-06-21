@@ -12,6 +12,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import type { AnalysisResult, Locale, SimilarImageResult } from "./types";
 import AntiqueReportDocument from "./AntiqueReportDocument";
+import SimilarReferencesStrip from "./SimilarReferencesStrip";
 import ValuationRangeCard from "./ValuationRangeCard";
 type ResultLabels = {
   result: string;
@@ -705,6 +706,11 @@ useEffect(() => {
   const resolvedSimilarImages = filterVisibleSimilarImages(
     similarImages.length > 0 ? similarImages : getSimilarItems(result),
   );
+  const distributedSimilarImages = resolvedSimilarImages.slice(0, 9);
+  const firstSimilarStrip = distributedSimilarImages.slice(0, 3);
+  const secondSimilarStrip = distributedSimilarImages.slice(3, 6);
+  const thirdSimilarStrip = distributedSimilarImages.slice(6, 9);
+  const remainingSimilarImages = resolvedSimilarImages.slice(9);
   const cleanUserNote = cleanDisplayText(userNote);
   const cleanTitle = cleanDisplayText(result.title) || labels.result;
   const canShowBrandAssessment =
@@ -798,15 +804,6 @@ useEffect(() => {
                   onError={() => handleImageError(mainImage)}
                   className="h-full w-full rounded-[16px] border border-[#d6b576]/35 object-contain shadow-lg"
                 />
-              </button>
-
-              <button
-                type="button"
-                onClick={onShare}
-                className="absolute end-4 top-4 z-20 grid h-10 w-10 place-items-center rounded-[12px] border border-[#d6b576]/45 bg-[#fff4e2]/12 text-[#fff4e2] backdrop-blur transition hover:bg-[#fff4e2]/20"
-                aria-label="Share"
-              >
-                <Share2 className="h-4 w-4" />
               </button>
 
               {galleryImages.length > 1 && (
@@ -907,6 +904,20 @@ useEffect(() => {
           result={result}
           locale={locale}
         />
+
+        <div className="-mx-3 border-b border-[#d2b98f]/45 bg-[#fff4e2]/22 px-3 py-4 sm:-mx-5 sm:px-5">
+          <button
+            type="button"
+            onClick={onShare}
+            style={{ color: "#fff4e2" }}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d6b576]/50 bg-[#4d1b17] px-5 py-3 text-sm font-bold !text-[#fff4e2] shadow-[0_12px_30px_rgba(77,27,23,0.18)] transition hover:bg-[#64241e] sm:w-auto sm:min-w-56"
+          >
+            <Share2 className="h-4 w-4 text-[#fff4e2]" />
+            <span className="text-[#fff4e2]">
+              {locale === "ar" ? "مشاركة التقييم" : "Share Result"}
+            </span>
+          </button>
+        </div>
 
         <section className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5 border-y border-[#c7b99e] py-5 md:grid-cols-4">
           <MetricBlock
@@ -1012,6 +1023,8 @@ useEffect(() => {
           </section>
         ) : null}
 
+        <SimilarReferencesStrip images={secondSimilarStrip} locale={locale} />
+
         {shouldShowMarkAnalysis && markAnalysis ? (
           <section className="mt-5 rounded-[20px] border border-[#c7b99e] bg-[#fff4e2]/90 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1098,6 +1111,8 @@ useEffect(() => {
           </section>
         ) : null}
 
+        <SimilarReferencesStrip images={firstSimilarStrip} locale={locale} />
+
         {cleanDisplayText(result.lookup) ? (
           <TextSection title={labels.lookup} body={result.lookup} />
         ) : null}
@@ -1114,11 +1129,14 @@ useEffect(() => {
           <TextSection title={labels.priceReason} body={result.priceReasoning} compact />
         </div>
 
+        <SimilarReferencesStrip images={thirdSimilarStrip} locale={locale} />
+
         <section className="mt-8 grid grid-cols-1 gap-6 border-y border-[#c7b99e] py-7 md:grid-cols-2">
           <SoftList title={labels.valueDrivers} items={result.valueDrivers} />
           <SoftList title={labels.valueReducers} items={result.valueReducers} />
         </section>
 
+        {(isLoadingSimilar || remainingSimilarImages.length > 0) ? (
         <section className="mt-8">
           <div className="mb-5 flex items-end justify-between gap-4">
             <div>
@@ -1126,11 +1144,8 @@ useEffect(() => {
                 {similarSourceLabel}
               </p>
               <h2 className="text-[24px] font-medium leading-8 tracking-[-0.035em] text-[#233f32]">
-                {getSimilarDisplayTitle(locale, labels.similar)}
+                {locale === "ar" ? "عرض المزيد من الصور المشابهة" : "More similar references"}
               </h2>
-              <p className="mt-2 max-w-2xl text-[13px] font-normal leading-6 text-[#735f4b]">
-                {labels.similarHint}
-              </p>
             </div>
           </div>
 
@@ -1143,9 +1158,9 @@ useEffect(() => {
                 />
               ))}
             </div>
-          ) : resolvedSimilarImages.length > 0 ? (
+          ) : remainingSimilarImages.length > 0 ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-              {resolvedSimilarImages.map((item, index) => (
+              {remainingSimilarImages.map((item, index) => (
                 <a
                   key={`${item.imageUrl}-${index}`}
                   href={item.link || item.imageUrl}
@@ -1184,12 +1199,9 @@ useEffect(() => {
                 </a>
               ))}
             </div>
-          ) : (
-            <div className="rounded-[16px] border border-[#d2b98f]/70 bg-[#fff4e2]/72 px-4 py-4 text-sm leading-6 text-[#735f4b]">
-              {getNoSimilarImagesMessage(locale)}
-            </div>
-          )}
+          ) : null}
         </section>
+        ) : null}
 
         {canShowBrandAssessment ? (
           <section className="mt-8 border-t border-[#c7b99e] pt-6">

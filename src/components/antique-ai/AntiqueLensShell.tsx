@@ -14,6 +14,7 @@ import KishibLoader from "@/components/antique-ai/KishibLoader";
 import NotificationsButton from "@/components/antique-ai/NotificationsButton";
 import PlatformNewsTicker from "@/components/antique-ai/PlatformNewsTicker";
 import ResultView from "@/components/antique-ai/ResultView";
+import ShareResultSheet from "@/components/antique-ai/ShareResultSheet";
 import SubscriptionModal from "@/components/antique-ai/SubscriptionModal";
 import ThinkingMotion from "@/components/antique-ai/ThinkingMotion";
 import UserMenu from "@/components/antique-ai/UserMenu";
@@ -244,6 +245,7 @@ function getMetalPricesNavLabel(locale: Locale) {
 export default function AntiqueLensShell() {
   const router = useRouter();
   const lens = useAntiqueLens();
+  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
   const [hasSession, setHasSession] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [profileReady, setProfileReady] = useState(false);
@@ -745,7 +747,7 @@ export default function AntiqueLensShell() {
                 similarImages={safeSimilarImages}
                 isLoadingSimilar={isSimilarLoading}
                 userNote={lens.prompt}
-                onShare={lens.handleShare}
+                onShare={() => setIsShareSheetOpen(true)}
                 onAddInfo={canUseFollowUp ? lens.handleAddInfo : undefined}
                 followUpPanel={followUpPanel}
               />
@@ -762,9 +764,17 @@ export default function AntiqueLensShell() {
     }}
     hasResult={Boolean(lens.result)}
     onNew={lens.resetEvaluation}
-    onShare={lens.handleShare}
+    onShare={() => setIsShareSheetOpen(true)}
   />
 </div>
+
+        <ShareResultSheet
+          open={isShareSheetOpen}
+          locale={lens.locale}
+          result={lens.result}
+          onClose={() => setIsShareSheetOpen(false)}
+          onShare={lens.handleShare}
+        />
 
         <SubscriptionModal
           open={lens.isSubscriptionModalOpen}
