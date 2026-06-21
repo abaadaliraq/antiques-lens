@@ -715,13 +715,7 @@ useEffect(() => {
         cleanDisplayText(result.brandAssessment?.priceScenario),
     );
   const metalScenarios = result.metalValue?.scenarios || [];
-  const shouldShowMetalValue = Boolean(
-    result.metalValue &&
-      (metalScenarios.length > 0 ||
-        result.metalValue.spotPricePerGramUsd ||
-        result.metalValue.meltValueUsdLow ||
-        result.metalValue.meltValueUsdHigh),
-  );
+  const shouldShowMetalValue = false;
   const markAnalysis = result.markAnalysis?.hasMark ? result.markAnalysis : null;
   const markReferenceMatches =
     markAnalysis?.referenceMatches?.filter(

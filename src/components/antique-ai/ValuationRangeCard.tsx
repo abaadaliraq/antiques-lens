@@ -261,15 +261,84 @@ function textLooksSilver(value: string) {
 function getSilverMentionText(result: AnalysisResult, activeNote?: string) {
   return [
     result.material,
+    result.itemType,
     result.title,
     result.lookup,
     result.priceReasoning,
+    result.history,
+    result.description,
     result.estimatedValue,
     result.metalValue?.metal,
+    result.markAnalysis?.visibleText,
+    result.markAnalysis?.possibleMeaning,
+    result.hallmarkAnalysis?.readable_text,
+    result.hallmarkAnalysis?.interpretation,
     activeNote,
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+function textLooksSilverStrict(value: string) {
+  return /silver|sterling|\u0641\u0636\u0629|\u0641\u0636\u064a|\u0646\u0642\u0631\u0629|\u0632\u06cc\u0648|g(?:ü|u)m(?:ü|u)[sş]|серебр|चांदी|argent/i.test(value);
+}
+
+function metalLooksPreciousStrict(result: AnalysisResult) {
+  const value = [
+    result.material,
+    result.itemType,
+    result.title,
+    result.lookup,
+    result.priceReasoning,
+    result.metalValue?.metal,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return /gold|silver|platinum|palladium|\u0630\u0647\u0628|\u0630\u0647\u0628\u064a|\u0641\u0636\u0629|\u0641\u0636\u064a|\u0646\u0642\u0631\u0629|\u0632\u06cc\u0648|g(?:ü|u)m(?:ü|u)[sş]|alt(?:ı|i)n|серебр|золот|चांदी|सोना|argent|or|\u0628\u0644\u0627\u062a\u064a\u0646|\u0628\u0627\u0644\u0627\u062f\u064a\u0648\u0645/.test(
+    value,
+  );
+}
+
+function hasMetalCategorySignal(result: AnalysisResult) {
+  const value = [
+    result.itemType,
+    result.material,
+    result.title,
+    result.lookup,
+    result.markAnalysis?.possibleMeaning,
+    result.hallmarkAnalysis?.interpretation,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return /metal|metallic|silver|sterling|gold|copper|brass|bronze|jewelry|jewellery|ring|bracelet|necklace|teapot|sugar bowl|ewer|\u0645\u0639\u062f\u0646|\u0645\u0639\u062f\u0646\u064a|\u0641\u0636\u0629|\u0641\u0636\u064a|\u0630\u0647\u0628|\u0646\u062d\u0627\u0633|\u0628\u0631\u0648\u0646\u0632|\u0625\u0628\u0631\u064a\u0642|\u0639\u0644\u0628\u0629|\u0633\u0643\u0631|\u0645\u062c\u0648\u0647\u0631/.test(
+    value,
+  );
+}
+
+function isClearlyNonMetalCategory(result: AnalysisResult) {
+  const value = [
+    result.itemType,
+    result.material,
+    result.title,
+    result.lookup,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return /painting|canvas|artwork|print|paper|book|manuscript|rug|carpet|textile|fabric|wood|wooden|furniture|chair|table|cabinet|ceramic|porcelain|pottery|glass|\u0644\u0648\u062d\u0629|\u0631\u0633\u0645|\u0643\u0627\u0646\u0641\u0627\u0633|\u0648\u0631\u0642|\u0643\u062a\u0627\u0628|\u0645\u062e\u0637\u0648\u0637|\u0633\u062c\u0627\u062f|\u0633\u062c\u0627\u062f\u0629|\u0646\u0633\u064a\u062c|\u062e\u0634\u0628|\u062e\u0634\u0628\u064a|\u0623\u062b\u0627\u062b|\u0643\u0631\u0633\u064a|\u0637\u0627\u0648\u0644\u0629|\u0633\u064a\u0631\u0627\u0645\u064a\u0643|\u062e\u0632\u0641|\u0632\u062c\u0627\u062c/.test(
+    value,
+  );
+}
+
+function allowsMetalScenario(result: AnalysisResult) {
+  if (result.metalValue?.metal && result.metalValue.metal !== "unknown") return true;
+  if (hasMetalCategorySignal(result)) return true;
+  return !isClearlyNonMetalCategory(result);
 }
 
 function getSilverGramPriceFromPayload(payload: unknown) {
@@ -316,8 +385,12 @@ export default function ValuationRangeCard({ result, locale }: Props) {
   const mid = getMid(active.min, active.max);
   const rtl = isRtl(locale);
   const silverMentionText = getSilverMentionText(result, active.note);
-  const isSilverCandidate = textLooksSilver(silverMentionText);
-  const isPreciousMetal = metalLooksPrecious(result) || isSilverCandidate;
+  const isSilverCandidate =
+    allowsMetalScenario(result) &&
+    (textLooksSilver(silverMentionText) || textLooksSilverStrict(silverMentionText));
+  const isPreciousMetal =
+    allowsMetalScenario(result) &&
+    (metalLooksPrecious(result) || metalLooksPreciousStrict(result) || isSilverCandidate);
   const [silverGramPrice, setSilverGramPrice] = useState<number | null>(null);
   const silverRows = buildSilverRows({
     gramPrice: silverGramPrice,
@@ -346,7 +419,7 @@ export default function ValuationRangeCard({ result, locale }: Props) {
   return (
     <section
       dir={rtl ? "rtl" : "ltr"}
-      className="-mx-3 mt-4 border-y border-[#7b4a37]/25 bg-[#4d1b17] text-[#fff4e2] sm:mx-0 sm:rounded-[16px] sm:border"
+      className="-mx-3 mt-4 border-y border-[#7b4a37]/25 bg-[#4d1b17] text-[#fff4e2] sm:-mx-5"
     >
       <div className="px-4 py-3 sm:px-5">
         <div className="flex items-start justify-between gap-3">

@@ -75,6 +75,15 @@ export function normalizeWeightToGrams(input?: string | number | null) {
 export function detectSilver(text: string) {
   const value = text.toLowerCase();
 
+  if (
+    value.includes("\u0641\u0636\u0629") ||
+    value.includes("\u0641\u0636\u064a") ||
+    value.includes("\u0646\u0642\u0631\u0629") ||
+    value.includes("\u0632\u06cc\u0648")
+  ) {
+    return true;
+  }
+
   return (
     value.includes("فضة") ||
     value.includes("فضه") ||
