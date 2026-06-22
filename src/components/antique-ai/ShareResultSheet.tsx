@@ -27,6 +27,7 @@ type Props = {
   open: boolean;
   locale: Locale;
   result: AnalysisResult | null;
+  imagePreview?: string | null;
   onClose: () => void;
   onShare: (options: ShareCardData) => Promise<void> | void;
 };
@@ -59,9 +60,11 @@ function getPrice(result: AnalysisResult) {
     typeof scenario.min === "number" &&
     typeof scenario.max === "number"
   ) {
+    const low = Math.min(scenario.min, scenario.max);
+    const high = Math.max(scenario.min, scenario.max);
     const symbol =
       scenario.currency === "EUR" ? "€" : scenario.currency === "GBP" ? "£" : "$";
-    return `${symbol}${scenario.min.toLocaleString("en-US")} - ${symbol}${scenario.max.toLocaleString("en-US")}`;
+    return `${symbol}${low.toLocaleString("en-US")} - ${symbol}${high.toLocaleString("en-US")}`;
   }
 
   return compact(result.estimatedValue || result.priceRange);
@@ -99,7 +102,7 @@ function getOptions(locale: Locale): VariantOption[] {
       id: "with_price",
       icon: BadgeDollarSign,
       title: ar ? "مشاركة مع السعر" : "With price",
-      description: ar ? "الصورة والسعر والثقة" : "Image, price, and confidence",
+      description: ar ? "الصورة والسعر بشكل أنيق" : "Image and price in a clean card",
     },
     {
       id: "without_price",
@@ -153,33 +156,73 @@ function SharePreview({
   variant,
   size,
   locale,
+  imagePreview,
 }: {
   result: AnalysisResult;
   variant: ShareCardVariant;
   size: ShareCardSize;
   locale: Locale;
+  imagePreview?: string | null;
 }) {
   const labels = getLabels(locale);
   const showPrice = variant === "with_price" || variant === "before_after";
   const isStory = size === "story";
   const title = compact(result.title || result.itemType, "KISHIB");
+  const description = (
+    result.description ||
+    result.lookup ||
+    result.history ||
+    result.priceReasoning ||
+    result.material ||
+    ""
+  )
+    .replace(/\s+/g, " ")
+    .trim();
 
   return (
-    <div className="rounded-[18px] border border-[#d2b98f]/70 bg-[#3f1512] p-3 text-[#fff4e2]">
-      <p className="mb-2 text-[11px] font-bold text-[#e8c273]">{labels.preview}</p>
+    <div className="rounded-[18px] border border-[#d2b98f]/45 bg-[#f7ecd9] p-3 text-[#351611] shadow-[0_18px_50px_rgba(62,16,15,0.14)]">
+      <p className="mb-2 text-[11px] font-semibold text-[#7a241d]">
+        {isArabic(locale) ? "معاينة الصورة التي ستُنشر" : "Preview of the image to publish"}
+      </p>
       <div
         className={[
-          "mx-auto overflow-hidden rounded-[16px] border border-[#d6b576]/35 bg-gradient-to-br from-[#fff4e2] via-[#7a2f25] to-[#33100f] p-3 shadow-inner",
-          isStory ? "aspect-[9/16] max-h-64 w-36" : "aspect-square w-44",
+          "mx-auto overflow-hidden rounded-[22px] border border-[#7a241d]/10 bg-[#f4eadb] p-4 shadow-[0_18px_38px_rgba(77,27,23,0.16)]",
+          isStory ? "aspect-[9/16] max-h-[360px] w-[190px]" : "aspect-square w-[250px] max-w-full",
         ].join(" ")}
       >
-        <div className="h-1/2 rounded-[12px] bg-[#2a1713]/45" />
-        <div className="mt-3 text-[10px] font-bold text-[#f0cf83]">KISHIB</div>
-        <div className="mt-2 text-sm font-black leading-4">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-[10px] font-semibold tracking-wide text-[#351611]">KISHIB</span>
+          <span className="text-[8px] font-medium leading-3 text-[#351611]/70">
+            {isArabic(locale) ? "حمّل التطبيق لتقييم قطعك" : "Download the app"}
+          </span>
+        </div>
+        <div className="relative h-[38%] overflow-visible rounded-[18px] bg-[#e5d7c2] shadow-[0_14px_24px_rgba(54,24,17,0.16)]">
+          <div className="h-full overflow-hidden rounded-[18px]">
+          {imagePreview ? (
+            <img
+              src={imagePreview}
+              alt={title}
+              className="h-full w-full object-cover"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
+            />
+          ) : null}
+          </div>
+          <span className="absolute -bottom-4 end-2 grid h-10 w-10 rotate-[-8deg] place-items-center overflow-hidden rounded-full border-2 border-[#a51f17]/70 bg-[#fffaf0]/95 shadow-sm">
+            <img src="/brand/kishib-logo.png" alt="KISHIB" className="h-8 w-8 rounded-full object-cover" />
+          </span>
+        </div>
+        <div className="mt-7 text-[14px] font-semibold leading-5 text-[#351611]">
           {variant === "guess_value" ? labels.guess : title}
         </div>
+        {description && variant === "with_price" ? (
+          <div className="mt-2 text-[9px] font-normal leading-4 text-[#351611]/75">
+            {description}
+          </div>
+        ) : null}
         {variant === "without_price" || variant === "historical_info" ? (
-          <div className="mt-2 text-[10px] leading-4 text-[#fff4e2]/85">
+          <div className="mt-2 text-[10px] leading-4 text-[#5d4438]">
             {variant === "historical_info"
               ? compact(result.history || result.lookup, labels.noPrice)
               : `${compact(result.itemType)} / ${compact(result.material)}`}
@@ -189,15 +232,18 @@ function SharePreview({
           <div className="mt-2 text-[10px] font-bold text-[#f0cf83]">{labels.try}</div>
         ) : null}
         {variant === "before_after" ? (
-          <div className="mt-2 text-[10px] leading-4 text-[#fff4e2]/90">
+          <div className="mt-2 text-[10px] leading-4 text-[#5d4438]">
             {labels.before}: {labels.unknown}
             <br />
             {labels.after}: {compact(result.itemType || result.title)}
           </div>
         ) : null}
         {showPrice ? (
-          <div className="mt-2 text-base font-black text-[#f0cf83]">{getPrice(result)}</div>
+          <div className="mt-3 text-[14px] font-bold text-[#7a241d]">{getPrice(result)}</div>
         ) : null}
+        <div className="mt-4 border-t border-[#7a241d]/15 pt-2 text-[9px] font-semibold text-[#351611]/70">
+          {labels.evaluated}
+        </div>
       </div>
     </div>
   );
@@ -207,6 +253,7 @@ export default function ShareResultSheet({
   open,
   locale,
   result,
+  imagePreview,
   onClose,
   onShare,
 }: Props) {
@@ -332,6 +379,7 @@ export default function ShareResultSheet({
               variant={selected}
               size={size}
               locale={locale}
+              imagePreview={imagePreview}
             />
           </div>
 

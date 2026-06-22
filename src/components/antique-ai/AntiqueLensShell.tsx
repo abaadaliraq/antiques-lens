@@ -772,6 +772,14 @@ export default function AntiqueLensShell() {
           open={isShareSheetOpen}
           locale={lens.locale}
           result={lens.result}
+          imagePreview={
+            lens.imagePreviews[0] ||
+            lens.imagePreview ||
+            lens.result?.imagePreview ||
+            lens.result?.imageUrl ||
+            lens.result?.uploadedImageUrl ||
+            null
+          }
           onClose={() => setIsShareSheetOpen(false)}
           onShare={lens.handleShare}
         />

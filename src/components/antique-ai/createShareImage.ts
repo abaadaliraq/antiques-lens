@@ -42,7 +42,7 @@ const DETAIL_REPORT_HEIGHT = 2000;
 const PADDING = 64;
 
 const FONT =
-  'Arial, "Tahoma", "Segoe UI", "Noto Sans Arabic", sans-serif';
+  '"Tajawal", "Arial", "Tahoma", "Segoe UI", "Noto Sans Arabic", sans-serif';
 
 const SOCIAL_CARD_SIZES: Record<ShareCardSize, { width: number; height: number }> = {
   story: { width: 1080, height: 1920 },
@@ -138,6 +138,138 @@ function drawCoverImage(
   ctx.restore();
 }
 
+function drawSoftShadow(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+  color = "rgba(0, 0, 0, 0.28)",
+  blur = 34,
+) {
+  ctx.save();
+  ctx.shadowColor = color;
+  ctx.shadowBlur = blur;
+  ctx.shadowOffsetY = 18;
+  roundedRect(ctx, x, y, width, height, radius);
+  ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawDecorativeLines(ctx: CanvasRenderingContext2D, x: number, y: number) {
+  ctx.save();
+  ctx.strokeStyle = "rgba(78, 40, 31, 0.28)";
+  ctx.lineWidth = 2.4;
+  for (let i = 0; i < 3; i += 1) {
+    ctx.beginPath();
+    ctx.moveTo(x, y + i * 22);
+    ctx.bezierCurveTo(
+      x + 38,
+      y - 22 + i * 22,
+      x + 78,
+      y + 42 + i * 22,
+      x + 124,
+      y + i * 22,
+    );
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+async function drawKishibMark(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  rtl: boolean,
+) {
+  const size = 82;
+  const left = rtl ? x - size : x;
+  const centerX = left + size / 2;
+  const centerY = y + size / 2;
+
+  ctx.save();
+  ctx.shadowColor = "rgba(50, 22, 16, 0.16)";
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 8;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, size / 2, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(255, 249, 238, 0.98)";
+  ctx.fill();
+  ctx.restore();
+
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, size / 2 - 3, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.strokeStyle = "rgba(107, 38, 30, 0.18)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  try {
+    const logo = await loadImage("/brand/kishib-logo.png");
+    const logoSize = 58;
+    const logoX = centerX - logoSize / 2;
+    const logoY = centerY - logoSize / 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
+    ctx.restore();
+  } catch {
+    ctx.fillStyle = "#4d1b17";
+    ctx.font = `800 28px ${FONT}`;
+    ctx.textAlign = "center";
+    ctx.fillText("K", centerX, centerY + 10);
+  }
+}
+
+async function drawStampBadge(
+  ctx: CanvasRenderingContext2D,
+  centerX: number,
+  centerY: number,
+  radius: number,
+) {
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate(-0.12);
+  ctx.strokeStyle = "rgba(155, 29, 22, 0.78)";
+  ctx.lineWidth = 5;
+  ctx.setLineDash([20, 8, 4, 8]);
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius - 10, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(255, 250, 240, 0.86)";
+  ctx.beginPath();
+  ctx.arc(0, 0, radius - 16, 0, Math.PI * 2);
+  ctx.fill();
+
+  try {
+    const logo = await loadImage("/brand/kishib-logo.png");
+    const logoSize = radius * 1.05;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(0, 0, logoSize / 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(logo, -logoSize / 2, -logoSize / 2, logoSize, logoSize);
+    ctx.restore();
+  } catch {
+    ctx.fillStyle = "#8c1d16";
+    ctx.font = `800 ${Math.round(radius * 0.42)}px ${FONT}`;
+    ctx.textAlign = "center";
+    ctx.fillText("KISHIB", 0, 8);
+  }
+
+  ctx.restore();
+}
+
 function drawContainImage(
   ctx: CanvasRenderingContext2D,
   image: HTMLImageElement,
@@ -223,6 +355,73 @@ function drawWrappedText(
   });
 
   return y + finalLines.length * lineHeight;
+}
+
+function wrapTextLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
+  const words = safeText(text).split(/\s+/);
+  const lines: string[] = [];
+  let line = "";
+
+  for (const word of words) {
+    const testLine = line ? `${line} ${word}` : word;
+    if (ctx.measureText(testLine).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = testLine;
+    }
+  }
+
+  if (line) lines.push(line);
+  return lines;
+}
+
+function drawFittedWrappedText({
+  ctx,
+  text,
+  x,
+  y,
+  maxWidth,
+  maxHeight,
+  rtl,
+  color,
+  weight = 400,
+  maxFontSize,
+  minFontSize,
+  lineHeightRatio = 1.42,
+}: {
+  ctx: CanvasRenderingContext2D;
+  text: string;
+  x: number;
+  y: number;
+  maxWidth: number;
+  maxHeight: number;
+  rtl: boolean;
+  color: string;
+  weight?: number;
+  maxFontSize: number;
+  minFontSize: number;
+  lineHeightRatio?: number;
+}) {
+  let fontSize = maxFontSize;
+  let lines: string[] = [];
+  let lineHeight = Math.round(fontSize * lineHeightRatio);
+
+  while (fontSize >= minFontSize) {
+    ctx.font = `${weight} ${fontSize}px ${FONT}`;
+    lineHeight = Math.round(fontSize * lineHeightRatio);
+    lines = wrapTextLines(ctx, text, maxWidth);
+    if (lines.length * lineHeight <= maxHeight) break;
+    fontSize -= 2;
+  }
+
+  ctx.fillStyle = color;
+  ctx.textAlign = rtl ? "right" : "left";
+  lines.forEach((line, index) => {
+    ctx.fillText(line, x, y + index * lineHeight);
+  });
+
+  return y + lines.length * lineHeight;
 }
 
 function drawInfoItem({
@@ -447,18 +646,13 @@ function getShareLabels(locale: Locale) {
     era: ar ? "الحقبة" : "Era",
     material: ar ? "الخامة" : "Material",
     value: ar ? "القيمة" : "Value",
-    confidence: ar ? "الثقة" : "Confidence",
+    cta: ar
+      ? "حمّل التطبيق لتقييم قطعك الثمينة"
+      : "Download the app to evaluate your treasured pieces",
     low: ar ? "منخفضة" : "Low",
     medium: ar ? "متوسطة" : "Medium",
     high: ar ? "عالية" : "High",
   };
-}
-
-function getConfidenceText(result: AnalysisResult, locale: Locale) {
-  const labels = getShareLabels(locale);
-  if (result.confidence <= 3) return labels.low;
-  if (result.confidence <= 6) return labels.medium;
-  return labels.high;
 }
 
 function getCurrentPriceText(result: AnalysisResult) {
@@ -468,35 +662,14 @@ function getCurrentPriceText(result: AnalysisResult) {
     typeof scenario.min === "number" &&
     typeof scenario.max === "number"
   ) {
+    const low = Math.min(scenario.min, scenario.max);
+    const high = Math.max(scenario.min, scenario.max);
     const symbol =
       scenario.currency === "EUR" ? "€" : scenario.currency === "GBP" ? "£" : "$";
-    return `${symbol}${scenario.min.toLocaleString("en-US")} - ${symbol}${scenario.max.toLocaleString("en-US")}`;
+    return `${symbol}${low.toLocaleString("en-US")} - ${symbol}${high.toLocaleString("en-US")}`;
   }
 
   return safeText(result.estimatedValue || result.priceRange);
-}
-
-function drawSocialBadge(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  rtl: boolean,
-) {
-  const paddingX = 26;
-  ctx.font = `700 25px ${FONT}`;
-  const width = Math.min(520, ctx.measureText(text).width + paddingX * 2);
-  const left = rtl ? x - width : x;
-
-  roundedRect(ctx, left, y, width, 56, 28);
-  ctx.fillStyle = "rgba(255, 244, 226, 0.92)";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(214, 181, 118, 0.75)";
-  ctx.stroke();
-
-  ctx.fillStyle = "#4d1b17";
-  ctx.textAlign = rtl ? "right" : "left";
-  ctx.fillText(text, rtl ? left + width - paddingX : left + paddingX, y + 37);
 }
 
 async function createSocialShareImage({
@@ -523,46 +696,94 @@ async function createSocialShareImage({
   if (!ctx) throw new Error("Canvas is not supported");
 
   ctx.direction = rtl ? "rtl" : "ltr";
-  ctx.fillStyle = "#f3eadf";
+  ctx.fillStyle = "#f4eadb";
   ctx.fillRect(0, 0, dimensions.width, dimensions.height);
 
-  const gradient = ctx.createLinearGradient(0, 0, dimensions.width, dimensions.height);
-  gradient.addColorStop(0, "#fff4e2");
-  gradient.addColorStop(0.48, "#7a2f25");
-  gradient.addColorStop(1, "#3d1412");
-  ctx.fillStyle = gradient;
+  const vignette = ctx.createRadialGradient(
+    dimensions.width * 0.88,
+    dimensions.height * 0.06,
+    10,
+    dimensions.width * 0.68,
+    dimensions.height * 0.26,
+    dimensions.width * 1.1,
+  );
+  vignette.addColorStop(0, "rgba(198, 149, 110, 0.36)");
+  vignette.addColorStop(0.42, "rgba(244, 234, 219, 0.72)");
+  vignette.addColorStop(1, "rgba(127, 58, 43, 0.2)");
+  ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, dimensions.width, dimensions.height);
 
-  const margin = size === "story" ? 74 : 58;
-  const imageH = size === "story" ? 920 : 510;
-  const imageY = size === "story" ? 160 : 92;
+  ctx.fillStyle = "rgba(92, 44, 33, 0.035)";
+  for (let y = 0; y < dimensions.height; y += 34) {
+    ctx.fillRect(0, y, dimensions.width, 1);
+  }
+
+  const margin = size === "story" ? 92 : 74;
+  const imageY = size === "story" ? 245 : 150;
+  const imageH = size === "story" ? 610 : 330;
   const textX = rtl ? dimensions.width - margin : margin;
   const contentW = dimensions.width - margin * 2;
+  const brandX = rtl ? dimensions.width - margin : margin;
 
+  ctx.fillStyle = "#351611";
+  ctx.font = `600 ${size === "story" ? 32 : 25}px ${FONT}`;
+  ctx.textAlign = rtl ? "right" : "left";
+  ctx.fillText("KISHIB", brandX, size === "story" ? 116 : 82);
+
+  ctx.fillStyle = "#351611";
+  ctx.font = `400 ${size === "story" ? 25 : 18}px ${FONT}`;
+  ctx.textAlign = rtl ? "left" : "right";
+  ctx.fillText(
+    labels.cta,
+    rtl ? margin : dimensions.width - margin,
+    size === "story" ? 116 : 82,
+  );
+
+  drawDecorativeLines(
+    ctx,
+    rtl ? margin + 8 : dimensions.width - margin - 132,
+    size === "story" ? 156 : 130,
+  );
+
+  drawSoftShadow(ctx, margin, imageY, contentW, imageH, 30, "rgba(54, 24, 17, 0.18)", 22);
   if (imagePreview) {
     try {
       const image = await loadImage(imagePreview);
-      drawCoverImage(ctx, image, margin, imageY, contentW, imageH, 38);
+      drawCoverImage(ctx, image, margin, imageY, contentW, imageH, 30);
     } catch {
-      roundedRect(ctx, margin, imageY, contentW, imageH, 38);
-      ctx.fillStyle = "#2a1713";
+      roundedRect(ctx, margin, imageY, contentW, imageH, 30);
+      ctx.fillStyle = "#e6d8c4";
       ctx.fill();
     }
   } else {
-    roundedRect(ctx, margin, imageY, contentW, imageH, 38);
-    ctx.fillStyle = "#2a1713";
+    roundedRect(ctx, margin, imageY, contentW, imageH, 30);
+    ctx.fillStyle = "#e6d8c4";
     ctx.fill();
   }
 
+  await drawStampBadge(
+    ctx,
+    rtl ? margin + 10 : dimensions.width - margin - 10,
+    imageY + imageH - 18,
+    size === "story" ? 54 : 42,
+  );
+
   ctx.textAlign = rtl ? "right" : "left";
-  drawSocialBadge(ctx, "KISHIB", textX, size === "story" ? 70 : 36, rtl);
 
-  const title = trimText(result.title || result.itemType || "Antique", 86);
+  const title = safeText(result.title || result.itemType || "Antique");
+  const description = safeText(
+    result.description ||
+      result.lookup ||
+      result.history ||
+      result.priceReasoning ||
+      result.material ||
+      result.itemType,
+  );
   const price = getCurrentPriceText(result);
-  let cursorY = imageY + imageH + (size === "story" ? 92 : 58);
+  let cursorY = imageY + imageH + (size === "story" ? 105 : 54);
 
-  ctx.fillStyle = "#fff4e2";
-  ctx.font = `800 ${size === "story" ? 62 : 48}px ${FONT}`;
+  ctx.fillStyle = "#351611";
+  ctx.font = `600 ${size === "story" ? 48 : 33}px ${FONT}`;
 
   if (variant === "guess_value") {
     cursorY = drawWrappedText(ctx, labels.guess, textX, cursorY, contentW, 74, 3, rtl) + 12;
@@ -588,15 +809,35 @@ async function createSocialShareImage({
     ];
     drawWrappedText(ctx, afterLines.join(" / "), textX, cursorY + 58, contentW, 44, 4, rtl);
   } else {
-    cursorY = drawWrappedText(ctx, title, textX, cursorY, contentW, size === "story" ? 72 : 58, 2, rtl) + 8;
+    cursorY =
+      drawWrappedText(
+        ctx,
+        title,
+        textX,
+        cursorY,
+        contentW,
+        size === "story" ? 60 : 42,
+        size === "story" ? 3 : 2,
+        rtl,
+      ) + (size === "story" ? 28 : 16);
 
     if (variant === "with_price") {
-      ctx.fillStyle = "#f0cf83";
-      ctx.font = `800 ${size === "story" ? 64 : 52}px ${FONT}`;
-      ctx.fillText(price, textX, cursorY + 70);
-      ctx.fillStyle = "#fff4e2";
-      ctx.font = `600 ${size === "story" ? 30 : 24}px ${FONT}`;
-      ctx.fillText(`${labels.confidence}: ${getConfidenceText(result, locale)}`, textX, cursorY + 122);
+      cursorY = drawFittedWrappedText({
+        ctx,
+        text: description,
+        x: textX,
+        y: cursorY,
+        maxWidth: contentW,
+        maxHeight: size === "story" ? 430 : 170,
+        rtl,
+        color: "rgba(53, 22, 17, 0.78)",
+        weight: 400,
+        maxFontSize: size === "story" ? 34 : 22,
+        minFontSize: size === "story" ? 22 : 15,
+      });
+      ctx.fillStyle = "#7a241d";
+      ctx.font = `700 ${size === "story" ? 42 : 30}px ${FONT}`;
+      ctx.fillText(price, textX, cursorY + (size === "story" ? 48 : 32));
     } else if (variant === "without_price") {
       ctx.fillStyle = "#f0cf83";
       ctx.font = `700 ${size === "story" ? 34 : 28}px ${FONT}`;
@@ -627,10 +868,17 @@ async function createSocialShareImage({
   }
 
   ctx.textAlign = rtl ? "right" : "left";
-  ctx.fillStyle = "rgba(255, 244, 226, 0.86)";
-  ctx.font = `700 ${size === "story" ? 27 : 22}px ${FONT}`;
-  ctx.fillText(labels.evaluatedBy, textX, dimensions.height - margin - 44);
-  ctx.font = `500 ${size === "story" ? 23 : 19}px ${FONT}`;
+  ctx.strokeStyle = "rgba(80, 36, 27, 0.22)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(margin, dimensions.height - margin - 82);
+  ctx.lineTo(dimensions.width - margin, dimensions.height - margin - 82);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(53, 22, 17, 0.72)";
+  ctx.font = `600 ${size === "story" ? 25 : 20}px ${FONT}`;
+  ctx.fillText(labels.evaluatedBy, textX, dimensions.height - margin - 40);
+  ctx.font = `500 ${size === "story" ? 22 : 18}px ${FONT}`;
   ctx.fillText("kishibapp.com", textX, dimensions.height - margin);
 
   const blob = await canvasToBlob(canvas);

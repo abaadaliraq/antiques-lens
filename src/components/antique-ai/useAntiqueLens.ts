@@ -1838,6 +1838,10 @@ async function handleShare(options?: ShareCardData) {
     locale === "en"
       ? "Share image downloaded. You can post it from your downloads."
       : "تم حفظ صورة المشاركة، يمكنك نشرها من التنزيلات.";
+  const unsupportedImageShareMessage =
+    locale === "en"
+      ? "This browser cannot send the image directly to Instagram or Facebook. Use Download image, then upload it from your gallery/downloads."
+      : "هذا المتصفح لا يدعم إرسال الصورة مباشرة إلى إنستغرام أو فيسبوك. اضغطي تحميل الصورة ثم ارفعيها من المعرض أو التنزيلات.";
   const fallbackMessage =
     locale === "en"
       ? "Report summary copied. You can paste and share it."
@@ -1872,6 +1876,7 @@ async function handleShare(options?: ShareCardData) {
 
     if (options?.action === "download") {
       shareImages.forEach(downloadFile);
+      alert(shareImageMessage);
       return;
     }
 
@@ -1884,8 +1889,7 @@ async function handleShare(options?: ShareCardData) {
       return;
     }
 
-    shareImages.forEach(downloadFile);
-    alert(shareImageMessage);
+    alert(unsupportedImageShareMessage);
     return;
   } catch (err) {
     if (isCanceledShare(err)) return;
