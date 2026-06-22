@@ -914,7 +914,7 @@ useEffect(() => {
           >
             <Share2 className="h-4 w-4 text-[#fff4e2]" />
             <span className="text-[#fff4e2]">
-              {locale === "ar" ? "مشاركة التقييم" : "Share Result"}
+              {locale === "ar" ? "إرسال التقرير واتساب" : "Send report to WhatsApp"}
             </span>
           </button>
         </div>

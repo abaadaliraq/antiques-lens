@@ -6,7 +6,6 @@ import {
   CameraSource,
 } from "@capacitor/camera";
 import { Capacitor } from "@capacitor/core";
-import { Share } from "@capacitor/share";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { useFollowUpEvaluation } from "./useFollowUpEvaluation";
@@ -45,7 +44,6 @@ import type {
   SimilarImageResult,
   HouseOfAntiquesContext,
   HouseOfAntiquesMatch,
-  ShareCardData,
 } from "./types";
 const MAX_IMAGES = 6;
 const MAX_IMAGE_SIZE_MB = 8;
@@ -104,21 +102,6 @@ async function cameraPhotoToFile(photoPath: string) {
   });
 }
 
-function getUsefulShareUrl() {
-  if (typeof window === "undefined" || !window.location?.href) return "";
-
-  try {
-    const currentUrl = new URL(window.location.href);
-    const localHosts = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
-
-    if (localHosts.has(currentUrl.hostname)) return "";
-
-    return currentUrl.href;
-  } catch {
-    return "";
-  }
-}
-
 function getUsageMessage(locale: Locale, key: "auth" | "limit" | "checkFailed") {
   if (locale === "en") {
     if (key === "auth") return "Please sign in first to start an evaluation.";
@@ -153,55 +136,6 @@ function isCanceledShare(error: unknown) {
     message.includes("canceled") ||
     message.includes("cancelled")
   );
-}
-
-function buildShareSummary(result: AnalysisResult, shareUrl = "") {
-  const title = result.title || result.itemType || "KISHIB Evaluation";
-  const category = result.itemType || result.lookup || "";
-  const value = result.estimatedValue || result.priceRange || "";
-  const description = result.description || result.history || result.lookup || "";
-  const reportDate = new Intl.DateTimeFormat("ar-IQ", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(new Date());
-
-  return [
-    "تقرير KISHIB",
-    title,
-    category ? `الفئة: ${category}` : "",
-    description ? `الوصف: ${description}` : "",
-    value ? `السعر التقديري: ${value}` : "",
-    `تاريخ التقرير: ${reportDate}`,
-    shareUrl,
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
-function isAndroidNativeApp() {
-  return (
-    typeof window !== "undefined" &&
-    Capacitor.isNativePlatform() &&
-    Capacitor.getPlatform() === "android"
-  );
-}
-
-async function copyTextToClipboard(text: string) {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.setAttribute("readonly", "true");
-  textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  document.body.appendChild(textarea);
-  textarea.select();
-  document.execCommand("copy");
-  document.body.removeChild(textarea);
 }
 
 function downloadFile(file: File) {
@@ -1828,34 +1762,21 @@ await saveEvaluationToSupabase({
 
 }
 
-async function handleShare(options?: ShareCardData) {
+async function handleShare() {
   if (!result) return;
 
-  const shareUrl = getUsefulShareUrl();
-  const shareText = buildShareSummary(result, shareUrl);
-  const shareTitle = locale === "en" ? "KISHIB Result" : "نتيجة KISHIB";
-  const shareImageMessage =
+  const shareTitle = locale === "en" ? "KISHIB report" : "تقرير KISHIB";
+  const downloadedMessage =
     locale === "en"
-      ? "Share image downloaded. You can post it from your downloads."
-      : "تم حفظ صورة المشاركة، يمكنك نشرها من التنزيلات.";
-  const unsupportedImageShareMessage =
+      ? "The report image was downloaded. Open WhatsApp and send it from your gallery/downloads."
+      : "تم تحميل صورة التقرير. افتحي واتساب وأرسليها من المعرض أو التنزيلات.";
+  const unsupportedMessage =
     locale === "en"
-      ? "This browser cannot send the image directly to Instagram or Facebook. Use Download image, then upload it from your gallery/downloads."
-      : "هذا المتصفح لا يدعم إرسال الصورة مباشرة إلى إنستغرام أو فيسبوك. اضغطي تحميل الصورة ثم ارفعيها من المعرض أو التنزيلات.";
-  const fallbackMessage =
-    locale === "en"
-      ? "Report summary copied. You can paste and share it."
-      : "تم نسخ ملخص التقرير، يمكنك لصقه ومشاركته.";
-  const platform = Capacitor.getPlatform();
-
-  console.log("[KISHIB share] platform:", {
-    platform,
-    isNative: Capacitor.isNativePlatform(),
-    hasPublicUrl: Boolean(shareUrl),
-  });
+      ? "This browser cannot send the report image directly to WhatsApp. The image will be downloaded instead."
+      : "هذا المتصفح لا يدعم إرسال صورة التقرير مباشرة إلى واتساب. سيتم تحميل الصورة بدلًا من ذلك.";
 
   try {
-    const shareImages = await createShareImage({
+    const reportImages = await createShareImage({
       result,
       imagePreview:
         imagePreviews[0] ||
@@ -1865,20 +1786,15 @@ async function handleShare(options?: ShareCardData) {
         null,
       labels: t,
       locale,
-      variant: options?.variant || "with_price",
-      size: options?.size || "story",
     });
     const shareData = {
       title: shareTitle,
-      text: shareTitle,
-      files: shareImages,
+      text:
+        locale === "en"
+          ? "KISHIB valuation report"
+          : "تقرير تقييم KISHIB",
+      files: reportImages,
     } as ShareData;
-
-    if (options?.action === "download") {
-      shareImages.forEach(downloadFile);
-      alert(shareImageMessage);
-      return;
-    }
 
     if (
       typeof navigator !== "undefined" &&
@@ -1889,48 +1805,14 @@ async function handleShare(options?: ShareCardData) {
       return;
     }
 
-    alert(unsupportedImageShareMessage);
+    alert(unsupportedMessage);
+    reportImages.forEach(downloadFile);
+    alert(downloadedMessage);
     return;
   } catch (err) {
     if (isCanceledShare(err)) return;
-    console.error("[KISHIB image share failed]", err);
-  }
-
-  try {
-    if (isAndroidNativeApp()) {
-      await Share.share({
-        title: shareTitle,
-        text: shareText,
-        ...(shareUrl ? { url: shareUrl } : {}),
-        dialogTitle: locale === "en" ? "Share KISHIB Report" : "مشاركة تقرير KISHIB",
-      });
-      return;
-    }
-
-    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-      const shareData: ShareData = {
-        title: shareTitle,
-        text: shareText,
-      };
-
-      if (shareUrl) {
-        shareData.url = shareUrl;
-      }
-
-      await navigator.share(shareData);
-      return;
-    }
-  } catch (err) {
-    if (isCanceledShare(err)) return;
-    console.error("[KISHIB share failed]", err);
-  }
-
-  try {
-    await copyTextToClipboard(shareText);
-    alert(fallbackMessage);
-  } catch (err) {
-    console.error("Failed to share or copy report summary:", err);
-    alert(locale === "en" ? "Sharing is not available right now." : "تعذرت المشاركة والنسخ الآن.");
+    console.error("[KISHIB WhatsApp report share failed]", err);
+    alert(locale === "en" ? "Unable to create the WhatsApp report image now." : "تعذر إنشاء صورة التقرير للواتساب الآن.");
   }
 }
 

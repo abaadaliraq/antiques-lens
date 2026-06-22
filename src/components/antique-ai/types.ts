@@ -107,21 +107,6 @@ export type ValuationScenario = {
   antiquePremiumMax?: number;
 };
 
-export type ShareCardVariant =
-  | "with_price"
-  | "without_price"
-  | "guess_value"
-  | "historical_info"
-  | "before_after";
-
-export type ShareCardSize = "story" | "post";
-
-export type ShareCardData = {
-  variant: ShareCardVariant;
-  size: ShareCardSize;
-  action?: "share" | "download";
-};
-
 export type EvidenceUsed = {
   images?: "available" | "missing" | string;
   userAgeClaim?: "available" | "missing" | string;
