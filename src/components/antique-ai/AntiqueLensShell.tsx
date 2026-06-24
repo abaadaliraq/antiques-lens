@@ -724,9 +724,14 @@ export default function AntiqueLensShell() {
                   material: lens.t.material,
                   origin: lens.t.origin,
                   lookup: lens.t.lookup,
+                  historicalReading: lens.t.historicalReading,
                   description: lens.t.description,
                   condition: lens.t.condition,
                   authenticity: lens.t.authenticity,
+                  safeInitialChecks: lens.t.safeInitialChecks,
+                  safeInitialChecksNote: lens.t.safeInitialChecksNote,
+                  carePreservation: lens.t.carePreservation,
+                  carePreservationNote: lens.t.carePreservationNote,
                   priceReason: lens.t.priceReason,
                   valueDrivers: lens.t.valueDrivers,
                   valueReducers: lens.t.valueReducers,
@@ -745,7 +750,6 @@ export default function AntiqueLensShell() {
                 similarImages={safeSimilarImages}
                 isLoadingSimilar={isSimilarLoading}
                 userNote={lens.prompt}
-                onShare={lens.handleShare}
                 onAddInfo={canUseFollowUp ? lens.handleAddInfo : undefined}
                 followUpPanel={followUpPanel}
               />
@@ -758,11 +762,9 @@ export default function AntiqueLensShell() {
     theme={lens.theme}
     labels={{
       new: lens.t.new,
-      share: lens.locale === "ar" ? "واتساب" : "WhatsApp",
     }}
     hasResult={Boolean(lens.result)}
     onNew={lens.resetEvaluation}
-    onShare={lens.handleShare}
   />
 </div>
 

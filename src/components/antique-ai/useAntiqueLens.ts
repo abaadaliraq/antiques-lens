@@ -9,7 +9,6 @@ import { Capacitor } from "@capacitor/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { useFollowUpEvaluation } from "./useFollowUpEvaluation";
-import { createShareImage } from "./createShareImage";
 import {
   loadEvaluationArchiveItemsFromSupabase,
   mergeEvaluationArchiveItems,
@@ -116,37 +115,6 @@ function getUsageMessage(locale: Locale, key: "auth" | "limit" | "checkFailed") 
     return "تعذر التحقق من محاولاتك المجانية. حاول مرة أخرى.";
   }
   return "انتهت محاولاتك المجانية. يرجى الاشتراك لمتابعة التحليل.";
-}
-
-function isCanceledShare(error: unknown) {
-  if (error instanceof DOMException) {
-    return error.name === "AbortError" || error.name === "NotAllowedError";
-  }
-
-  const record =
-    error && typeof error === "object" ? (error as Record<string, unknown>) : null;
-  const message = String(
-    record?.message ?? record?.errorMessage ?? record?.code ?? error ?? "",
-  ).toLowerCase();
-
-  return (
-    message.includes("cancel") ||
-    message.includes("abort") ||
-    message.includes("dismiss") ||
-    message.includes("canceled") ||
-    message.includes("cancelled")
-  );
-}
-
-function downloadFile(file: File) {
-  const url = URL.createObjectURL(file);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = file.name;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.setTimeout(() => URL.revokeObjectURL(url), 1200);
 }
 
 async function resizeImageForAnalysis(
@@ -1762,60 +1730,6 @@ await saveEvaluationToSupabase({
 
 }
 
-async function handleShare() {
-  if (!result) return;
-
-  const shareTitle = locale === "en" ? "KISHIB report" : "تقرير KISHIB";
-  const downloadedMessage =
-    locale === "en"
-      ? "The report image was downloaded. Open WhatsApp and send it from your gallery/downloads."
-      : "تم تحميل صورة التقرير. افتحي واتساب وأرسليها من المعرض أو التنزيلات.";
-  const unsupportedMessage =
-    locale === "en"
-      ? "This browser cannot send the report image directly to WhatsApp. The image will be downloaded instead."
-      : "هذا المتصفح لا يدعم إرسال صورة التقرير مباشرة إلى واتساب. سيتم تحميل الصورة بدلًا من ذلك.";
-
-  try {
-    const reportImages = await createShareImage({
-      result,
-      imagePreview:
-        imagePreviews[0] ||
-        result.imagePreview ||
-        result.imageUrl ||
-        result.uploadedImageUrl ||
-        null,
-      labels: t,
-      locale,
-    });
-    const shareData = {
-      title: shareTitle,
-      text:
-        locale === "en"
-          ? "KISHIB valuation report"
-          : "تقرير تقييم KISHIB",
-      files: reportImages,
-    } as ShareData;
-
-    if (
-      typeof navigator !== "undefined" &&
-      typeof navigator.share === "function" &&
-      (!navigator.canShare || navigator.canShare(shareData))
-    ) {
-      await navigator.share(shareData);
-      return;
-    }
-
-    alert(unsupportedMessage);
-    reportImages.forEach(downloadFile);
-    alert(downloadedMessage);
-    return;
-  } catch (err) {
-    if (isCanceledShare(err)) return;
-    console.error("[KISHIB WhatsApp report share failed]", err);
-    alert(locale === "en" ? "Unable to create the WhatsApp report image now." : "تعذر إنشاء صورة التقرير للواتساب الآن.");
-  }
-}
-
 return {
   locale,
   theme,
@@ -1843,7 +1757,6 @@ error,
   removeImage,
   removeImageAt,
   handleAnalyze,
-  handleShare,
   similarImages,
   isLoadingSimilar,
   usageStatus,

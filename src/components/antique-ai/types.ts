@@ -22,6 +22,9 @@ export type AnalysisResult = {
   estimatedValue: string;
   priceReasoning: string;
   history: string;
+  historicalReading?: string;
+  safeInitialChecks?: string[];
+  carePreservationTips?: string[];
   valueDrivers: string[];
   valueReducers: string[];
   visualSearchKeywords: string[];

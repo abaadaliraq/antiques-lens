@@ -1,10 +1,9 @@
 "use client";
 
-import { Home, Plus, Share2 } from "lucide-react";
+import { Home, Plus } from "lucide-react";
 
 type BottomBarLabels = {
   new: string;
-  share: string;
 };
 
 type BottomBarProps = {
@@ -12,7 +11,6 @@ type BottomBarProps = {
   labels: BottomBarLabels;
   hasResult: boolean;
   onNew: () => void;
-  onShare: () => void;
 };
 
 export default function BottomBar({
@@ -20,7 +18,6 @@ export default function BottomBar({
   labels,
   hasResult,
   onNew,
-  onShare,
 }: BottomBarProps) {
   if (!hasResult) return null;
 
@@ -44,16 +41,6 @@ export default function BottomBar({
           className="grid h-10 w-10 place-items-center rounded-[12px] text-[#735f4b] transition hover:bg-[#d9b59e]/55 hover:text-[#241913]"
         >
           <Home className="h-4 w-4" />
-        </button>
-
-        <button
-          type="button"
-          onClick={onShare}
-          title={labels.share}
-          aria-label={labels.share}
-          className="grid h-10 w-10 place-items-center rounded-[12px] text-[#735f4b] transition hover:bg-[#d9b59e]/55 hover:text-[#241913]"
-        >
-          <Share2 className="h-4 w-4" />
         </button>
 
         <button

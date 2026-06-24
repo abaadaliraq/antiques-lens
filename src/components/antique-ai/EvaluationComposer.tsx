@@ -213,6 +213,42 @@ function copy(locale: AppLocale): Record<string, string> {
   return { ...usageFallback, ...text[locale], ...pickerText[locale] };
 }
 
+const PHOTO_TIPS_STORAGE_KEY = "kishib-photo-tips-dismissed";
+
+function photoGuidance(locale: AppLocale) {
+  if (locale === "ar") {
+    return {
+      title: "قبل التصوير",
+      hint: "كلما كانت الصور أوضح ومن زوايا أكثر، كانت نتيجة التقييم أدق.",
+      openCamera: "فتح الكاميرا",
+      chooseGallery: "اختيار من المعرض",
+      dontShowAgain: "لا تظهر مرة أخرى",
+      tips: [
+        "امسح عدسة الكاميرا قبل التصوير.",
+        "صوّر القطعة في إضاءة واضحة وبدون فلاش قوي.",
+        "اجعل القطعة كاملة داخل الصورة بدون قص.",
+        "التقط صورة قريبة للختم، التوقيع، القاعدة، أو أي علامة.",
+        "صوّر أكثر من زاوية: الواجهة، الخلف، الجوانب، والتفاصيل.",
+      ],
+    };
+  }
+
+  return {
+    title: "Before taking the photo",
+    hint: "Clearer photos from multiple angles improve the evaluation accuracy.",
+    openCamera: "Open Camera",
+    chooseGallery: "Choose from Gallery",
+    dontShowAgain: "Don't show again",
+    tips: [
+      "Clean your camera lens before taking the photo.",
+      "Use clear lighting and avoid strong flash.",
+      "Keep the whole item visible without cropping.",
+      "Take close-up photos of marks, signatures, base, or stamps.",
+      "Capture multiple angles: front, back, sides, and details.",
+    ],
+  };
+}
+
 export default function EvaluationComposer({
   theme,
   locale = "ar",
@@ -238,10 +274,17 @@ export default function EvaluationComposer({
   const isLight = theme === "light";
   const dir = isRtl(safeLocale) ? "rtl" : "ltr";
   const t = copy(safeLocale);
+  const photoTips = photoGuidance(safeLocale);
   const [gemstoneData, setGemstoneData] = useState(emptyGemstoneFormData);
   const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
+  const [hidePhotoTips, setHidePhotoTips] = useState(false);
+  const [hasSeenPhotoTips, setHasSeenPhotoTips] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(PHOTO_TIPS_STORAGE_KEY) === "1";
+  });
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const shouldShowPhotoTips = !hasSeenPhotoTips;
 
   const previews =
     imagePreviews.length > 0 ? imagePreviews : imagePreview ? [imagePreview] : [];
@@ -310,7 +353,17 @@ export default function EvaluationComposer({
     setIsImagePickerOpen(false);
   }
 
+  function rememberPhotoTipsChoice() {
+    setHasSeenPhotoTips(true);
+
+    if (hidePhotoTips && typeof window !== "undefined") {
+      window.localStorage.setItem(PHOTO_TIPS_STORAGE_KEY, "1");
+    }
+  }
+
   function chooseCamera() {
+    rememberPhotoTipsChoice();
+
     if (Capacitor.isNativePlatform() && handleTakePhoto) {
       closeImagePicker();
       void handleTakePhoto();
@@ -322,6 +375,7 @@ export default function EvaluationComposer({
   }
 
   function chooseGallery() {
+    rememberPhotoTipsChoice();
     galleryInputRef.current?.click();
     closeImagePicker();
   }
@@ -371,6 +425,9 @@ export default function EvaluationComposer({
           </div>
           <p className="relative mt-3 text-base font-semibold text-[#241913]">
             {t.uploadBox}
+          </p>
+          <p className="relative mt-2 max-w-xs text-xs leading-5 text-[#735f4b]">
+            {photoTips.hint}
           </p>
           {previews.length > 0 ? (
             <p className="relative mt-1 text-xs text-[#735f4b]">{t.ready}</p>
@@ -494,10 +551,10 @@ export default function EvaluationComposer({
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-[18px] font-bold text-[#233f32]">
-                  {t.sheetTitle}
+                  {shouldShowPhotoTips ? photoTips.title : t.sheetTitle}
                 </h3>
                 <p className="mt-1 text-[13px] leading-5 text-[#735f4b]">
-                  {t.sheetHint}
+                  {shouldShowPhotoTips ? photoTips.hint : t.sheetHint}
                 </p>
               </div>
               <button
@@ -510,6 +567,29 @@ export default function EvaluationComposer({
               </button>
             </div>
 
+            {shouldShowPhotoTips ? (
+              <div className="mb-4 border-y border-[#d2b98f]/55 bg-[#fff8ec]/64 px-1 py-3">
+                <ul className="grid gap-2">
+                  {photoTips.tips.map((tip, index) => (
+                    <li key={`${tip}-${index}`} className="flex gap-2 text-[13px] leading-6 text-[#735f4b]">
+                      <span className="mt-[10px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#b88a3d]/75" />
+                      <span>{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <label className="mt-3 flex items-center gap-2 text-[12px] font-semibold text-[#735f4b]">
+                  <input
+                    type="checkbox"
+                    checked={hidePhotoTips}
+                    onChange={(event) => setHidePhotoTips(event.target.checked)}
+                    className="h-4 w-4 rounded border-[#d2b98f] accent-[#b88a3d]"
+                  />
+                  <span>{photoTips.dontShowAgain}</span>
+                </label>
+              </div>
+            ) : null}
+
             <div className="grid gap-2.5">
               <button
                 type="button"
@@ -520,7 +600,7 @@ export default function EvaluationComposer({
                   <Camera className="h-5 w-5" />
                 </span>
                 <span className="text-[16px] font-semibold text-[#241913]">
-                  {t.takePhoto}
+                  {shouldShowPhotoTips ? photoTips.openCamera : t.takePhoto}
                 </span>
               </button>
 
@@ -533,7 +613,7 @@ export default function EvaluationComposer({
                   <ImageIcon className="h-5 w-5" />
                 </span>
                 <span className="text-[16px] font-semibold text-[#241913]">
-                  {t.chooseGallery}
+                  {shouldShowPhotoTips ? photoTips.chooseGallery : t.chooseGallery}
                 </span>
               </button>
             </div>

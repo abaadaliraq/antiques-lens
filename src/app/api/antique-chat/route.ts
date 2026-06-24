@@ -111,6 +111,13 @@ function compactResult(value: Record<string, unknown>) {
     estimatedValue: cleanText(value.estimatedValue || value.priceRange, 220),
     priceReasoning: cleanText(value.priceReasoning, 900),
     history: cleanText(value.history || value.description, 900),
+    historicalReading: cleanText(value.historicalReading, 700),
+    safeInitialChecks: Array.isArray(value.safeInitialChecks)
+      ? value.safeInitialChecks.filter((item) => typeof item === "string").slice(0, 7)
+      : [],
+    carePreservationTips: Array.isArray(value.carePreservationTips)
+      ? value.carePreservationTips.filter((item) => typeof item === "string").slice(0, 6)
+      : [],
     valueDrivers: Array.isArray(value.valueDrivers)
       ? value.valueDrivers.filter((item) => typeof item === "string").slice(0, 6)
       : [],
@@ -262,6 +269,9 @@ Important style rules:
 14. Do not repeat authenticity warnings. Mention the verification caveat once, then move to price and action.
 15. Do not ask again for a signature close-up if the new image already clearly shows a signature. Ask for the next most useful evidence instead.
 16. Avoid irritating phrases such as "this is not enough" repeated several times. Prefer "this raises confidence, but the higher range needs one more supporting proof."
+17. Preserve or update safeInitialChecks as safe, non-destructive checks only. Never suggest acid, burning, strong scraping, peeling, scratching, boiling, opening watches or sealed mechanisms, chemicals, solvents, soaking, or any damaging test.
+18. Preserve or update carePreservationTips as 4 to 6 short care tips based on item type/material. Do not repeat safeInitialChecks, and never suggest strong chemicals, harsh polishing, washing, repainting, home restoration, scratch tests, heat tests, ultrasonic cleaning before identifying stones, hot water, acid, vinegar, bleach, soaking, or opening sealed mechanisms.
+19. Do not provide gold, silver, melt, spot-price, karat, purity, raw metal, or metal valuation unless the item is clearly a metal/precious-metal item or the visitor explicitly provides metal type, gram weight, hallmark, stamp, or karat/purity evidence. For paintings, furniture, wood, textile, ceramic, documents, carpets, glass, stone, coral, soapstone, and general non-metal artworks, keep metalValue null and do not add metal scenarios.
 
 Artist and signed artwork handling:
 - If the user names a known artist and provides a visible signature or date, treat that as a positive attribution signal, not as something to dismiss.
@@ -308,6 +318,9 @@ Return JSON only:
     "estimatedValue": "updated USD range, or unchanged range with reason",
     "priceReasoning": "short practical price reasoning after the new information; include current range and verified-attribution range when relevant",
     "history": "short updated context",
+    "historicalReading": "3 to 4 short lines of cautious possible historical reading when appropriate, otherwise an empty string; use probabilistic wording and do not confirm uncertain history",
+    "safeInitialChecks": ["4 to 7 short safe non-destructive initial checks for this item; no acid, burning, scraping, scratching, chemicals, boiling, peeling, opening sealed mechanisms, or damaging tests"],
+    "carePreservationTips": ["4 to 6 short care and preservation tips for this item type/material; avoid risky cleaning, strong polishing, washing, repainting, home repair, chemicals, heat, soaking, or opening sealed mechanisms"],
     "valueDrivers": ["up to six concise drivers"],
     "valueReducers": ["up to six concise reducers"],
     "visualSearchKeywords": ["search keywords"],

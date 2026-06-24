@@ -6,7 +6,6 @@ import {
   FileText,
   Plus,
   Printer,
-  Share2,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -21,9 +20,14 @@ type ResultLabels = {
   value: string;
   material: string;
   origin: string;
+  historicalReading: string;
   description: string;
   condition: string;
   authenticity: string;
+  safeInitialChecks: string;
+  safeInitialChecksNote: string;
+  carePreservation: string;
+  carePreservationNote: string;
   priceReason: string;
   valueDrivers: string;
   valueReducers: string;
@@ -47,7 +51,6 @@ type Props = {
   isLoadingSimilar?: boolean;
   userNote?: string;
   followUpPanel?: React.ReactNode;
-  onShare: () => void;
   onAddInfo?: () => void;
 };
 
@@ -172,7 +175,6 @@ function getReportLabels(locale: Locale) {
       print: "PDF / Print",
       close: "Close",
       back: "Back",
-      share: "Share",
       printable: "Printable Report",
     };
   }
@@ -186,7 +188,6 @@ function getReportLabels(locale: Locale) {
       print: "PDF / Imprimer",
       close: "Fermer",
       back: "Retour",
-      share: "Partager",
       printable: "Rapport imprimable",
     };
   }
@@ -200,7 +201,6 @@ function getReportLabels(locale: Locale) {
       print: "PDF / Ú†Ø§Ù¾",
       close: "Ø¯Ø§Ø®Ø³ØªÙ†",
       back: "گەڕانەوە",
-      share: "هاوبەشکردن",
       printable: "ڕاپۆرتی چاپکراو",
     };
   }
@@ -213,7 +213,6 @@ function getReportLabels(locale: Locale) {
     print: "PDF / طباعة",
     close: "إغلاق",
     back: "رجوع",
-    share: "مشاركة",
     printable: "تقرير قابل للطباعة",
   };
 }
@@ -582,7 +581,6 @@ export default function ResultView({
   isLoadingSimilar = false,
   userNote = "",
   followUpPanel,
-  onShare,
   onAddInfo,
 }: Props) {
   const [openImageIndex, setOpenImageIndex] = useState<number | null>(null);
@@ -905,20 +903,6 @@ useEffect(() => {
           locale={locale}
         />
 
-        <div className="-mx-3 border-b border-[#d2b98f]/45 bg-[#fff4e2]/22 px-3 py-4 sm:-mx-5 sm:px-5">
-          <button
-            type="button"
-            onClick={onShare}
-            style={{ color: "#fff4e2" }}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[#d6b576]/50 bg-[#4d1b17] px-5 py-3 text-sm font-bold !text-[#fff4e2] shadow-[0_12px_30px_rgba(77,27,23,0.18)] transition hover:bg-[#64241e] sm:w-auto sm:min-w-56"
-          >
-            <Share2 className="h-4 w-4 text-[#fff4e2]" />
-            <span className="text-[#fff4e2]">
-              {locale === "ar" ? "إرسال التقرير واتساب" : "Send report to WhatsApp"}
-            </span>
-          </button>
-        </div>
-
         <section className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5 border-y border-[#c7b99e] py-5 md:grid-cols-4">
           <MetricBlock
             label={itemTypeLabel}
@@ -1117,15 +1101,35 @@ useEffect(() => {
           <TextSection title={labels.lookup} body={result.lookup} />
         ) : null}
 
+        <HistoricalReadingSection
+          title={labels.historicalReading}
+          body={result.historicalReading}
+        />
+
         <TextSection
           title={labels.description}
           body={result.history || result.description}
           large
         />
 
-        <div className="mt-7 grid grid-cols-1 gap-7 md:grid-cols-3">
+        <div className="mt-7 grid grid-cols-1 gap-7 md:grid-cols-2">
           <TextSection title={labels.condition} body={result.condition} compact />
           <TextSection title={labels.authenticity} body={result.authenticity} compact />
+        </div>
+
+        <SafeInitialChecksSection
+          title={labels.safeInitialChecks}
+          note={labels.safeInitialChecksNote}
+          items={result.safeInitialChecks}
+        />
+
+        <CarePreservationSection
+          title={labels.carePreservation}
+          note={labels.carePreservationNote}
+          items={result.carePreservationTips}
+        />
+
+        <div className="mt-7">
           <TextSection title={labels.priceReason} body={result.priceReasoning} compact />
         </div>
 
@@ -1354,15 +1358,6 @@ useEffect(() => {
               </h3>
 
               <div className="flex shrink-0 items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={onShare}
-                  className="grid h-10 w-10 place-items-center rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/80 text-[#735f4b]"
-                  aria-label={reportLabels.share}
-                >
-                  <Share2 className="h-4 w-4" />
-                </button>
-
                 <button
                   type="button"
                   onClick={() => window.print()}
@@ -1656,6 +1651,104 @@ function TextSection({
         ].join(" ")}
       >
         {cleanBody}
+      </p>
+    </section>
+  );
+}
+
+function HistoricalReadingSection({
+  title,
+  body,
+}: {
+  title: string;
+  body?: string;
+}) {
+  const cleanBody = cleanDisplayText(body);
+
+  if (!cleanBody) return null;
+
+  return (
+    <section className="mt-6 border-y border-[#d2b98f]/55 bg-[#fff4e2]/32 px-4 py-5 sm:px-5">
+      <h2 className="mb-2 text-[15px] font-semibold leading-6 tracking-[-0.015em] text-[#7f5b2d] md:text-[17px]">
+        {title}
+      </h2>
+
+      <p className="whitespace-pre-line text-[14px] font-normal leading-7 text-[#735f4b] md:text-[15px]">
+        {cleanBody}
+      </p>
+    </section>
+  );
+}
+
+function SafeInitialChecksSection({
+  title,
+  note,
+  items,
+}: {
+  title: string;
+  note: string;
+  items?: string[];
+}) {
+  const cleanItems = Array.isArray(items)
+    ? items.map((item) => cleanDisplayText(item)).filter(Boolean).slice(0, 7)
+    : [];
+
+  if (cleanItems.length === 0) return null;
+
+  return (
+    <section className="mt-6 border-y border-[#d2b98f]/55 bg-[#fff4e2]/28 px-4 py-5 sm:px-5">
+      <h2 className="mb-3 text-[15px] font-semibold leading-6 tracking-[-0.015em] text-[#7f5b2d] md:text-[17px]">
+        {title}
+      </h2>
+
+      <ul className="grid gap-2.5">
+        {cleanItems.map((item, index) => (
+          <li key={`${item}-${index}`} className="flex gap-2 text-[13.5px] leading-7 text-[#735f4b] md:text-[14.5px]">
+            <span className="mt-[11px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#b88a3d]/75" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+
+      <p className="mt-4 text-[12px] font-normal leading-6 text-[#8a735c]">
+        {note}
+      </p>
+    </section>
+  );
+}
+
+function CarePreservationSection({
+  title,
+  note,
+  items,
+}: {
+  title: string;
+  note: string;
+  items?: string[];
+}) {
+  const cleanItems = Array.isArray(items)
+    ? items.map((item) => cleanDisplayText(item)).filter(Boolean).slice(0, 6)
+    : [];
+
+  if (cleanItems.length === 0) return null;
+
+  return (
+    <section className="mt-5 border-y border-[#d2b98f]/50 bg-[#fff4e2]/24 px-4 py-5 sm:px-5">
+      <h2 className="mb-3 text-[15px] font-semibold leading-6 tracking-[-0.015em] text-[#7f5b2d] md:text-[17px]">
+        {title}
+      </h2>
+
+      <ul className="grid gap-2.5">
+        {cleanItems.map((item, index) => (
+          <li key={`${item}-${index}`} className="flex gap-2 text-[13.5px] leading-7 text-[#735f4b] md:text-[14.5px]">
+            <span className="mt-[11px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#b88a3d]/65" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+
+      <p className="mt-4 text-[12px] font-normal leading-6 text-[#8a735c]">
+        {note}
       </p>
     </section>
   );

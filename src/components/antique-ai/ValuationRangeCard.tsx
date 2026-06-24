@@ -336,9 +336,20 @@ function isClearlyNonMetalCategory(result: AnalysisResult) {
 }
 
 function allowsMetalScenario(result: AnalysisResult) {
-  if (result.metalValue?.metal && result.metalValue.metal !== "unknown") return true;
-  if (hasMetalCategorySignal(result)) return true;
-  return !isClearlyNonMetalCategory(result);
+  const hasSignal = hasMetalCategorySignal(result);
+  const typeMaterialText = [result.itemType, result.material]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const hasTypeOrMaterialMetalSignal =
+    /metal|metallic|silver|sterling|gold|copper|brass|bronze|jewelry|jewellery|ring|bracelet|necklace|coin|bullion|silverware|watch|\u0645\u0639\u062f\u0646|\u0645\u0639\u062f\u0646\u064a|\u0641\u0636\u0629|\u0641\u0636\u064a|\u0630\u0647\u0628|\u0646\u062d\u0627\u0633|\u0628\u0631\u0648\u0646\u0632|\u0645\u062c\u0648\u0647\u0631|\u0639\u0645\u0644\u0629|\u0633\u0627\u0639\u0629/.test(
+      typeMaterialText,
+    );
+
+  if (isClearlyNonMetalCategory(result) && !hasTypeOrMaterialMetalSignal) return false;
+  if (hasSignal) return true;
+
+  return Boolean(result.metalValue?.metal && result.metalValue.metal !== "unknown");
 }
 
 function getSilverGramPriceFromPayload(payload: unknown) {

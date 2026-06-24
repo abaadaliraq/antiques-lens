@@ -16,6 +16,8 @@ type ReportResult = {
   priceRange?: string;
   priceReasoning?: string;
   history?: string;
+  historicalReading?: string;
+  safeInitialChecks?: string[];
   description?: string;
   valueDrivers?: string[];
   valueReducers?: string[];
@@ -75,6 +77,7 @@ const REPORT_LABELS: Record<
     condition: string;
     authenticity: string;
     priceReasoning: string;
+    historicalReading: string;
     historicalContext: string;
     valueDrivers: string;
     valueReducers: string;
@@ -103,6 +106,7 @@ const REPORT_LABELS: Record<
     condition: "الحالة",
     authenticity: "الأصالة",
     priceReasoning: "سبب التقييم السعري",
+    historicalReading: "القراءة التاريخية المحتملة",
     historicalContext: "الوصف والتحليل",
     valueDrivers: "عوامل ترفع القيمة",
     valueReducers: "عوامل تقلل القيمة",
@@ -130,6 +134,7 @@ const REPORT_LABELS: Record<
     condition: "Condition",
     authenticity: "Authenticity",
     priceReasoning: "Price reasoning",
+    historicalReading: "Possible historical reading",
     historicalContext: "Description and analysis",
     valueDrivers: "Value drivers",
     valueReducers: "Value reducers",
@@ -157,6 +162,7 @@ const REPORT_LABELS: Record<
     condition: "دۆخ",
     authenticity: "ڕەسەنایەتی",
     priceReasoning: "هۆکاری نرخدانان",
+    historicalReading: "خوێندنەوەی مێژووییی ئەگەری",
     historicalContext: "وەسف و شیکردنەوە",
     valueDrivers: "هۆکارەکانی زیادبوونی بەها",
     valueReducers: "هۆکارەکانی کەمبوونی بەها",
@@ -184,6 +190,7 @@ const REPORT_LABELS: Record<
     condition: "État",
     authenticity: "Authenticité",
     priceReasoning: "Justification du prix",
+    historicalReading: "Lecture historique possible",
     historicalContext: "Description et analyse",
     valueDrivers: "Facteurs de valeur",
     valueReducers: "Facteurs réduisant la valeur",
@@ -211,6 +218,7 @@ const REPORT_LABELS: Record<
     condition: "स्थिति",
     authenticity: "प्रामाणिकता",
     priceReasoning: "मूल्य का कारण",
+    historicalReading: "संभावित ऐतिहासिक पढ़त",
     historicalContext: "विवरण और विश्लेषण",
     valueDrivers: "मूल्य बढ़ाने वाले कारक",
     valueReducers: "मूल्य घटाने वाले कारक",
@@ -238,6 +246,7 @@ const REPORT_LABELS: Record<
     condition: "وضعیت",
     authenticity: "اصالت",
     priceReasoning: "دلیل قیمت",
+    historicalReading: "خوانش تاریخی احتمالی",
     historicalContext: "توضیح و تحلیل",
     valueDrivers: "عوامل افزایش ارزش",
     valueReducers: "عوامل کاهش ارزش",
@@ -265,6 +274,7 @@ const REPORT_LABELS: Record<
     condition: "Durum",
     authenticity: "Özgünlük",
     priceReasoning: "Fiyat gerekçesi",
+    historicalReading: "Olası tarihsel okuma",
     historicalContext: "Açıklama ve analiz",
     valueDrivers: "Değeri artıran etkenler",
     valueReducers: "Değeri azaltan etkenler",
@@ -292,6 +302,7 @@ const REPORT_LABELS: Record<
     condition: "Состояние",
     authenticity: "Подлинность",
     priceReasoning: "Обоснование цены",
+    historicalReading: "Возможное историческое прочтение",
     historicalContext: "Описание и анализ",
     valueDrivers: "Факторы повышения стоимости",
     valueReducers: "Факторы снижения стоимости",
@@ -467,6 +478,125 @@ function TextBox({
   );
 }
 
+function HistoricalReadingBox({
+  title,
+  body,
+}: {
+  title: string;
+  body?: string;
+}) {
+  const cleanBody = cleanReportText(body);
+
+  if (!cleanBody) return null;
+
+  return (
+    <section className="rounded-[14px] border-y border-[#e5d4ba] bg-[#fff8ee]/72 px-4 py-3">
+      <h3 className="mb-1.5 text-[8.8px] font-black uppercase tracking-[0.16em] text-[#9a7441]">
+        {title}
+      </h3>
+      <p className="whitespace-pre-line text-[10.6px] font-semibold leading-[1.75] text-[#6f5b47]">
+        {cleanBody}
+      </p>
+    </section>
+  );
+}
+
+function getSafeInitialChecksReportCopy(locale: Locale) {
+  if (locale === "en") {
+    return {
+      title: "Safe Initial Checks",
+      note: "These checks do not prove authenticity, but they can help you collect clearer information before expert inspection.",
+    };
+  }
+
+  if (locale === "fr") {
+    return {
+      title: "Vérifications initiales sûres",
+      note: "Ces vérifications ne prouvent pas l’authenticité, mais elles peuvent aider à collecter des informations plus claires avant l’examen d’un spécialiste.",
+    };
+  }
+
+  if (locale === "hi") {
+    return {
+      title: "सुरक्षित प्रारंभिक जाँच",
+      note: "ये जाँचें प्रामाणिकता को अंतिम रूप से सिद्ध नहीं करतीं, लेकिन विशेषज्ञ जाँच से पहले स्पष्ट जानकारी जुटाने में मदद कर सकती हैं.",
+    };
+  }
+
+  if (locale === "fa") {
+    return {
+      title: "بررسی‌های اولیه ایمن",
+      note: "این بررسی‌ها اصالت را به‌طور قطعی ثابت نمی‌کنند، اما می‌توانند پیش از بررسی تخصصی به گردآوری اطلاعات روشن‌تر کمک کنند.",
+    };
+  }
+
+  if (locale === "tr") {
+    return {
+      title: "Güvenli ilk kontroller",
+      note: "Bu kontroller özgünlüğü kesin olarak kanıtlamaz, ancak uzman incelemesinden önce daha net bilgi toplamanıza yardımcı olabilir.",
+    };
+  }
+
+  if (locale === "ru") {
+    return {
+      title: "Безопасные первичные проверки",
+      note: "Эти проверки не доказывают подлинность окончательно, но помогают собрать более ясную информацию перед экспертным осмотром.",
+    };
+  }
+
+  if (locale === "ku") {
+    return {
+      title: "پشکنینی سەرەتاییی ئارام",
+      note: "ئەم پشکنینانە ڕەسەنایەتی بە شێوەی کۆتایی ناسەلمێنن، بەڵام دەتوانن پێش پشکنینی پسپۆڕ زانیاریی ڕوونتر کۆبکەنەوە.",
+    };
+  }
+
+  return {
+    title: "فحوصات أولية آمنة",
+    note: "هذه الفحوصات لا تثبت الأصالة نهائيًا، لكنها تساعدك على جمع معلومات أوضح قبل الفحص المختص.",
+  };
+}
+
+function SafeInitialChecksBox({
+  title,
+  note,
+  items,
+}: {
+  title: string;
+  note: string;
+  items?: string[];
+}) {
+  const safeItems = Array.isArray(items)
+    ? items.map((item) => compactReportText(item, 110)).filter(Boolean).slice(0, 7)
+    : [];
+
+  if (safeItems.length === 0) return null;
+
+  return (
+    <section className="rounded-[14px] border-y border-[#e5d4ba] bg-[#fff8ee]/70 px-4 py-3">
+      <h3 className="mb-2 text-[8.8px] font-black uppercase tracking-[0.16em] text-[#9a7441]">
+        {title}
+      </h3>
+
+      <div className="grid gap-1.5">
+        {safeItems.map((item, index) => (
+          <div
+            key={`${title}-${index}`}
+            className="flex gap-2 text-[10.2px] font-semibold leading-[1.62] text-[#6f5b47]"
+          >
+            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#c79a54]" />
+            <span>{item}</span>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-2 text-[8.8px] font-semibold leading-[1.55] text-[#8a735c]">
+        {note}
+      </p>
+    </section>
+  );
+}
+
 function ListSection({
   title,
   items,
@@ -605,6 +735,7 @@ export default function AntiqueReportDocument({
   variant = "preview",
 }: AntiqueReportDocumentProps) {
   const labels = repairLabels(REPORT_LABELS[locale] || REPORT_LABELS.ar);
+  const safeInitialChecksCopy = getSafeInitialChecksReportCopy(locale);
   const dir = getDirection(locale);
   const dateText = formatDate(locale, generatedAt);
 
@@ -630,6 +761,10 @@ export default function AntiqueReportDocument({
     .map((item) => compactReportText(item, 105))
     .filter(Boolean)
     .slice(0, 4);
+  const safeInitialChecks = (result.safeInitialChecks || [])
+    .map((item) => compactReportText(item, 110))
+    .filter(Boolean)
+    .slice(0, 7);
 
   return (
     <article
@@ -707,6 +842,23 @@ export default function AntiqueReportDocument({
               </div>
             </div>
           </section>
+
+          <section className="mb-4">
+            <HistoricalReadingBox
+              title={labels.historicalReading}
+              body={result.historicalReading}
+            />
+          </section>
+
+          {safeInitialChecks.length > 0 ? (
+            <section className="mb-4">
+              <SafeInitialChecksBox
+                title={safeInitialChecksCopy.title}
+                note={safeInitialChecksCopy.note}
+                items={safeInitialChecks}
+              />
+            </section>
+          ) : null}
 
           <section className="mb-4">
             <TextBox title={labels.priceReasoning} body={priceReason} compact />

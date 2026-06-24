@@ -48,6 +48,9 @@ type AnalysisResult = {
   estimatedValue: string;
   priceReasoning: string;
   history: string;
+  historicalReading?: string;
+  safeInitialChecks?: string[];
+  carePreservationTips?: string[];
   valueDrivers: string[];
   valueReducers: string[];
   visualSearchKeywords: string[];
@@ -149,6 +152,9 @@ type CompactFollowUpContext = {
   origin?: string;
   estimatedPriceRange?: string;
   shortDescription?: string;
+  historicalReading?: string;
+  safeInitialChecks?: string[];
+  carePreservationTips?: string[];
   keyConditionNotes?: string;
   analysis?: string;
   priceReasoning?: string;
@@ -296,6 +302,51 @@ function canUseLuxuryBrandLayer(input?: string | null) {
   return hasLuxuryCategoryEvidence(input);
 }
 
+const metalCandidatePattern =
+  /\b(jewelry|jewellery|coin|bullion|silverware|metal object|metal|metallic|watch|gold|silver|platinum|palladium|copper|bronze|brass|sterling|karat|carat|hallmark|925|900|800|750|875|916|585|18k|21k|22k|24k)\b|ذهب|ذهبي|فضة|فضي|نقرة|معدن|معدني|نحاس|برونز|براس|عيار|ختم|دمغة|مشغولات|مجوهر|ساعة|عملة|سبائك|إبريق|صينية|ملعقة|شمعدان|زیو|زێو|طلا/iu;
+
+const nonMetalCategoryPattern =
+  /\b(painting|canvas|artwork|print|paper|book|manuscript|document|photo|photograph|rug|carpet|textile|fabric|wood|wooden|furniture|chair|table|cabinet|ceramic|porcelain|pottery|glass|crystal|stone|coral|soapstone)\b|لوحة|رسم|كانفاس|ورق|كتاب|مخطوط|وثيقة|صورة|سجاد|سجادة|نسيج|قماش|خشب|خشبي|أثاث|كرسي|طاولة|خزانة|سيراميك|خزف|فخار|زجاج|كريستال|حجر|مرجان|سبستون/iu;
+
+const purityOrHallmarkPattern =
+  /\b(925|900|800|750|875|916|585|999|950|sterling|18k|21k|22k|24k|karat|carat|hallmark|stamp)\b|عيار|ختم|دمغة/iu;
+
+function hasMetalCandidateEvidence(input: {
+  itemType?: string;
+  material?: string;
+  notes?: string;
+  followUpClaim?: string;
+  weight?: string;
+  hasMark?: string;
+}) {
+  const typeAndMaterial = [input.itemType, input.material].filter(Boolean).join(" ");
+  const userEvidence = [input.notes, input.followUpClaim, input.hasMark]
+    .filter(Boolean)
+    .join(" ");
+  const combined = [typeAndMaterial, userEvidence].filter(Boolean).join(" ");
+  const hasTypeOrMaterialSignal = metalCandidatePattern.test(typeAndMaterial);
+  const hasExplicitUserMetalSignal = metalCandidatePattern.test(userEvidence);
+  const hasPurityOrHallmark = purityOrHallmarkPattern.test(userEvidence);
+  const hasWeightWithMetal =
+    Boolean(input.weight?.trim()) && metalCandidatePattern.test(combined);
+  const isClearlyNonMetal =
+    nonMetalCategoryPattern.test(typeAndMaterial) ||
+    (nonMetalCategoryPattern.test(userEvidence) &&
+      !hasTypeOrMaterialSignal &&
+      !hasExplicitUserMetalSignal);
+
+  if (isClearlyNonMetal && !hasTypeOrMaterialSignal && !hasExplicitUserMetalSignal) {
+    return false;
+  }
+
+  return (
+    hasTypeOrMaterialSignal ||
+    hasExplicitUserMetalSignal ||
+    hasPurityOrHallmark ||
+    hasWeightWithMetal
+  );
+}
+
 function looksMojibake(value: string) {
   return /(?:\u00d8|\u00d9|\u00da|\u00db|\u00d0|\u00d1|\u00c3|\u00c2|\u00e0\u00a4|\u00e0\u00a5|Ã˜|Ã™|Ãš|Ã›|Ãƒ|Ã‚|Ð|Ñ)/.test(
     value,
@@ -377,6 +428,9 @@ function parseCompactFollowUpContext(value: string): CompactFollowUpContext | nu
       origin: cleanText(parsed.origin, 160),
       estimatedPriceRange: cleanText(parsed.estimatedPriceRange, 180),
       shortDescription: cleanText(parsed.shortDescription, 700),
+      historicalReading: cleanText(parsed.historicalReading, 700),
+      safeInitialChecks: cleanList(parsed.safeInitialChecks, 7, 180),
+      carePreservationTips: cleanList(parsed.carePreservationTips, 6, 180),
       keyConditionNotes: cleanText(parsed.keyConditionNotes, 700),
       analysis: cleanText(parsed.analysis, 900),
       priceReasoning: cleanText(parsed.priceReasoning, 700),
@@ -1148,6 +1202,12 @@ When using additional information, address the visitor directly and respectfully
 For Arabic locale, use this phrasing naturally: "حسب المعلومة التي أضافها المستخدم".
 Do not write English user-facing output when locale is Arabic.
 
+HIGH-PRIORITY METAL VALUATION RULE:
+- Do not provide gold, silver, melt, spot-price, karat, purity, raw metal, or metal valuation unless the item is clearly made of precious metal or the visitor explicitly provides metal type, gram weight, hallmark, stamp, or karat/purity evidence.
+- For paintings, furniture, wood, textile, ceramic, documents, carpets, glass, crystal, stone, coral, soapstone, manuscripts, books, photos, and general non-metal artworks, metalValue must be null and valuation_scenarios must not include melt, spot-price, karat, purity, weight scenarios, or raw metal value.
+- If the item type is unclear, do not assume gold or silver. Say the material is not confirmed from the photos, but do not create metal prices.
+- If a non-metal object has a visible metal-colored frame, handle it as a visual/material note only unless there is a clear precious-metal hallmark or visitor-provided metal evidence.
+
 RESPECTFUL USER-PROVIDED INFORMATION WORDING:
 Never use suspicious or adversarial wording in user-facing JSON, including:
 - "user claims", "the user claims", "according to the user's claim", "allegedly"
@@ -1397,6 +1457,13 @@ Look carefully for:
 - possible production period
 - cultural or regional context
 
+Paintings and non-metal artworks:
+- If the item appears to be a painting, print, framed artwork, drawing, textile artwork, or general non-metal artwork, provide a useful cautious visual analysis instead of only saying unknown artist/material/age.
+- Discuss visible style, subject, composition, frame, likely support or surface when visible, image condition, and whether it appears hand-painted or printed only if there is visual evidence.
+- If the artist cannot be identified, do not invent a name. Ask for photos of the signature, back, edges, surface texture, frame, and any label/stamp.
+- Give a cautious value range based on decorative/artistic quality, size, condition, medium clues, and general market logic when no known artist is visible.
+- Do not claim the artwork is original or printed without clear evidence.
+
 Marks, hallmarks, signatures, purity numbers, maker marks, labels, serials:
 - If any mark/signature/stamp/number/label is visible in any provided image, extract a structured markAnalysis object.
 - Never certify authenticity, maker, artist, gold, silver, platinum, or material from an image alone.
@@ -1410,6 +1477,21 @@ Marks, hallmarks, signatures, purity numbers, maker marks, labels, serials:
 - Do not create a separate section called price scenarios.
 - Use conditional language: if confirmed, if not confirmed, may indicate, preliminary range.
 - If no mark/signature/stamp/label/number is visible, set markAnalysis to null and do not mention a mark section.
+
+Safe initial checks:
+- Return safeInitialChecks as 4 to 7 short, practical, non-destructive bullet strings based on the visible item type and likely material.
+- These checks must help the visitor collect clearer evidence before expert inspection.
+- Do not suggest acid tests, burning, strong scraping, peeling, scratching, boiling, opening watches or sealed mechanisms, harsh chemicals, solvents, water soaking, or any test that can damage the item or endanger the visitor.
+- Prefer safe checks such as better lighting, magnified visual inspection, checking marks without rubbing, measuring dimensions, weighing if already safe to handle, photographing joints/backs/bases/edges, checking magnet response only when safe, and comparing visible construction details.
+- If the material or object type is unclear, keep the checks general and conservative.
+
+Care and preservation:
+- Return carePreservationTips as 4 to 6 short, practical preservation tips based on the item type and likely material.
+- These tips must be different from safeInitialChecks. Do not repeat evidence-gathering steps unless the care reason is clearly different.
+- Do not give instructions that may damage the item.
+- Do not recommend strong chemicals, harsh cleaners, strong polishing, washing, repainting, refinishing, home restoration, scratch tests, heat tests, ultrasonic cleaning before identifying stones, opening watches or sealed mechanisms, hot water, vinegar, acid, bleach, pesticides directly on antique material, or soaking old items.
+- Use simple language for normal visitors and keep every tip concise.
+- Material guidance examples: for silver, keep dry, avoid perfume/strong cleaners, avoid aggressive polishing on old patina, photograph hallmarks before cleaning, use only a soft dry cloth for light dust. For gold, store separately, avoid chemicals/perfume, avoid strong cleaning on old or stone-set pieces, do not clean unknown stones, keep boxes/invoices/certificates. For antique wood or furniture, avoid direct sun/humidity, avoid water/oils without specialist advice, do not repaint/refinish before appraisal, keep moderate ventilation, watch insects/cracks without strong pesticides. For luxury watches, do not open the back, avoid water especially when old, keep away from magnets/humidity, keep box/warranty/invoice/papers, avoid aggressive polishing. For coral, avoid perfume/heat/chemicals, avoid hot water/vinegar/acid, store away from hard metals, wipe only with a soft dry cloth, avoid strong sunlight. For soapstone, avoid drops/pressure, avoid strong cleaners/oils, avoid high humidity, dust with a soft brush or dry cloth, do not rub or scratch the surface. For gemstones, store separately, avoid heat/perfume/cleaners, avoid ultrasonic cleaning before identifying the stone, avoid scratch/heat tests, keep certificates/invoices. For crystal or fine glass, store on a stable surface, avoid very hot water/strong cleaners, do not rub engravings/signatures hard, photograph marks before cleaning, use a soft cloth. For ceramic or porcelain, avoid shocks/temperature changes, avoid strong cleaners on marks/base, do not soak old pieces, protect cracked pieces from pressure, do not use household repair glue before expert appraisal. For rugs/textiles, do not wash before appraisal, avoid humidity/direct sun, roll old textiles instead of folding, avoid bleach/strong cleaners, watch edges/repairs without pulling threads. For manuscripts/documents, avoid sun/humidity, limit hand contact, do not fold or press, avoid tape or poor plastic sleeves, use an archival folder if available. For paintings, do not clean the surface yourself, avoid sun/humidity, do not remove the frame unless qualified, store upright away from pressure, do not touch the paint surface.
 
 If the image is unclear, cropped, blurry, or only one angle:
 - lower confidence
@@ -1481,6 +1563,9 @@ Required JSON shape:
   "hallmarkAnalysis": null,
   "priceReasoning": "why this value range was suggested. If an exact strong internal reference affected the range, mention it as a very close reference item, not as the only basis.",
   "history": "short historical/contextual explanation about this kind of object",
+  "historicalReading": "3 to 4 short lines of possible historical reading when visual/context clues support it, otherwise an empty string. Use cautious probabilistic language such as may reflect, likely, appears to, and cannot be confirmed without direct inspection. Do not repeat lookup or history, and do not state uncertain historical facts as confirmed.",
+  "safeInitialChecks": ["4 to 7 short safe non-destructive initial checks for this specific item type/material; no acid, burning, scraping, scratching, chemicals, boiling, peeling, or opening sealed mechanisms"],
+  "carePreservationTips": ["4 to 6 short care and preservation tips for this item type/material; avoid risky cleaning, strong polishing, washing, repainting, home repair, chemicals, heat, soaking, or opening sealed mechanisms"],
   "valueDrivers": ["things that may increase value"],
   "valueReducers": ["things that may reduce value"],
   "visualSearchKeywords": ["short search keyword for finding similar items online"],
@@ -1644,6 +1729,8 @@ Artist, signature, and attribution handling:
 - Always keep price first in substance: update the valuation range clearly and provide scenario ranges when the new information affects value.
 - Add "valuation_scenarios" for current value and conditional verified value when relevant.
 - Add "evidenceUsed" and "hallmarkAnalysis" just like the initial analysis.
+- Preserve or update "safeInitialChecks" as 4 to 7 short, safe, non-destructive checks. Never suggest acid, burning, strong scraping, peeling, scratching, boiling, opening watches or sealed mechanisms, chemicals, solvents, soaking, or any damaging test.
+- Preserve or update "carePreservationTips" as 4 to 6 short care tips. Do not repeat safeInitialChecks, and never suggest strong chemicals, harsh polishing, washing, repainting, home restoration, scratch tests, heat tests, ultrasonic cleaning before identifying stones, hot water, acid, vinegar, bleach, soaking, or opening sealed mechanisms.
 - Never use the word "claim" or the Arabic word "ادعاء".
 
 Return JSON only, with this exact shape:
@@ -1684,6 +1771,9 @@ Return JSON only, with this exact shape:
   "hallmarkAnalysis": null,
   "priceReasoning": "short reason for the updated value",
   "history": "short context",
+  "historicalReading": "3 to 4 short lines of cautious possible historical reading when appropriate, otherwise an empty string; not a confirmed story and not repeated from lookup or history",
+  "safeInitialChecks": ["4 to 7 short safe non-destructive initial checks for this item; preserve current checks if still valid"],
+  "carePreservationTips": ["4 to 6 short care and preservation tips for this item; preserve current tips if still valid and do not repeat safeInitialChecks"],
   "valueDrivers": ["up to five concise drivers"],
   "valueReducers": ["up to five concise reducers"],
   "visualSearchKeywords": ["short search keyword"],
@@ -1747,6 +1837,13 @@ function buildFollowUpFallbackResult(
     estimatedValue: context.estimatedPriceRange || fallback.estimatedValue,
     priceReasoning: context.priceReasoning || fallback.priceReasoning,
     history: context.shortDescription || fallback.history,
+    historicalReading: context.historicalReading || fallback.historicalReading,
+    safeInitialChecks: context.safeInitialChecks?.length
+      ? context.safeInitialChecks
+      : fallback.safeInitialChecks,
+    carePreservationTips: context.carePreservationTips?.length
+      ? context.carePreservationTips
+      : fallback.carePreservationTips,
     valueDrivers: context.valueDrivers?.length
       ? context.valueDrivers
       : fallback.valueDrivers,
@@ -2189,6 +2286,22 @@ function normalizeResult(
     estimatedValue: rewriteRespectfulUserWording(normalizeString(parsed.estimatedValue, fallback.estimatedValue), locale),
     priceReasoning: rewriteRespectfulUserWording(normalizeString(parsed.priceReasoning, fallback.priceReasoning), locale),
     history: rewriteRespectfulUserWording(normalizeString(parsed.history, fallback.history), locale),
+    historicalReading: rewriteRespectfulUserWording(
+      normalizeString(parsed.historicalReading, fallback.historicalReading || ""),
+      locale,
+    ),
+    safeInitialChecks: normalizeArray(
+      parsed.safeInitialChecks,
+      fallback.safeInitialChecks || [],
+    )
+      .map((item) => rewriteRespectfulUserWording(item, locale))
+      .slice(0, 7),
+    carePreservationTips: normalizeArray(
+      parsed.carePreservationTips,
+      fallback.carePreservationTips || [],
+    )
+      .map((item) => rewriteRespectfulUserWording(item, locale))
+      .slice(0, 6),
     valueDrivers: normalizeArray(parsed.valueDrivers, fallback.valueDrivers).map((item) =>
       rewriteRespectfulUserWording(item, locale),
     ),
@@ -2487,7 +2600,6 @@ const preciousMetalContextText = [
   dimensions,
   weight,
   hasMark,
-  marketContext,
 ]
   .filter(Boolean)
   .join(" ");
@@ -2507,6 +2619,14 @@ const brandAssessment = shouldUseBrandLayer
   ? detectPossibleBrand(userBrandEvidenceText)
   : null;
 const brandContext = buildBrandEvaluationContext(brandAssessment);
+const isPreciousMetalCandidate = hasMetalCandidateEvidence({
+  itemType,
+  material,
+  notes,
+  followUpClaim,
+  weight,
+  hasMark,
+});
 
 let preciousMetalMarketContext = "";
 let preciousMetalValue: PreciousMetalValue | null = null;
@@ -2520,7 +2640,7 @@ const metalClassification = classifyPreciousMetalConfidence({
 });
 const hasFollowUpClaim = Boolean(followUpClaim);
 
-if (metalClassification.metal) {
+if (isPreciousMetalCandidate && metalClassification.metal) {
   const detectedMetal = metalClassification.metal;
   const weightGrams = preliminaryWeightGrams;
   const purity =
@@ -2899,7 +3019,7 @@ if (brandAssessment && !normalized.brandAssessment) {
   };
 }
 
-if (!preciousMetalValue) {
+if (!preciousMetalValue && isPreciousMetalCandidate) {
   const normalizedMetalText = [
     normalized.title,
     normalized.itemType,
@@ -2955,7 +3075,7 @@ if (!preciousMetalValue) {
   }
 }
 
-if (preciousMetalValue) {
+if (preciousMetalValue && isPreciousMetalCandidate) {
   normalized.metalValue = preciousMetalValue;
 
   if (preciousMetalValue.scenarios?.length) {
@@ -2971,6 +3091,22 @@ if (preciousMetalValue) {
     const max = Math.round((preciousMetalValue.meltValueUsdHigh ?? preciousMetalValue.meltValueUsdMid) * 1.8);
     normalized.estimatedValue = `$${min} - $${max}`;
   }
+} else if (!isPreciousMetalCandidate) {
+  normalized.metalValue = undefined;
+  normalized.valuation_scenarios = normalized.valuation_scenarios?.map((scenario) => ({
+    ...scenario,
+    materialValueMin: undefined,
+    materialValueMax: undefined,
+    antiquePremiumMin: undefined,
+    antiquePremiumMax: undefined,
+  }));
+  normalized.valuationScenarios = normalized.valuationScenarios?.map((scenario) => ({
+    ...scenario,
+    materialValueMin: undefined,
+    materialValueMax: undefined,
+    antiquePremiumMin: undefined,
+    antiquePremiumMax: undefined,
+  }));
 }
 
 const geminiSecondOpinion = await getGeminiSecondOpinion({
