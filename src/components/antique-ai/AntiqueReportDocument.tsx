@@ -26,6 +26,13 @@ type ReportResult = {
   confidence?: number;
   confidenceNote?: string;
   disclaimer?: string;
+  artistAttribution?: {
+    possibleArtist: string;
+    matchLevel: "high" | "medium" | "low";
+    reasons: string[];
+    notice: string;
+    exhibitionContext?: string;
+  } | null;
   markAnalysis?: {
     hasMark: boolean;
     markType:
@@ -842,6 +849,29 @@ export default function AntiqueReportDocument({
               </div>
             </div>
           </section>
+
+          {result.artistAttribution ? (
+            <section className="mb-4 rounded-[14px] border border-[#dfcfb7] bg-[#f8f0e5] p-3">
+              <p className="text-[9px] font-black uppercase tracking-[0.18em] text-[#9a7441]">
+                {locale === "ar" ? "نسبة الفنان المحتملة" : "Potential artist attribution"}
+              </p>
+              <p className="mt-2 text-[11px] font-bold text-[#1e1712]">
+                {locale === "ar" ? "الفنان المحتمل: " : "Potential artist: "}{result.artistAttribution.possibleArtist}
+              </p>
+              <p className="mt-1 text-[10px] leading-5 text-[#665442]">
+                {locale === "ar" ? "درجة المطابقة: " : "Match level: "}
+                {locale === "ar"
+                  ? result.artistAttribution.matchLevel === "high"
+                    ? "عالية"
+                    : result.artistAttribution.matchLevel === "medium"
+                      ? "متوسطة"
+                      : "منخفضة"
+                  : result.artistAttribution.matchLevel}
+                {result.artistAttribution.reasons.length ? ` · ${result.artistAttribution.reasons.join("، ")}` : ""}
+              </p>
+              <p className="mt-2 text-[9.5px] leading-5 text-[#7b6653]">{result.artistAttribution.notice}</p>
+            </section>
+          ) : null}
 
           <section className="mb-4">
             <HistoricalReadingBox

@@ -461,8 +461,8 @@ function rewriteRespectfulUserWording(value: string) {
     .replace(/المستخدم\s+يدعي/gi, "حسب المعلومة التي أضفتها")
     .replace(/ادعى\s+المستخدم/gi, "ذكرت")
     .replace(/يدّعي\s+المستخدم/gi, "ذكرت")
-    .replace(/فنان\s+غير\s+معروف/gi, "الاسم المذكور يحتاج مطابقة التوقيع أو وثائق داعمة للتأكيد")
-    .replace(/unknown artist/gi, "the mentioned artist attribution needs signature or document verification");
+    .replace(/(?:فنان\s+غير\s+معروف|لا\s+يعرف\s+الفنان|التوقيع\s+غير\s+معروف)/gi, "لم يتم التعرف على الفنان من الصورة وحدها. ننصح بإرفاق صورة قريبة للتوقيع، خلفية اللوحة، شهادة الاقتناء إن وجدت، أو اسم المعرض/الفنان.")
+    .replace(/(?:unknown artist|artist unknown)/gi, "The artist could not be identified from the image alone. The work may belong to a local or contemporary artist whose information is not widely available in public databases.");
 }
 
 function cleanBrandAssessment(value: AnalysisResult["brandAssessment"]) {
@@ -553,6 +553,10 @@ export function normalizeResult(data: Partial<AnalysisResult>): AnalysisResult {
     matches: repairedData.matches,
     houseOfAntiques: repairedData.houseOfAntiques,
     brandAssessment: cleanBrandAssessment(repairedData.brandAssessment),
+    artistAttribution:
+      repairedData.artistAttribution && typeof repairedData.artistAttribution === "object"
+        ? repairedData.artistAttribution
+        : null,
     valuation_scenarios: Array.isArray(repairedData.valuation_scenarios)
       ? repairedData.valuation_scenarios
       : undefined,

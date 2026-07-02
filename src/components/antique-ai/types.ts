@@ -65,6 +65,13 @@ export type AnalysisResult = {
     requiredPhotos: string[];
     priceScenario: string;
   };
+  artistAttribution?: {
+    possibleArtist: string;
+    matchLevel: "high" | "medium" | "low";
+    reasons: string[];
+    notice: string;
+    exhibitionContext?: string;
+  } | null;
   valuation_scenarios?: ValuationScenario[];
   valuationScenarios?: ValuationScenario[];
   evidenceUsed?: EvidenceUsed | null;

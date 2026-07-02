@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { buildKnowledgeContext } from "../../../lib/antiqueKnowledge";
+import { buildArtistKnowledgeContext } from "@/data/artistKnowledgeBase";
 export const runtime = "nodejs";
 import {
   calculateSilverMeltValue,
@@ -68,6 +69,13 @@ type AnalysisResult = {
     requiredPhotos: string[];
     priceScenario: string;
   };
+  artistAttribution?: {
+    possibleArtist: string;
+    matchLevel: "high" | "medium" | "low";
+    reasons: string[];
+    notice: string;
+    exhibitionContext?: string;
+  } | null;
   valuation_scenarios?: {
     label: string;
     labelAr?: string;
@@ -1128,6 +1136,7 @@ function buildPrompt(fields: {
   marketReferencesText?: string;
   preciousMetalMarketContext?: string;
   brandContext?: string;
+  artistContext?: string;
 }) {
 
   const language = getLanguageName(fields.locale);
@@ -1188,6 +1197,20 @@ If image 1 shows the full object and later images show hallmarks/stamps/signatur
 For visual comparables, prioritize the full object over isolated marks, stamps, signatures, labels, or damage close-ups.
 
 ${objectTypeGuidance}
+
+ARTWORK AND CONTEMPORARY ARTIST RULES:
+- Apply this section only to an artwork, painting, drawing, print, or other visual artwork.
+- Never use "unknown artist", "artist unknown", "فنان غير معروف", "لا يعرف الفنان", or "التوقيع غير معروف" in user-facing output.
+- If the artist cannot be identified from the image alone, explain respectfully that the work may belong to a local or contemporary artist whose information is not widely available in public databases.
+- Recommend a close-up of the signature, the back of the artwork, acquisition documentation, and the exhibition or artist name.
+- Contemporary artwork pricing depends on size, medium, production year, documentation, sales history, and market demand. Never present an estimate as a final sale price when reliable sales data is limited.
+- Arabic fallback: "لم يتم التعرف على الفنان من الصورة وحدها. ننصح بإرفاق صورة قريبة للتوقيع، خلفية اللوحة، شهادة الاقتناء إن وجدت، أو اسم المعرض/الفنان."
+- English fallback: "The artist could not be identified from the image alone. We recommend adding a close-up of the signature, the back of the artwork, any acquisition certificate, and the exhibition or artist name."
+- Arabic pricing caution: "القيمة السوقية التقديرية تعتمد على حجم العمل، الخامة، سنة الإنتاج، التوثيق، سجل المبيعات، وطلب السوق. لا يمكن اعتماد الرقم كسعر بيع نهائي دون توثيق أو مقارنة بمبيعات فعلية."
+- English pricing caution: "The estimated market value depends on the work's size, medium, production year, documentation, sales history, and market demand. The figure should not be treated as a final sale price without documentation or comparison with actual sales."
+- Only populate artistAttribution when a visual or contextual link is plausible; otherwise use null.
+
+${fields.artistContext || "No internal artist context was provided."}
 
 ${externalSourceGuidance}
 
@@ -1576,6 +1599,7 @@ Required JSON shape:
   "markAnalysis": null,
   "metalValue": null,
   "brandAssessment": null,
+  "artistAttribution": null,
 
 If a visible mark/signature/stamp/number/label exists, set "markAnalysis" as:
 {
@@ -1648,6 +1672,18 @@ If luxury brand context was provided, set "brandAssessment" as an object:
 If no luxury brand context was provided, use:
 "brandAssessment": null
 
+If an artwork has a plausible link to the internal artist reference, set "artistAttribution" as:
+{
+  "possibleArtist": "artist name in the visitor language",
+  "matchLevel": "high | medium | low",
+  "reasons": ["only supported reasons: exhibition context, visual similarity, possible signature, or visual style"],
+  "notice": "This analysis is not a final certificate of authenticity. Verification with the artist or exhibition organizer is recommended.",
+  "exhibitionContext": "active context name or empty string"
+}
+
+If there is no plausible link, use:
+"artistAttribution": null
+
 
   "disclaimer": "preliminary visual estimate, not an authenticity certificate or formal appraisal"
 }
@@ -1677,6 +1713,7 @@ function buildCompactFollowUpPrompt(fields: {
   imageCount: number;
   preciousMetalMarketContext?: string;
   brandContext?: string;
+  artistContext?: string;
 }) {
   const language = getLanguageName(fields.locale);
   const languageInstruction = getLanguageInstruction(fields.locale);
@@ -1709,6 +1746,9 @@ ${metalContext || "No live metal context."}
 
 Brand context, if relevant:
 ${brandContext || "No brand context."}
+
+Artist and exhibition context, if relevant:
+${fields.artistContext || "No internal artist context."}
 
 KISHIB wording rules:
 - Use respectful direct wording.
@@ -2058,8 +2098,45 @@ function rewriteRespectfulUserWording(value: string, locale: Locale) {
     .replace(/المستخدم\s+يدعي/gi, "حسب المعلومة التي أضفتها")
     .replace(/ادعى\s+المستخدم/gi, "ذكرت")
     .replace(/يدّعي\s+المستخدم/gi, "ذكرت")
-    .replace(/فنان\s+غير\s+معروف/gi, "الاسم المذكور يحتاج مطابقة التوقيع أو وثائق داعمة للتأكيد")
-    .replace(/unknown artist/gi, "the mentioned artist attribution needs signature or document verification");
+    .replace(/(?:unknown artist|artist unknown)/gi, locale === "en"
+      ? "The artist could not be identified from the image alone. The work may belong to a local or contemporary artist whose information is not widely available in public databases."
+      : "لم يتم التعرف على الفنان من الصورة وحدها. قد يكون العمل لفنان محلي أو معاصر غير متاح بشكل كافٍ في قواعد البيانات العامة.")
+    .replace(/(?:فنان\s+غير\s+معروف|لا\s+يعرف\s+الفنان|التوقيع\s+غير\s+معروف)/gi,
+      "لم يتم التعرف على الفنان من الصورة وحدها. ننصح بإرفاق صورة قريبة للتوقيع، خلفية اللوحة، شهادة الاقتناء إن وجدت، أو اسم المعرض/الفنان.");
+}
+
+function normalizeArtistAttribution(
+  value: unknown,
+  locale: Locale,
+): AnalysisResult["artistAttribution"] {
+  if (!value || typeof value !== "object") return null;
+  const data = value as Record<string, unknown>;
+  const possibleArtist = rewriteRespectfulUserWording(
+    normalizeString(data.possibleArtist, ""),
+    locale,
+  );
+  if (!possibleArtist) return null;
+  const matchLevel =
+    data.matchLevel === "high" || data.matchLevel === "medium"
+      ? data.matchLevel
+      : "low";
+  return {
+    possibleArtist,
+    matchLevel,
+    reasons: normalizeArray(data.reasons, []).map((reason) =>
+      rewriteRespectfulUserWording(reason, locale),
+    ),
+    notice: rewriteRespectfulUserWording(
+      normalizeString(
+        data.notice,
+        locale === "en"
+          ? "This analysis is not a final certificate of authenticity. Verification with the artist or exhibition organizer is recommended."
+          : "هذا التحليل لا يعد شهادة أصالة نهائية، ويُنصح بالرجوع إلى الفنان أو الجهة المنظمة للمعرض.",
+      ),
+      locale,
+    ),
+    exhibitionContext: normalizeString(data.exhibitionContext, ""),
+  };
 }
 
 function normalizeBrandAssessment(value: unknown, locale: Locale) {
@@ -2340,6 +2417,7 @@ function normalizeResult(
     ),
     metalValue: parsed.metalValue,
     brandAssessment: normalizeBrandAssessment(parsed.brandAssessment, locale),
+    artistAttribution: normalizeArtistAttribution(parsed.artistAttribution, locale),
     markAnalysis: normalizeMarkAnalysis(parsed.markAnalysis, locale),
   };
 }
@@ -2592,6 +2670,8 @@ const material = safeString(formData.get("material"));
 const dimensions = safeString(formData.get("dimensions"));
 const weight = safeString(formData.get("weight"));
 const hasMark = safeString(formData.get("hasMark"));
+const exhibitionContext = process.env.NEXT_PUBLIC_KISHIB_EXHIBITION_CONTEXT || "";
+const artistContext = buildArtistKnowledgeContext(exhibitionContext);
 
 const preciousMetalContextText = [
   followUpClaim || notes,
@@ -2867,6 +2947,7 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
           imageCount: visionImageCount,
           preciousMetalMarketContext,
           brandContext,
+          artistContext,
         })
       : buildPrompt({
           locale,
@@ -2883,6 +2964,7 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
           marketReferencesText,
           preciousMetalMarketContext,
           brandContext,
+          artistContext,
         });
 
     if (
@@ -2898,6 +2980,7 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
         imageCount: visionImageCount,
         preciousMetalMarketContext: cleanText(preciousMetalMarketContext, 900),
         brandContext: cleanText(brandContext, 500),
+        artistContext: cleanText(artistContext, 1800),
       });
     }
 
@@ -3111,7 +3194,7 @@ if (preciousMetalValue && isPreciousMetalCandidate) {
 
 const geminiSecondOpinion = await getGeminiSecondOpinion({
   locale,
-  notes: [notes, followUpClaim, itemType, material, dimensions, weight, hasMark]
+  notes: [notes, followUpClaim, itemType, material, dimensions, weight, hasMark, exhibitionContext ? `Exhibition context: ${exhibitionContext}` : ""]
     .filter(Boolean)
     .join("\n"),
   openAiResult: normalized,
@@ -3139,6 +3222,7 @@ const deepSeekReview = await getDeepSeekLogicReview({
     marketContext,
     marketReferencesText,
     preciousMetalMarketContext,
+    artistContext,
   ]
     .filter(Boolean)
     .join("\n\n"),
@@ -3150,7 +3234,7 @@ const finalReviewedResult = mergeDeepSeekLogicReview(
   locale,
 );
 
-return NextResponse.json(finalReviewedResult);
+return NextResponse.json(normalizeResult(finalReviewedResult, fallback, locale));
   } catch (error) {
     console.error("Analyze API error:", error);
 

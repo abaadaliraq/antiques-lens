@@ -1112,6 +1112,43 @@ useEffect(() => {
           large
         />
 
+        {result.artistAttribution ? (
+          <section className="mt-7 rounded-[16px] border border-[#d2b98f] bg-[#fff4e2]/70 p-5">
+            <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-[#986f2e]">
+              {locale === "ar" ? "نسبة الفنان المحتملة" : "Potential artist attribution"}
+            </p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div>
+                <p className="text-[13px] font-medium text-[#233f32]">
+                  {locale === "ar" ? "الفنان المحتمل: " : "Potential artist: "}
+                  {cleanDisplayText(result.artistAttribution.possibleArtist)}
+                </p>
+                <p className="mt-2 text-[12px] leading-6 text-[#735f4b]">
+                  {locale === "ar" ? "درجة المطابقة: " : "Match level: "}
+                  {locale === "ar"
+                    ? result.artistAttribution.matchLevel === "high"
+                      ? "عالية"
+                      : result.artistAttribution.matchLevel === "medium"
+                        ? "متوسطة"
+                        : "منخفضة"
+                    : result.artistAttribution.matchLevel}
+                </p>
+              </div>
+              <div>
+                <p className="text-[12px] font-medium text-[#233f32]">
+                  {locale === "ar" ? "سبب الترجيح" : "Reasons"}
+                </p>
+                <p className="mt-2 text-[12px] leading-6 text-[#735f4b]">
+                  {result.artistAttribution.reasons.map(cleanDisplayText).filter(Boolean).join("، ")}
+                </p>
+              </div>
+            </div>
+            <p className="mt-4 border-t border-[#d2b98f] pt-4 text-[12px] leading-6 text-[#735f4b]">
+              {cleanDisplayText(result.artistAttribution.notice)}
+            </p>
+          </section>
+        ) : null}
+
         <div className="mt-7 grid grid-cols-1 gap-7 md:grid-cols-2">
           <TextSection title={labels.condition} body={result.condition} compact />
           <TextSection title={labels.authenticity} body={result.authenticity} compact />

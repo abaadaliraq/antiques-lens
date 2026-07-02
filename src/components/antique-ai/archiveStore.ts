@@ -309,6 +309,7 @@ function sanitizeResultForArchive(result: any, images: {
         ? repaired.followUpQuestion
         : "",
     brandAssessment: repaired.brandAssessment,
+    artistAttribution: repaired.artistAttribution,
     valuation_scenarios: Array.isArray(repaired.valuation_scenarios)
       ? repaired.valuation_scenarios
       : undefined,
