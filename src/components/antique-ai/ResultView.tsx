@@ -4,7 +4,6 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
-  Plus,
   Printer,
   X,
 } from "lucide-react";
@@ -51,7 +50,6 @@ type Props = {
   isLoadingSimilar?: boolean;
   userNote?: string;
   followUpPanel?: React.ReactNode;
-  onAddInfo?: () => void;
 };
 
 function getFallbackText(locale: Locale) {
@@ -63,17 +61,6 @@ function getFallbackText(locale: Locale) {
   if (locale === "tr") return "Net deÄŸil";
   if (locale === "ru") return "ÐÐµ ÑÑÐ½Ð¾";
   return "غير واضح";
-}
-
-function getAddInfoText(locale: Locale) {
-  if (locale === "en") return "Add info";
-  if (locale === "fr") return "Ajouter";
-  if (locale === "ku") return "Ø²ÛŒØ§Ø¯Ú©Ø±Ø¯Ù†";
-  if (locale === "hi") return "à¤œà¤¾à¤¨à¤•à¤¾à¤°à¥€ à¤œà¥‹à¤¡à¤¼à¥‡à¤‚";
-  if (locale === "fa") return "Ø§ÙØ²ÙˆØ¯Ù† Ø§Ø·Ù„Ø§Ø¹Ø§Øª";
-  if (locale === "tr") return "Bilgi ekle";
-  if (locale === "ru") return "Ð”Ð¾Ð±Ð°Ð²Ð¸Ñ‚ÑŒ Ð¸Ð½Ñ„Ð¾Ñ€Ð¼Ð°Ñ†Ð¸ÑŽ";
-  return "أضف معلومات";
 }
 
 function getUserNoteLabel(locale: Locale) {
@@ -581,11 +568,9 @@ export default function ResultView({
   isLoadingSimilar = false,
   userNote = "",
   followUpPanel,
-  onAddInfo,
 }: Props) {
   const [openImageIndex, setOpenImageIndex] = useState<number | null>(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
-  const [hasOpenedFollowUp, setHasOpenedFollowUp] = useState(false);
   const [failedImageSources, setFailedImageSources] = useState<Set<string>>(
     () => new Set(),
   );
@@ -737,11 +722,6 @@ useEffect(() => {
         markReferenceMatches.length > 0),
   );
 
-  function handleAddInfoClick() {
-    setHasOpenedFollowUp(true);
-    onAddInfo?.();
-  }
-
   function openImage(index: number) {
     setOpenImageIndex(index);
   }
@@ -771,8 +751,6 @@ useEffect(() => {
       return current === galleryImages.length - 1 ? 0 : current + 1;
     });
   }
-
-  const canShowAddInfoButton = Boolean(onAddInfo && !followUpPanel && !hasOpenedFollowUp);
 
   return (
     <article className="kishib-result-view relative pb-32 text-[#241913]">
@@ -845,16 +823,6 @@ useEffect(() => {
                   {cleanTitle}
                 </h1>
 
-                {canShowAddInfoButton && (
-                  <button
-                    type="button"
-                    onClick={handleAddInfoClick}
-                    className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-[12px] border border-[#d6b576]/55 bg-[#fff4e2]/12 px-4 py-2 text-sm font-semibold text-[#fff4e2] backdrop-blur transition hover:bg-[#fff4e2]/20"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    {labels.addInfo || getAddInfoText(locale)}
-                  </button>
-                )}
               </div>
             </div>
           ) : (
@@ -867,16 +835,6 @@ useEffect(() => {
                   {cleanTitle}
               </h1>
 
-              {canShowAddInfoButton && (
-                <button
-                  type="button"
-                  onClick={handleAddInfoClick}
-                  className="mt-4 inline-flex items-center justify-center gap-1.5 rounded-[12px] border border-[#d6b576]/55 bg-[#fff4e2]/12 px-4 py-2 text-sm font-semibold text-[#fff4e2] backdrop-blur transition hover:bg-[#fff4e2]/20"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  {labels.addInfo || getAddInfoText(locale)}
-                </button>
-              )}
             </div>
           )}
         </header>

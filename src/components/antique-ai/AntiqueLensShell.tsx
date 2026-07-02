@@ -2,13 +2,13 @@
 
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
+import { Share } from "@capacitor/share";
 import AntiqueBackground from "@/components/antique-ai/AntiqueBackground";
 import AuthScreen from "@/components/antique-ai/AuthScreen";
 import BottomBar from "@/components/antique-ai/BottomBar";
 import CompleteProfileModal from "@/components/antique-ai/CompleteProfileModal";
 import CookieBar from "@/components/antique-ai/CookieBar";
 import EvaluationComposer from "@/components/antique-ai/EvaluationComposer";
-import ExpertContactButton from "@/components/antique-ai/ExpertContactButton";
 import FollowUpEvaluationPanel from "@/components/antique-ai/FollowUpEvaluationPanel";
 import KishibLoader from "@/components/antique-ai/KishibLoader";
 import NotificationsButton from "@/components/antique-ai/NotificationsButton";
@@ -545,6 +545,18 @@ export default function AntiqueLensShell() {
     lens.deleteHistoryItem(id);
   }
 
+  async function handleShareResult() {
+    const url = window.location.href;
+    const title = lens.result?.title || "KISHIB";
+    const text = lens.locale === "ar" ? "نتيجة تقييمي من KISHIB" : "My KISHIB evaluation result";
+
+    try {
+      await Share.share({ title, text, url, dialogTitle: lens.t.share });
+    } catch {
+      // Closing the native share sheet is not an application error.
+    }
+  }
+
   const followUpPanel =
     lens.followUpOpen ? (
       <FollowUpEvaluationPanel
@@ -585,12 +597,6 @@ export default function AntiqueLensShell() {
             <PlatformNewsTicker locale={lens.locale} />
           </div>
         ) : null}
-{showHomeTicker ? (
-  <div className="kishib-app-chrome">
-    <ExpertContactButton locale={lens.locale} />
-  </div>
-) : null}
-
         {showHomeTicker ? (
           <div
             dir="ltr"
@@ -750,7 +756,6 @@ export default function AntiqueLensShell() {
                 similarImages={safeSimilarImages}
                 isLoadingSimilar={isSimilarLoading}
                 userNote={lens.prompt}
-                onAddInfo={canUseFollowUp ? lens.handleAddInfo : undefined}
                 followUpPanel={followUpPanel}
               />
             </div>
@@ -759,12 +764,15 @@ export default function AntiqueLensShell() {
 
        <div className="kishib-app-chrome">
   <BottomBar
-    theme={lens.theme}
     labels={{
       new: lens.t.new,
+      share: lens.t.share,
+      addInfo: lens.t.addInfo || (lens.locale === "ar" ? "إضافة معلومة" : "Add Info"),
     }}
     hasResult={Boolean(lens.result)}
     onNew={lens.resetEvaluation}
+    onShare={() => void handleShareResult()}
+    onAddInfo={canUseFollowUp ? lens.handleAddInfo : undefined}
   />
 </div>
 

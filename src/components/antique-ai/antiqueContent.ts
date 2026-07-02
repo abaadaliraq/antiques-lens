@@ -3,7 +3,7 @@
 export const content = {
   ar: {
     dir: "rtl",
-    new: "تقييم جديد",
+    new: "جديد",
     archive: "أرشيف القطع",
     emptyArchive: "لا توجد تقييمات بعد.",
     clearArchive: "مسح",
@@ -44,13 +44,13 @@ export const content = {
     followUp: "السؤال التالي",
     confidence: "درجة الثقة",
     share: "مشاركة",
-    addInfo: "جلسة تقييم ذكية",
+    addInfo: "إضافة معلومة",
     notice: "التقييم استرشادي ولا يعتبر شهادة أصالة أو تسعيراً نهائياً.",
   },
 
   en: {
     dir: "ltr",
-    new: "New evaluation",
+    new: "New",
     archive: "Pieces archive",
     emptyArchive: "No evaluations yet.",
     clearArchive: "Clear",
@@ -91,7 +91,7 @@ export const content = {
     followUp: "Next question",
     confidence: "Confidence",
     share: "Share",
-    addInfo: "Smart evaluation session",
+    addInfo: "Add Info",
     notice: "This is an indicative evaluation, not an authenticity certificate or final appraisal.",
   },
 
