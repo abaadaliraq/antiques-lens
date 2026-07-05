@@ -15,6 +15,7 @@ export type DeepSeekLogicReview = {
 
 const DEEPSEEK_MODEL = "deepseek-chat";
 const DEEPSEEK_TIMEOUT_MS = 10000;
+let deepSeekUnavailableReason: string | null = null;
 
 function cleanText(value: unknown, maxLength = 900) {
   if (typeof value !== "string") return "";
@@ -80,6 +81,13 @@ export async function getDeepSeekLogicReview({
 
   if (!apiKey) {
     console.info("[DeepSeek review skipped] DEEPSEEK_API_KEY is not configured");
+    return null;
+  }
+
+  if (deepSeekUnavailableReason) {
+    console.info(
+      `[DeepSeek review skipped] provider is unavailable for this server process: ${deepSeekUnavailableReason}`,
+    );
     return null;
   }
 
@@ -176,6 +184,9 @@ Return exactly this JSON shape:
     });
 
     if (!response.ok) {
+      if (response.status === 401 || response.status === 402 || response.status === 403) {
+        deepSeekUnavailableReason = `terminal provider status ${response.status}`;
+      }
       console.warn("[DeepSeek review skipped] request failed", response.status);
       return null;
     }

@@ -17,7 +17,8 @@ export type GeminiSecondOpinion = {
   finalCautionNotes: string;
 };
 
-const GEMINI_MODEL = "gemini-1.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-1.5-flash";
+const KNOWN_UNAVAILABLE_GEMINI_MODELS = new Set(["gemini-1.5-flash"]);
 const GEMINI_TIMEOUT_MS = 10000;
 const GEMINI_IMAGE_FETCH_TIMEOUT_MS = 4500;
 
@@ -118,6 +119,13 @@ export async function getGeminiSecondOpinion({
 
   if (!apiKey) {
     console.info("[Gemini second opinion] GEMINI_API_KEY is not configured");
+    return null;
+  }
+
+  if (KNOWN_UNAVAILABLE_GEMINI_MODELS.has(GEMINI_MODEL)) {
+    console.info(
+      `[Gemini second opinion skipped] configured model ${GEMINI_MODEL} is known to be unavailable; set GEMINI_MODEL to a supported model to re-enable it`,
+    );
     return null;
   }
 

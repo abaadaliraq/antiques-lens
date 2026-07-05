@@ -21,6 +21,7 @@ import {
   type UsageLimitStatus,
 } from "@/lib/usageLimitsSupabase";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
+import { compressImageForUpload } from "@/lib/compressImageForUpload";
 
 import {
   addArchiveItemWithStatus,
@@ -45,7 +46,6 @@ import type {
   HouseOfAntiquesMatch,
 } from "./types";
 const MAX_IMAGES = 6;
-const MAX_IMAGE_SIZE_MB = 8;
 const SUPPORTED_LOCALES: Locale[] = [
   "ar",
   "en",
@@ -57,6 +57,19 @@ const SUPPORTED_LOCALES: Locale[] = [
   "ku",
 ];
 const USER_LOCALE_STORAGE_KEY = "antiques-lens:locale";
+
+function logDevelopmentTiming(
+  label: string,
+  startedAt: number,
+  details?: Record<string, unknown>,
+) {
+  if (process.env.NODE_ENV !== "production") {
+    console.info(
+      `[KISHIB TIMING] ${label}: ${Math.round(performance.now() - startedAt)}ms`,
+      details || {},
+    );
+  }
+}
 
 type AppScreen = "home" | "result" | "archive-result" | "follow-up";
 
@@ -117,62 +130,6 @@ function getUsageMessage(locale: Locale, key: "auth" | "limit" | "checkFailed") 
   return "انتهت محاولاتك المجانية. يرجى الاشتراك لمتابعة التحليل.";
 }
 
-async function resizeImageForAnalysis(
-  file: File,
-  maxWidth = 1400,
-  quality = 0.72,
-): Promise<File> {
-  const dataUrl = await fileToDataUrl(file);
-
-  return new Promise((resolve) => {
-    const image = new Image();
-
-    image.onload = () => {
-      const ratio = image.width / image.height;
-
-      const width = image.width > maxWidth ? maxWidth : image.width;
-      const height = width / ratio;
-
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(width);
-      canvas.height = Math.round(height);
-
-      const ctx = canvas.getContext("2d");
-
-      if (!ctx) {
-        resolve(file);
-        return;
-      }
-
-      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            resolve(file);
-            return;
-          }
-
-          const resizedFile = new File(
-            [blob],
-            file.name.replace(/\.[^.]+$/, ".jpg"),
-            {
-              type: "image/jpeg",
-              lastModified: Date.now(),
-            },
-          );
-
-          resolve(resizedFile);
-        },
-        "image/jpeg",
-        quality,
-      );
-    };
-
-    image.onerror = () => resolve(file);
-    image.src = dataUrl;
-  });
-}
 function buildPinterestSearchQuery(result: AnalysisResult) {
   const rawText = [
     result.title,
@@ -571,6 +528,7 @@ const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
   const historyReadyRef = useRef(false);
   const goBackInsideAppRef = useRef<() => boolean>(() => false);
   const similarRequestKeysRef = useRef<Set<string>>(new Set());
+  const evaluationTimingStartRef = useRef<number | null>(null);
 
   const [result, setResult] = useState<AnalysisResult | null>(null);
   
@@ -892,16 +850,17 @@ async function changeLocale(nextLocale: Locale) {
       return;
     }
 
-    const tooLargeFile = imageFiles.find(
-      (file) => file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024,
+    const compressionStartedAt = performance.now();
+    evaluationTimingStartRef.current = compressionStartedAt;
+    const compressedFiles = await Promise.all(
+      imageFiles.map((file) => compressImageForUpload(file)),
     );
+    logDevelopmentTiming("compressionBatch", compressionStartedAt, {
+      imageCount: imageFiles.length,
+      execution: imageFiles.length > 1 ? "parallel" : "single",
+    });
 
-    if (tooLargeFile) {
-      setError(`Ø¥Ø­Ø¯Ù‰ Ø§Ù„ØµÙˆØ± ÙƒØ¨ÙŠØ±Ø© Ø¬Ø¯Ø§Ù‹. Ø§Ø®ØªØ§Ø±ÙŠ ØµÙˆØ± Ø£Ù‚Ù„ Ù…Ù† ${MAX_IMAGE_SIZE_MB}MB.`);
-      return;
-    }
-
-    const mergedFiles = [...selectedFiles, ...imageFiles].slice(0, MAX_IMAGES);
+    const mergedFiles = [...selectedFiles, ...compressedFiles].slice(0, MAX_IMAGES);
 
     if (selectedFiles.length + imageFiles.length > MAX_IMAGES) {
       setError(`Ù…Ø³Ù…ÙˆØ­ Ø±ÙØ¹ ${MAX_IMAGES} ØµÙˆØ± ÙƒØ­Ø¯ Ø£Ù‚ØµÙ‰ Ù„Ù„ØªÙ‚ÙŠÙŠÙ… Ø§Ù„ÙˆØ§Ø­Ø¯.`);
@@ -1299,14 +1258,13 @@ async function handleAnalyze() {
   setSimilarImages([]);
   setIsLoadingSimilar(false);
 
+  const analysisStartedAt = performance.now();
+  const totalStartedAt = evaluationTimingStartRef.current ?? analysisStartedAt;
+
   try {
     const formData = new FormData();
 
-    const optimizedFiles = await Promise.all(
-      selectedFiles.slice(0, 6).map((file) => resizeImageForAnalysis(file)),
-    );
-
-    optimizedFiles.forEach((file) => {
+    selectedFiles.slice(0, 6).forEach((file) => {
       formData.append("images", file);
     });
 
@@ -1320,9 +1278,22 @@ async function handleAnalyze() {
     let houseContext = "";
     let googleLensItems: SimilarImageResult[] = [];
     let houseStoreContext: HouseOfAntiquesContext | null = null;
+    let cloudinaryDurationMs = 0;
+    let initialHouseDurationMs = 0;
+    const parallelEvaluationStartedAt = performance.now();
+    const initialHouseRequestStartedAt = performance.now();
+    const initialHouseRequest = safePostJson(
+      "/api/house-comparables",
+      { query: prompt },
+    ).finally(() => {
+      initialHouseDurationMs = performance.now() - initialHouseRequestStartedAt;
+    });
+    let earlyGoogleLensPromise: Promise<SimilarImageResult[]> | null = null;
+    let earlyGoogleLensStartedAt: number | null = null;
 
     // 1) Upload all selected images to Cloudinary for archive/search context.
     if (selectedFiles.length) {
+      const cloudinaryStartedAt = performance.now();
       const uploadResults = await Promise.all(
         selectedFiles.slice(0, 6).map(async (file) => {
           const uploadFormData = new FormData();
@@ -1358,16 +1329,25 @@ async function handleAnalyze() {
         formData.append("uploadedImageUrls", url);
       });
       formData.append("uploadedImageUrl", uploadedImageUrl);
+      cloudinaryDurationMs = performance.now() - cloudinaryStartedAt;
+      logDevelopmentTiming("cloudinaryUpload", cloudinaryStartedAt, {
+        imageCount: selectedFiles.slice(0, 6).length,
+        execution: selectedFiles.length > 1 ? "parallel" : "single",
+      });
+
+      if (uploadedImageUrls.length > 0) {
+        const earlySimilarRequestKey = `cloudinary:${uploadedImageUrls.join("|")}`;
+        earlyGoogleLensStartedAt = performance.now();
+        earlyGoogleLensPromise = fetchGoogleLensSimilarImages(
+          uploadedImageUrls,
+          earlySimilarRequestKey,
+        );
+      }
     }
 
     // 2) House of Antiques internal comparables
     try {
-      const { ok: houseOk, data: houseRawData } = await safePostJson(
-        "/api/house-comparables",
-        {
-          query: prompt,
-        },
-      );
+      const { ok: houseOk, data: houseRawData } = await initialHouseRequest;
       const houseData =
         houseRawData && typeof houseRawData === "object"
           ? (houseRawData as Record<string, unknown>)
@@ -1421,9 +1401,31 @@ async function handleAnalyze() {
       }
     } catch {
       console.warn("House of Antiques comparables skipped.");
+    } finally {
+      logDevelopmentTiming(
+        "marketReferencesSupabaseInitial",
+        initialHouseRequestStartedAt,
+      );
+      logDevelopmentTiming("parallelEvaluationGroup", parallelEvaluationStartedAt, {
+        operations: ["cloudinaryUpload", "initialHouseComparables"],
+        execution: "parallel",
+      });
+      if (process.env.NODE_ENV !== "production") {
+        const sequentialBeforeOptimization =
+          cloudinaryDurationMs + initialHouseDurationMs;
+        const parallelDuration = performance.now() - parallelEvaluationStartedAt;
+        console.info(
+          `[KISHIB TIMING] sequentialBeforeOptimization: ${Math.round(sequentialBeforeOptimization)}ms`,
+        );
+        console.info(
+          `[KISHIB TIMING] timeSavedEstimate: ${Math.max(0, Math.round(sequentialBeforeOptimization - parallelDuration))}ms`,
+          { group: "cloudinaryUpload + initialHouseComparables" },
+        );
+      }
     }
 
     // 3) Build combined market context
+    const imagePreparationStartedAt = performance.now();
     const combinedMarketContext = [
       houseContext &&
       houseStoreContext?.confidence === "exact" &&
@@ -1437,23 +1439,30 @@ async function handleAnalyze() {
     if (combinedMarketContext) {
       formData.append("marketContext", combinedMarketContext);
     }
+    logDevelopmentTiming("imageAndLinkPreparation", imagePreparationStartedAt);
 
     // 4) Analyze with OpenAI
+    const aiPipelineStartedAt = performance.now();
     const response = await fetch("/api/analyze", {
       method: "POST",
       body: formData,
     });
 
     const data = await response.json();
+    logDevelopmentTiming("aiPipeline", aiPipelineStartedAt, {
+      note: "Server logs split primaryAI, secondaryAI, DeepSeek, and merges",
+    });
 
     if (!response.ok) {
       throw new Error(data?.error || "Failed to analyze request.");
     }
 
+ const initialJsonStartedAt = performance.now();
  const analyzedResult = normalizeResult({
    ...data,
    houseOfAntiques: houseStoreContext?.found ? houseStoreContext : undefined,
  });
+ logDevelopmentTiming("finalJsonProcessingInitial", initialJsonStartedAt);
 
  console.info("[KISHIB archive] Analysis completed", {
    title: analyzedResult.title,
@@ -1461,6 +1470,7 @@ async function handleAnalyze() {
    selectedFilesCount: selectedFiles.length,
  });
 
+  const refinedMarketReferencesStartedAt = performance.now();
   try {
     const { ok: refinedHouseOk, data: refinedHouseRawData } = await safePostJson(
       "/api/house-comparables",
@@ -1514,6 +1524,11 @@ async function handleAnalyze() {
     }
   } catch {
     console.warn("Refined House of Antiques comparables skipped.");
+  } finally {
+    logDevelopmentTiming(
+      "marketReferencesSupabaseRefined",
+      refinedMarketReferencesStartedAt,
+    );
   }
 
 let finalResult = normalizeResult({
@@ -1549,28 +1564,23 @@ if (locale !== "ar") {
 
 const resultSimilarItems = getSimilarItems(finalResult);
 const resultExternalSimilarImages = filterExternalSimilarImages(resultSimilarItems);
-const similarRequestKey = [
-  uploadedImageUrls.join("|"),
-  finalResult.title,
-  finalResult.itemType,
-  finalResult.lookup,
-]
-  .filter(Boolean)
-  .join("::");
-
-if (uploadedImageUrls.length > 0) {
+if (earlyGoogleLensPromise) {
   setIsLoadingSimilar(true);
+  const googleLensStartedAt = earlyGoogleLensStartedAt ?? performance.now();
 
   try {
-    googleLensItems = await fetchGoogleLensSimilarImages(
-      uploadedImageUrls,
-      similarRequestKey,
-    );
+    googleLensItems = await earlyGoogleLensPromise;
 
     if (googleLensItems.length > 0) {
       setSimilarImages(googleLensItems);
     }
   } finally {
+    logDevelopmentTiming("googleLensSimilarImages", googleLensStartedAt, {
+      imageCount: uploadedImageUrls.length,
+      execution: "sequential provider requests",
+      startedAfter: "cloudinaryUpload",
+      overlappedWith: "OpenAI evaluation and refined market references",
+    });
     setIsLoadingSimilar(false);
   }
 }
@@ -1587,6 +1597,7 @@ let finalSimilarImages = mergeSimilarImages(
 
 if (finalSimilarImages.length === 0) {
   setIsLoadingSimilar(true);
+  const pinterestStartedAt = performance.now();
 
   try {
     const fallbackSimilarImages = await fetchPinterestSimilarImages(finalResult);
@@ -1596,6 +1607,7 @@ if (finalSimilarImages.length === 0) {
       setSimilarImages(fallbackSimilarImages);
     }
   } finally {
+    logDevelopmentTiming("pinterestFallback", pinterestStartedAt);
     setIsLoadingSimilar(false);
   }
 }
@@ -1627,6 +1639,7 @@ if (uploadedImageUrl) {
 const usageAfterSuccessfulAnalysis = await incrementAnalysisUsage();
 setUsageStatus(usageAfterSuccessfulAnalysis);
 
+const finalJsonStartedAt = performance.now();
 setSimilarImages(finalSimilarImages);
 setResult(finalResult);
 setSelectedArchiveItemId(null);
@@ -1634,6 +1647,10 @@ setAppScreen("result");
 pushAppHistoryState("result");
 setTranslatedResults({
   [locale]: finalResult,
+});
+logDevelopmentTiming("finalJsonProcessing", finalJsonStartedAt);
+logDevelopmentTiming("totalUntilResultVisible", totalStartedAt, {
+  includesUserWaitAfterCompression: totalStartedAt !== analysisStartedAt,
 });
 
 const archiveAssets =
@@ -1711,14 +1728,29 @@ console.info("[KISHIB archive] Prepared history item before save", {
   similarImagesCount: finalSimilarImages.length,
 });
 
-await saveHistory(archiveItem);
 setSelectedArchiveItemId(archiveItem.id);
-await saveEvaluationToSupabase({
-  archiveItem,
-  locale,
-  imageUrl: uploadedImageUrl || finalResult.imageUrl,
-  cloudinaryPublicId,
-});
+void (async () => {
+  const backgroundSaveStartedAt = performance.now();
+  const archiveSaveStartedAt = performance.now();
+  const archiveSavePromise = saveHistory(archiveItem).finally(() => {
+    logDevelopmentTiming("saveArchive", archiveSaveStartedAt);
+  });
+  const supabaseSaveStartedAt = performance.now();
+  const supabaseSavePromise = saveEvaluationToSupabase({
+    archiveItem,
+    locale,
+    imageUrl: uploadedImageUrl || finalResult.imageUrl,
+    cloudinaryPublicId,
+  }).finally(() => {
+    logDevelopmentTiming("saveEvaluationSupabase", supabaseSaveStartedAt);
+  });
+
+  await Promise.allSettled([archiveSavePromise, supabaseSavePromise]);
+  logDevelopmentTiming("backgroundSaveGroup", backgroundSaveStartedAt, {
+    execution: "parallel",
+    blocksResultDisplay: false,
+  });
+})();
 
 
   } catch (err) {

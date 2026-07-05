@@ -3,6 +3,7 @@
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
+import { toBlob } from "html-to-image";
 import AntiqueBackground from "@/components/antique-ai/AntiqueBackground";
 import AuthScreen from "@/components/antique-ai/AuthScreen";
 import BottomBar from "@/components/antique-ai/BottomBar";
@@ -557,6 +558,55 @@ export default function AntiqueLensShell() {
     }
   }
 
+  async function handleShareReportImage() {
+    const title = lens.result?.title || "KISHIB";
+    const text = lens.locale === "ar" ? "نتيجة تقييمي من KISHIB" : "My KISHIB evaluation result";
+    const report = document.querySelector<HTMLElement>(
+      ".report-print-area .antique-report-document",
+    );
+
+    if (!report) return;
+
+    try {
+      await Promise.all(
+        Array.from(report.querySelectorAll("img")).map((image) =>
+          image.complete
+            ? Promise.resolve()
+            : image.decode().catch(() => undefined),
+        ),
+      );
+
+      const blob = await toBlob(report, {
+        backgroundColor: "#f7f0e6",
+        cacheBust: true,
+        pixelRatio: 2,
+        width: 794,
+        height: report.scrollHeight,
+      });
+
+      if (!blob) throw new Error("Unable to create report image");
+
+      const file = new File([blob], `KISHIB-${Date.now()}.png`, {
+        type: "image/png",
+      });
+      const shareData = { title, text, files: [file] };
+
+      if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
+        await navigator.share(shareData);
+        return;
+      }
+
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = file.name;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1_000);
+    } catch {
+      // Closing the share sheet is not an application error.
+    }
+  }
+
   const followUpPanel =
     lens.followUpOpen ? (
       <FollowUpEvaluationPanel
@@ -771,7 +821,7 @@ export default function AntiqueLensShell() {
     }}
     hasResult={Boolean(lens.result)}
     onNew={lens.resetEvaluation}
-    onShare={() => void handleShareResult()}
+    onShare={() => void handleShareReportImage()}
     onAddInfo={canUseFollowUp ? lens.handleAddInfo : undefined}
   />
 </div>

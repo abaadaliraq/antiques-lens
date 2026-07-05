@@ -180,14 +180,20 @@ export default function NotificationsButton({ locale, compact = false }: Props) 
       >
         <Bell className={compact ? "h-4 w-4" : "h-[18px] w-[18px]"} />
         {unreadCount > 0 ? (
-          <span className="absolute -end-1 -top-1 grid min-h-4 min-w-4 place-items-center rounded-full bg-[#b88a3d] px-1 text-[9px] font-bold leading-none text-white shadow-[0_5px_12px_rgba(184,138,61,0.35)]">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
+          <span
+            className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-[#fff4e2] bg-red-600 shadow-[0_3px_10px_rgba(220,38,38,0.55)]"
+            aria-label={`${unreadCount} unread`}
+          />
         ) : null}
       </button>
 
       {open ? (
-        <div className="absolute end-0 top-[calc(100%+10px)] z-[9999] w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-[18px] border border-[#d2b98f]/70 bg-[#fff4e2]/98 text-[#241913] shadow-[0_24px_70px_rgba(62,39,22,0.18)] backdrop-blur-2xl">
+        <div
+          className={[
+            "fixed left-3 right-3 top-20 z-[9999] max-h-[calc(100dvh-6rem)] overflow-hidden rounded-[18px] border border-[#d2b98f]/70 bg-[#fff4e2]/98 text-[#241913] shadow-[0_24px_70px_rgba(62,39,22,0.18)] backdrop-blur-2xl sm:absolute sm:left-auto sm:right-0 sm:top-[calc(100%+10px)] sm:w-[22rem]",
+            compact ? "sm:left-0 sm:right-auto" : "",
+          ].join(" ")}
+        >
           <div className="flex items-center justify-between gap-3 border-b border-[#d2b98f]/45 px-4 py-3">
             <div>
               <p className="text-sm font-semibold text-[#233f32]">
@@ -211,7 +217,7 @@ export default function NotificationsButton({ locale, compact = false }: Props) 
             ) : null}
           </div>
 
-          <div className="max-h-[420px] overflow-y-auto p-2">
+          <div className="max-h-[calc(100dvh-11rem)] overflow-y-auto p-2 sm:max-h-[420px]">
             {loading ? (
               <div className="flex items-center justify-center gap-2 px-4 py-7 text-sm text-[#735f4b]">
                 <Loader2 className="h-4 w-4 animate-spin" />

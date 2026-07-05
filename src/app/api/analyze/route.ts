@@ -36,6 +36,19 @@ import {
 
 type Locale = "ar" | "en" | "fr" | "hi" | "fa" | "tr" | "ru" | "ku";
 
+function logDevelopmentTiming(
+  label: string,
+  startedAt: number,
+  details?: Record<string, unknown>,
+) {
+  if (process.env.NODE_ENV !== "production") {
+    console.info(
+      `[KISHIB TIMING] ${label}: ${Math.round(performance.now() - startedAt)}ms`,
+      details || {},
+    );
+  }
+}
+
 type AnalysisResult = {
   title: string;
   itemType: string;
@@ -2611,6 +2624,7 @@ async function fileToDataUrl(file: File) {
 
 export async function POST(request: Request) {
   let requestLocale: Locale = "ar";
+  const totalStartedAt = performance.now();
 
   try {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -2624,6 +2638,7 @@ export async function POST(request: Request) {
 
     const client = new OpenAI({ apiKey });
 
+const requestPreparationStartedAt = performance.now();
 const formData = await request.formData();
 
 const imageEntries = [...formData.getAll("images"), ...formData.getAll("image")];
@@ -2719,8 +2734,47 @@ const metalClassification = classifyPreciousMetalConfidence({
   weightGrams: preliminaryWeightGrams,
 });
 const hasFollowUpClaim = Boolean(followUpClaim);
+logDevelopmentTiming("requestAndImagePreparation", requestPreparationStartedAt, {
+  imageCount: images.length || uploadedImageUrls.length,
+});
+const searchNotes = isFollowUpUpdate
+  ? [
+      followUpClaim,
+      followUpContext?.title,
+      followUpContext?.category,
+      followUpContext?.material,
+      followUpContext?.origin,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  : notes;
+const serverParallelGroupStartedAt = performance.now();
+const marketReferencesStartedAt = performance.now();
+let marketReferencesDurationMs = 0;
+let metalPricesDurationMs = 0;
+const marketReferencesPromise = (
+  isFollowUpUpdate
+    ? Promise.resolve([])
+    : searchMarketReferences({
+        itemType,
+        category: itemType,
+        material,
+        origin: "",
+        keywords: [
+          itemType,
+          material,
+          dimensions,
+          weight,
+          hasMark,
+          searchNotes,
+        ].filter(Boolean) as string[],
+      })
+).finally(() => {
+  marketReferencesDurationMs = performance.now() - marketReferencesStartedAt;
+});
 
 if (isPreciousMetalCandidate && metalClassification.metal) {
+  const metalPricesStartedAt = performance.now();
   const detectedMetal = metalClassification.metal;
   const weightGrams = preliminaryWeightGrams;
   const purity =
@@ -2881,36 +2935,30 @@ If locale is Arabic, write all of this naturally in Arabic.
 `;
   }
   }
+  metalPricesDurationMs = performance.now() - metalPricesStartedAt;
+  logDevelopmentTiming("metalPrices", metalPricesStartedAt);
 }
 
-const searchNotes = isFollowUpUpdate
-  ? [
-      followUpClaim,
-      followUpContext?.title,
-      followUpContext?.category,
-      followUpContext?.material,
-      followUpContext?.origin,
-    ]
-      .filter(Boolean)
-      .join(" ")
-  : notes;
-
-const marketReferences = isFollowUpUpdate
-  ? []
-  : await searchMarketReferences({
-  itemType,
-  category: itemType,
-  material,
-  origin: "",
-  keywords: [
-    itemType,
-    material,
-    dimensions,
-    weight,
-    hasMark,
-    searchNotes,
-  ].filter(Boolean) as string[],
+const marketReferences = await marketReferencesPromise;
+logDevelopmentTiming("marketReferencesSupabase", marketReferencesStartedAt, {
+  skipped: isFollowUpUpdate,
 });
+logDevelopmentTiming("parallelEvaluationGroupServer", serverParallelGroupStartedAt, {
+  operations: ["marketReferencesSupabase", "metalPricesIfRequired"],
+  execution: "parallel",
+});
+if (process.env.NODE_ENV !== "production") {
+  const sequentialBeforeOptimization =
+    marketReferencesDurationMs + metalPricesDurationMs;
+  const parallelDuration = performance.now() - serverParallelGroupStartedAt;
+  console.info(
+    `[KISHIB TIMING] sequentialBeforeOptimizationServer: ${Math.round(sequentialBeforeOptimization)}ms`,
+  );
+  console.info(
+    `[KISHIB TIMING] timeSavedEstimateServer: ${Math.max(0, Math.round(sequentialBeforeOptimization - parallelDuration))}ms`,
+    { group: "marketReferencesSupabase + metalPricesIfRequired" },
+  );
+}
 
 const marketReferencesText =
   formatMarketReferencesForPrompt(marketReferences);
@@ -3017,8 +3065,13 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
         ? images.slice(0, 6).length
         : uploadedImageUrls.slice(0, 6).length;
 
-    for (const [index, file] of images.slice(0, 6).entries()) {
-      const dataUrl = await fileToDataUrl(file);
+    const visionPreparationStartedAt = performance.now();
+    const visionFiles = images.slice(0, 6);
+    const imageDataUrls = await Promise.all(
+      visionFiles.map((file) => fileToDataUrl(file)),
+    );
+
+    for (const [index, dataUrl] of imageDataUrls.entries()) {
 
       inputContent.push({
         type: "input_text",
@@ -3046,7 +3099,12 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
       });
       geminiImages.push({ url: imageUrl });
     }
+    logDevelopmentTiming("visionPayloadPreparation", visionPreparationStartedAt, {
+      imageCount: totalVisionImages,
+      execution: imageDataUrls.length > 1 ? "parallel" : "single",
+    });
 
+    const primaryAiStartedAt = performance.now();
     const response = await client.responses.create({
       model: "gpt-4.1",
       input: [
@@ -3063,11 +3121,13 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
       temperature: 0.25,
       max_output_tokens: 1800,
     });
+    logDevelopmentTiming("primaryAI", primaryAiStartedAt);
 
     const rawText = response.output_text;
 
     let parsed: Partial<AnalysisResult>;
 
+    const primaryJsonStartedAt = performance.now();
     try {
       parsed = JSON.parse(rawText) as Partial<AnalysisResult>;
     } catch {
@@ -3079,6 +3139,7 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
         { status: 500 }
       );
     }
+    logDevelopmentTiming("primaryJsonParsing", primaryJsonStartedAt);
 
     const fallback = isFollowUpUpdate
       ? buildFollowUpFallbackResult(followUpContext, locale)
@@ -3134,7 +3195,9 @@ if (!preciousMetalValue && isPreciousMetalCandidate) {
     (scenarioMetal === "silver" || scenarioMetal === "gold") &&
     !hasPlatedOrCostumeEvidence(normalizedMetalText)
   ) {
+    const postAiMetalPricesStartedAt = performance.now();
     const spotPrices = await getMetalSpotPrices();
+    logDevelopmentTiming("metalPricesPostAI", postAiMetalPricesStartedAt);
     if (spotPrices) {
       const pricePerGramUsd = getMetalGramPrice(spotPrices, scenarioMetal);
       const purity = detectMetalPurity(scenarioMetal, normalizedMetalText);
@@ -3192,6 +3255,7 @@ if (preciousMetalValue && isPreciousMetalCandidate) {
   }));
 }
 
+const secondaryAiStartedAt = performance.now();
 const geminiSecondOpinion = await getGeminiSecondOpinion({
   locale,
   notes: [notes, followUpClaim, itemType, material, dimensions, weight, hasMark, exhibitionContext ? `Exhibition context: ${exhibitionContext}` : ""]
@@ -3200,17 +3264,23 @@ const geminiSecondOpinion = await getGeminiSecondOpinion({
   openAiResult: normalized,
   images: geminiImages,
 });
+logDevelopmentTiming("secondaryAI", secondaryAiStartedAt, {
+  provider: "Gemini",
+});
 
 if (!geminiSecondOpinion) {
   console.info("[Gemini second opinion] continuing with OpenAI result only");
 }
 
+const secondaryMergeStartedAt = performance.now();
 const reviewedResult = mergeGeminiSecondOpinion(
   normalized,
   geminiSecondOpinion,
   locale,
 );
+logDevelopmentTiming("mergeSecondaryAI", secondaryMergeStartedAt);
 
+const deepSeekStartedAt = performance.now();
 const deepSeekReview = await getDeepSeekLogicReview({
   locale,
   notes: [notes, followUpClaim, itemType, material, dimensions, weight, hasMark]
@@ -3227,14 +3297,23 @@ const deepSeekReview = await getDeepSeekLogicReview({
     .filter(Boolean)
     .join("\n\n"),
 });
+logDevelopmentTiming("deepSeek", deepSeekStartedAt);
 
+const finalMergeStartedAt = performance.now();
 const finalReviewedResult = mergeDeepSeekLogicReview(
   reviewedResult,
   deepSeekReview,
   locale,
 );
+logDevelopmentTiming("mergeModelResults", finalMergeStartedAt);
 
-return NextResponse.json(normalizeResult(finalReviewedResult, fallback, locale));
+const finalJsonStartedAt = performance.now();
+const finalResponse = NextResponse.json(
+  normalizeResult(finalReviewedResult, fallback, locale),
+);
+logDevelopmentTiming("finalJsonProcessing", finalJsonStartedAt);
+logDevelopmentTiming("analyzeRouteTotal", totalStartedAt);
+return finalResponse;
   } catch (error) {
     console.error("Analyze API error:", error);
 

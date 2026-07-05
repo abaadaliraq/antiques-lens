@@ -4,6 +4,7 @@ type Locale = "ar" | "en" | "ku" | "fr" | "hi" | "fa" | "tr" | "ru";
 
 type ReportResult = {
   title?: string;
+  itemType?: string;
   lookup?: string;
   timePeriod?: string;
   period?: string;
@@ -19,6 +20,28 @@ type ReportResult = {
   historicalReading?: string;
   safeInitialChecks?: string[];
   description?: string;
+  metalValue?: {
+    metal: "silver" | "gold" | "platinum" | "palladium" | "copper" | "unknown";
+    weightGrams?: number;
+    purityAssumption?: string;
+    spotPricePerGramUsd?: number;
+    meltValueUsdLow?: number;
+    meltValueUsdMid?: number;
+    meltValueUsdHigh?: number;
+    note?: string;
+    scenarios?: {
+      label: "light" | "medium" | "heavy";
+      labelAr: string;
+      weightGrams: number;
+      purityAssumption: string;
+      meltValueUsdLow: number;
+      meltValueUsdMid: number;
+      meltValueUsdHigh: number;
+      antiqueEstimateUsdLow: number;
+      antiqueEstimateUsdHigh: number;
+      note: string;
+    }[];
+  };
   valueDrivers?: string[];
   valueReducers?: string[];
   neededPhotos?: string[];
@@ -732,6 +755,53 @@ function ReportPage({
   );
 }
 
+function ReportLine({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value?: string;
+  strong?: boolean;
+}) {
+  const cleanValue = cleanReportText(value);
+  if (!cleanValue) return null;
+
+  return (
+    <div className="min-w-0">
+      <p className="text-[8.5px] font-black uppercase tracking-[0.14em] text-[#9a7441]">
+        {label}
+      </p>
+      <p
+        className={[
+          "mt-1 whitespace-pre-line break-words leading-[1.8]",
+          strong
+            ? "text-[13px] font-black text-[#9a5f18]"
+            : "text-[9.5px] font-semibold text-[#2a2119]",
+        ].join(" ")}
+      >
+        {cleanValue}
+      </p>
+    </div>
+  );
+}
+
+function ReportTextSection({ title, body }: { title: string; body?: string }) {
+  const cleanBody = cleanReportText(body);
+  if (!cleanBody) return null;
+
+  return (
+    <section className="border-b border-[#dfcfb7] pb-3">
+      <h3 className="mb-2 text-[9px] font-black uppercase tracking-[0.16em] text-[#9a7441]">
+        {title}
+      </h3>
+      <p className="whitespace-pre-line break-words text-[9.5px] font-semibold leading-[1.65] text-[#2a2119]">
+        {cleanBody}
+      </p>
+    </section>
+  );
+}
+
 export default function AntiqueReportDocument({
   locale,
   result,
@@ -756,6 +826,19 @@ export default function AntiqueReportDocument({
   );
   const primaryImage = reportImages[0];
   const cleanTitle = cleanReportText(result.title) || "KISHIB Evaluation";
+  const showPreciousMetalEstimate =
+    result.metalValue?.metal === "gold" || result.metalValue?.metal === "silver";
+  const reportText = {
+    name: locale === "ar" ? "الاسم" : "Name",
+    itemType: locale === "ar" ? "نوع القطعة" : "Object type",
+    age: locale === "ar" ? "العمر" : "Age",
+    period: locale === "ar" ? "الحقبة" : "Period",
+    description: locale === "ar" ? "الوصف والتحليل" : "Description and analysis",
+    metalEstimate: locale === "ar" ? "تخمينات قيمة المعدن" : "Metal value estimates",
+    weight: locale === "ar" ? "الوزن المفترض" : "Assumed weight",
+    rawValue: locale === "ar" ? "قيمة المعدن الخام" : "Raw metal value",
+    antiqueValue: locale === "ar" ? "مع قيمة الأنتيك" : "With antique value",
+  };
   const priceReason = compactReportText(
     result.priceReasoning || result.description || result.history || value || "",
     260,
@@ -785,17 +868,21 @@ export default function AntiqueReportDocument({
     >
       <div className={variant === "print" ? "" : "space-y-6"}>
         <ReportPage pageNumber="1 / 1" labels={labels}>
-          <header className="mb-4 flex items-start justify-between gap-5 border-b border-[#dfcfb7] pb-4">
+          <header className="mb-3 flex items-start justify-between gap-4 border-b border-[#dfcfb7] pb-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-[#1f1711] text-[15px] font-black text-[#f5d8a7]">
-                K
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden">
+                <img
+                  src="/brand/aaa.png"
+                  alt="KISHIB"
+                  className="h-full w-full object-contain"
+                />
               </div>
 
               <div>
                 <p className="text-[9px] font-black uppercase tracking-[0.22em] text-[#9a7441]">
                   {labels.preliminary}
                 </p>
-                <h1 className="mt-1 text-[22px] font-black leading-tight tracking-tight text-[#1c1713]">
+                <h1 className="mt-0.5 text-[19px] font-black leading-tight tracking-tight text-[#1c1713]">
                   KISHIB Report
                 </h1>
               </div>
@@ -815,6 +902,91 @@ export default function AntiqueReportDocument({
             </div>
           </header>
 
+          <div className="space-y-3 text-[10px] leading-[1.65]">
+            <section className="border-b border-[#dfcfb7] pb-3">
+              <p className="text-[9px] font-black uppercase tracking-[0.16em] text-[#9a7441]">
+                {reportText.name}
+              </p>
+              <h2 className="mt-1 break-words text-[20px] font-black leading-[1.3] text-[#1e1712]">
+                {cleanTitle}
+              </h2>
+            </section>
+
+            {primaryImage ? (
+              <section className="border-b border-[#dfcfb7] pb-3">
+                <div className="flex h-[175px] items-center justify-center bg-[#efe3d2] p-2">
+                  <img
+                    src={primaryImage}
+                    alt={cleanTitle}
+                    className="max-h-[160px] max-w-full object-contain"
+                  />
+                </div>
+              </section>
+            ) : null}
+
+            <section className="grid grid-cols-2 gap-x-7 gap-y-2.5 border-b border-[#dfcfb7] pb-3">
+              <ReportLine label={reportText.itemType} value={result.itemType} />
+              <ReportLine label={labels.origin} value={result.origin} />
+              <ReportLine label={reportText.age} value={result.timePeriod} />
+              {result.period && result.period !== result.timePeriod ? (
+                <ReportLine label={reportText.period} value={result.period} />
+              ) : null}
+              <ReportLine label={labels.value} value={value} strong />
+            </section>
+
+            <ReportTextSection title={labels.identification} body={result.lookup} />
+            <ReportTextSection
+              title={reportText.description}
+              body={result.history || result.description}
+            />
+            <ReportTextSection title={labels.priceReasoning} body={result.priceReasoning} />
+
+            {showPreciousMetalEstimate && result.metalValue ? (
+              <section className="border-t border-[#dfcfb7] pt-5">
+                <h3 className="mb-3 text-[11px] font-black text-[#9a7441]">
+                  {reportText.metalEstimate}
+                </h3>
+                {result.metalValue.scenarios?.length ? (
+                  <div className="divide-y divide-[#dfcfb7] border-y border-[#dfcfb7]">
+                    {result.metalValue.scenarios.map((scenario) => (
+                      <div key={scenario.label} className="grid grid-cols-3 gap-4 py-3">
+                        <ReportLine
+                          label={reportText.weight}
+                          value={`${locale === "ar" ? scenario.labelAr : scenario.label} · ${scenario.weightGrams}g`}
+                        />
+                        <ReportLine label={reportText.rawValue} value={`$${scenario.meltValueUsdMid}`} />
+                        <ReportLine
+                          label={reportText.antiqueValue}
+                          value={`$${scenario.antiqueEstimateUsdLow} - $${scenario.antiqueEstimateUsdHigh}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-4 border-y border-[#dfcfb7] py-3">
+                    <ReportLine label={reportText.itemType} value={result.metalValue.metal} />
+                    <ReportLine
+                      label={reportText.weight}
+                      value={result.metalValue.weightGrams ? `${result.metalValue.weightGrams}g` : undefined}
+                    />
+                    <ReportLine
+                      label={reportText.rawValue}
+                      value={result.metalValue.meltValueUsdLow && result.metalValue.meltValueUsdHigh
+                        ? `$${result.metalValue.meltValueUsdLow} - $${result.metalValue.meltValueUsdHigh}`
+                        : undefined}
+                    />
+                  </div>
+                )}
+                {result.metalValue.note ? (
+                  <p className="mt-3 whitespace-pre-line break-words text-[10px] text-[#665442]">
+                    {cleanReportText(result.metalValue.note)}
+                  </p>
+                ) : null}
+              </section>
+            ) : null}
+          </div>
+
+          <div className="hidden" aria-hidden="true">
           <section className="mb-4 text-center">
             <h2 className="mx-auto max-w-[670px] break-words text-[24px] font-black leading-[1.25] text-[#1e1712]">
               {cleanTitle}
@@ -898,6 +1070,7 @@ export default function AntiqueReportDocument({
             <ListSection title={labels.valueDrivers} items={valueDrivers} />
             <ListSection title={labels.valueReducers} items={valueReducers} />
           </section>
+          </div>
         </ReportPage>
       </div>
 
