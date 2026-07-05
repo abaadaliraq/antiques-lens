@@ -1,13 +1,17 @@
 ﻿"use client";
 
 import {
+  ArrowLeft,
+  ArrowRight,
+  ChevronUp,
   ChevronLeft,
   ChevronRight,
   FileText,
   Printer,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import type { AnalysisResult, Locale, SimilarImageResult } from "./types";
 import AntiqueReportDocument from "./AntiqueReportDocument";
 import ValuationRangeCard from "./ValuationRangeCard";
@@ -34,7 +38,6 @@ type ResultLabels = {
   soon: string;
   neededPhotos: string;
   followUp: string;
-  confidence: string;
   notice: string;
   addInfo?: string;
 };
@@ -49,7 +52,26 @@ type Props = {
   isLoadingSimilar?: boolean;
   userNote?: string;
   followUpPanel?: React.ReactNode;
+  onBack?: () => void;
 };
+
+function getResultExperienceLabels(locale: Locale) {
+  if (locale === "ar") {
+    return {
+      back: "رجوع",
+      swipe: "اسحب للأعلى لعرض تفاصيل التقييم",
+      collapse: "اسحب للأسفل للعودة إلى الملخص",
+      value: "القيمة التقديرية",
+    };
+  }
+
+  return {
+    back: "Back",
+    swipe: "Swipe up to view evaluation details",
+    collapse: "Swipe down to return to the summary",
+    value: "Estimated value",
+  };
+}
 
 function getFallbackText(locale: Locale) {
   if (locale === "en") return "Not clear";
@@ -567,12 +589,19 @@ export default function ResultView({
   isLoadingSimilar = false,
   userNote = "",
   followUpPanel,
+  onBack,
 }: Props) {
   const [openImageIndex, setOpenImageIndex] = useState<number | null>(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [failedImageSources, setFailedImageSources] = useState<Set<string>>(
     () => new Set(),
   );
+  const [isSheetExpanded, setIsSheetExpanded] = useState(false);
+  const [hasDraggedSheet, setHasDraggedSheet] = useState(false);
+  const sheetRef = useRef<HTMLElement | null>(null);
+  const dragStartYRef = useRef<number | null>(null);
+  const dragMovedRef = useRef(false);
+  const ignoreNextClickRef = useRef(false);
 useEffect(() => {
   if (isReportOpen) {
     document.body.classList.add("kishib-report-open");
@@ -590,6 +619,7 @@ useEffect(() => {
   const similarSourceLabel = getSimilarSourceLabel(locale);
   const itemTypeLabel = getItemTypeLabel(locale);
   const silverScenarioLabels = getSilverScenarioLabels(locale);
+  const experienceLabels = getResultExperienceLabels(locale);
 
   const resultWithArchiveImages = result as AnalysisResult & {
     imagePreview?: string;
@@ -690,6 +720,14 @@ useEffect(() => {
   );
   const cleanUserNote = cleanDisplayText(userNote);
   const cleanTitle = cleanDisplayText(result.title) || labels.result;
+  const heroMetadata = [
+    result.timePeriod || result.period,
+    result.itemType,
+    result.material,
+  ]
+    .map(cleanDisplayText)
+    .filter((value, index, values) => value && values.indexOf(value) === index)
+    .join(" · ");
   const canShowBrandAssessment =
     shouldShowBrandAssessment(result) &&
     Boolean(
@@ -746,46 +784,88 @@ useEffect(() => {
     });
   }
 
-  return (
-    <article className="kishib-result-view relative pb-32 text-[#241913]">
-      <div className="mx-auto w-full max-w-6xl px-3 pt-2 sm:px-5 md:pt-5">
-        <header className="kishib-primary-result-card">
-          {mainImage ? (
-            <div className="relative min-h-[380px] overflow-hidden sm:min-h-[470px] md:min-h-[520px]">
-              <div className="absolute inset-0 hidden">
-                <img
-                  src={mainImage}
-                  alt=""
-                  aria-hidden="true"
-                  onError={() => handleImageError(mainImage)}
-                  className="h-full w-full scale-110 object-cover opacity-10 blur-3xl"
-                />
-              </div>
+  function handleSheetPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+    dragStartYRef.current = event.clientY;
+    dragMovedRef.current = false;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
 
+  function handleSheetPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (dragStartYRef.current === null) return;
+
+    const delta = event.clientY - dragStartYRef.current;
+    if (Math.abs(delta) > 6) dragMovedRef.current = true;
+    if (sheetRef.current) {
+      const offset = Math.max(-220, Math.min(220, delta));
+      sheetRef.current.style.transform = `translateY(${offset}px)`;
+    }
+  }
+
+  function handleSheetPointerEnd(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (dragStartYRef.current === null) return;
+
+    const delta = event.clientY - dragStartYRef.current;
+    const moved = dragMovedRef.current;
+
+    if (delta < -48) {
+      setIsSheetExpanded(true);
+      setHasDraggedSheet(true);
+    } else if (delta > 48) {
+      setIsSheetExpanded(false);
+      setHasDraggedSheet(true);
+    }
+
+    ignoreNextClickRef.current = moved;
+    dragStartYRef.current = null;
+    dragMovedRef.current = false;
+    if (sheetRef.current) sheetRef.current.style.transform = "";
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function toggleSheet() {
+    if (ignoreNextClickRef.current) {
+      ignoreNextClickRef.current = false;
+      return;
+    }
+
+    setIsSheetExpanded((current) => !current);
+    setHasDraggedSheet(true);
+  }
+
+  return (
+    <article className="kishib-result-view fixed inset-0 z-30 overflow-hidden bg-[#241713] text-[#241913]">
+      <header className="absolute inset-x-0 top-0 h-[66dvh] min-h-[430px] overflow-hidden bg-[#3B1712]">
+          {mainImage ? (
+            <div className="relative h-full overflow-hidden">
               <button
                 type="button"
                 onClick={() => openImage(0)}
-                className="relative z-10 flex h-[275px] w-full items-center justify-center p-4 pb-2 transition hover:bg-[#fff4e2]/8 sm:h-[350px] md:h-[390px]"
+                className="absolute inset-0 h-full w-full"
                 aria-label="Open image"
               >
                 <img
                   src={mainImage}
                   alt={result.title || labels.result}
                   onError={() => handleImageError(mainImage)}
-                  className="h-full w-full rounded-[16px] border border-[#d6b576]/35 object-contain shadow-lg"
+                  className="h-full w-full object-cover object-center"
                 />
               </button>
 
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(24,9,7,0.98)_0%,rgba(35,12,8,0.72)_24%,rgba(35,12,8,0.12)_62%,rgba(35,12,8,0.35)_100%)]" />
+
               {galleryImages.length > 1 && (
-                <div className="relative z-20 border-y border-[#d6b576]/25 bg-[#230c08]/18 px-3 py-2 backdrop-blur">
-                  <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
+                <div className="absolute inset-x-0 bottom-[132px] z-20 px-4 sm:px-7">
+                  <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {galleryImages.map((src, index) => (
                       <button
                         type="button"
                         key={`${src}-${index}`}
                         onClick={() => openImage(index)}
                         className={[
-                          "relative h-20 w-20 shrink-0 overflow-hidden rounded-[12px] border bg-[#fff4e2]/10 transition sm:h-24 sm:w-24",
+                          "relative h-14 w-14 shrink-0 overflow-hidden rounded-[12px] border bg-[#fff4e2]/10 shadow-lg transition sm:h-16 sm:w-16",
                           index === 0
                             ? "border-[#d6b576]/70"
                             : "border-[#d6b576]/30 hover:border-[#d6b576]/60",
@@ -808,19 +888,24 @@ useEffect(() => {
                 </div>
               )}
 
-              <div className="relative z-10 px-5 pb-5 pt-3 sm:px-7 md:px-8">
+              <div className="absolute inset-x-0 bottom-5 z-20 px-5 sm:px-8 lg:px-12">
                 <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.3em] text-[#d6b576]">
                   {labels.result}
                 </p>
 
-                <h1 className="max-w-4xl text-[25px] font-medium leading-[1.22] tracking-[-0.035em] text-[#fff4e2] sm:text-[32px] md:text-[42px]">
+                <h1 className="max-w-4xl text-[29px] font-medium leading-[1.14] tracking-[-0.04em] text-[#fff4e2] sm:text-[38px] md:text-[46px]">
                   {cleanTitle}
                 </h1>
-
+                {heroMetadata ? (
+                  <p className="mt-2 line-clamp-1 text-[12px] text-[#f3e7d2]/72 sm:text-sm">
+                    {heroMetadata}
+                  </p>
+                ) : null}
               </div>
             </div>
           ) : (
-            <div className="px-5 py-6 sm:px-8 md:px-10">
+            <div className="flex h-full items-end bg-[radial-gradient(circle_at_top,#9A3D2A_0%,#3B1712_58%,#241713_100%)] px-5 pb-8 sm:px-8 md:px-10">
+              <div>
               <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.3em] text-[#d6b576]">
                 {labels.result}
               </p>
@@ -828,10 +913,77 @@ useEffect(() => {
               <h1 className="max-w-4xl text-[25px] font-medium leading-[1.22] tracking-[-0.035em] text-[#fff4e2] sm:text-[32px] md:text-[42px]">
                   {cleanTitle}
               </h1>
-
+              </div>
             </div>
           )}
         </header>
+
+        <div dir="ltr" className="absolute inset-x-0 top-0 z-30 flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-7">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label={experienceLabels.back}
+            className="grid h-11 w-11 place-items-center rounded-full bg-[#F3E7D2] text-[#3B1712] shadow-[0_8px_24px_rgba(20,8,5,0.32)] transition hover:bg-[#fff8eb] active:scale-95"
+          >
+            {locale === "ar" ? <ArrowRight className="h-5 w-5" /> : <ArrowLeft className="h-5 w-5" />}
+          </button>
+
+          <div className="flex flex-col items-center gap-0.5 text-[#FFF8EB] drop-shadow-[0_4px_10px_rgba(20,8,5,0.45)]">
+            <img
+              src="/brand/kishib-logo.png"
+              alt=""
+              aria-hidden="true"
+              className="h-7 w-7 object-contain"
+            />
+            <span className="text-[8px] font-medium tracking-[0.24em]">KISHIB</span>
+          </div>
+        </div>
+
+      <section
+        ref={sheetRef}
+        className={[
+          "absolute inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 rounded-t-[30px] border-t border-[#C79A45]/35 bg-[#F3E7D2] shadow-[0_-20px_60px_rgba(35,12,8,0.3)] transition-[top] duration-300 ease-out",
+          isSheetExpanded ? "top-[7dvh]" : "top-[64dvh]",
+        ].join(" ")}
+        aria-label={labels.result}
+      >
+        <button
+          type="button"
+          onPointerDown={handleSheetPointerDown}
+          onPointerMove={handleSheetPointerMove}
+          onPointerUp={handleSheetPointerEnd}
+          onPointerCancel={handleSheetPointerEnd}
+          onClick={toggleSheet}
+          aria-expanded={isSheetExpanded}
+          className="block w-full touch-none select-none px-5 pb-3 pt-3 text-center"
+        >
+          <span className="mx-auto block h-1.5 w-12 rounded-full bg-[#3B1712]/24" />
+          <span className="mt-1.5 flex items-center justify-center gap-1 text-[11px] font-medium text-[#735f4b]">
+            <ChevronUp
+              className={[
+                "h-4 w-4 text-[#9A3D2A] transition-transform duration-300",
+                isSheetExpanded ? "rotate-180" : hasDraggedSheet ? "opacity-60" : "animate-[kishib-sheet-hint_2.4s_ease-in-out_infinite]",
+              ].join(" ")}
+            />
+            {isSheetExpanded ? experienceLabels.collapse : experienceLabels.swipe}
+          </span>
+        </button>
+
+        <div className="border-y border-[#C79A45]/22 px-5 py-3 sm:px-8">
+          <div className="mx-auto max-w-6xl">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9A3D2A]">
+                {experienceLabels.value}
+              </p>
+              <p className="mt-1 truncate text-[20px] font-semibold text-[#3B1712] sm:text-[24px]">
+                {cleanDisplayText(result.estimatedValue) || fallbackText}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="h-[calc(100%_-_8.4rem)] overflow-y-auto overscroll-contain px-3 pb-12 pt-1 [scrollbar-width:thin] sm:px-5">
+      <div className="mx-auto w-full max-w-6xl">
 
         {cleanUserNote ? (
           <section className="mt-3 rounded-[18px] border border-[#d2b98f] bg-[#fff4e2]/82 p-4">
@@ -1131,8 +1283,7 @@ useEffect(() => {
                   {cleanDisplayText(result.brandAssessment?.possibleBrand)}
                 </p>
                 <p className="mt-2 text-[12px] leading-6 text-[#735f4b]">
-                  {cleanDisplayText(result.brandAssessment?.category)} ·{" "}
-                  {result.brandAssessment?.confidence}
+                  {cleanDisplayText(result.brandAssessment?.category)}
                 </p>
                 <p className="mt-3 text-[12px] leading-6 text-[#735f4b]">
                   {cleanDisplayText(result.brandAssessment?.authenticityStatus)}
@@ -1247,6 +1398,8 @@ useEffect(() => {
           </div>
         </section>
       </div>
+        </div>
+      </section>
 
       {openedImage && (
         <div
@@ -1375,6 +1528,17 @@ useEffect(() => {
       </div>
 
       <style jsx global>{`
+      @keyframes kishib-sheet-hint {
+        0%, 100% {
+          transform: translateY(0);
+          opacity: 0.62;
+        }
+        50% {
+          transform: translateY(-5px);
+          opacity: 1;
+        }
+      }
+
       body.kishib-report-open .kishib-app-chrome {
   display: none !important;
 }

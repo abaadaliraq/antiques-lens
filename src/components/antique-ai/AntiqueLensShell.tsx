@@ -677,7 +677,7 @@ export default function AntiqueLensShell() {
             </div>
 
           </div>
-        ) : (
+        ) : !lens.result ? (
           <>
            <div className="kishib-app-chrome fixed right-4 top-4 z-40 flex items-center gap-2 lg:right-8 lg:top-8">
               <NotificationsButton locale={lens.locale} />
@@ -688,7 +688,7 @@ export default function AntiqueLensShell() {
             </div>
 
           </>
-        )}
+        ) : null}
 
         {lens.isTranslatingResult && (
           <div className="fixed inset-x-0 top-20 z-50 mx-auto flex w-fit items-center gap-3 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/92 px-5 py-3 text-[12px] font-medium text-[#735f4b] shadow-[0_16px_38px_rgba(62,39,22,0.12)] backdrop-blur-2xl">
@@ -796,7 +796,6 @@ export default function AntiqueLensShell() {
                   soon: lens.t.soon,
                   neededPhotos: lens.t.neededPhotos,
                   followUp: lens.t.followUp,
-                  confidence: lens.t.confidence,
                   notice: lens.t.notice,
                   addInfo: lens.t.addInfo,
                 }}
@@ -807,6 +806,7 @@ export default function AntiqueLensShell() {
                 isLoadingSimilar={isSimilarLoading}
                 userNote={lens.prompt}
                 followUpPanel={followUpPanel}
+                onBack={lens.resetEvaluation}
               />
             </div>
           )}
