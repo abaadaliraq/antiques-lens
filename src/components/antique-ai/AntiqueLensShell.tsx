@@ -11,7 +11,7 @@ import CompleteProfileModal from "@/components/antique-ai/CompleteProfileModal";
 import CookieBar from "@/components/antique-ai/CookieBar";
 import EvaluationComposer from "@/components/antique-ai/EvaluationComposer";
 import FollowUpEvaluationPanel from "@/components/antique-ai/FollowUpEvaluationPanel";
-import Kishib3DLoader from "@/components/ui/Kishib3DLoader";
+import KishibLoader from "@/components/antique-ai/KishibLoader";
 import NotificationsButton from "@/components/antique-ai/NotificationsButton";
 import PlatformNewsTicker from "@/components/antique-ai/PlatformNewsTicker";
 import ResultView from "@/components/antique-ai/ResultView";
@@ -485,7 +485,6 @@ export default function AntiqueLensShell() {
   });
 
   if (!authReady) {
-    return <Kishib3DLoader />;
   }
 
   if (!hasSession) {
@@ -502,7 +501,6 @@ export default function AntiqueLensShell() {
   }
 
   if (!profileReady) {
-    return <Kishib3DLoader />;
   }
 
   if (!profileComplete) {
@@ -752,8 +750,7 @@ export default function AntiqueLensShell() {
               />
             </div>
           )}
-
-          {lens.isAnalyzing ? <Kishib3DLoader overlay /> : null}
+{lens.isAnalyzing && <KishibLoader />}
 
           {lens.result && !lens.isAnalyzing && (
             <div className="mx-auto w-full max-w-md pt-2 sm:max-w-xl lg:max-w-5xl xl:max-w-6xl">
