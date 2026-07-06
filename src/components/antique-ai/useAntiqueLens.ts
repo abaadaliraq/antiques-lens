@@ -12,12 +12,11 @@ import { useFollowUpEvaluation } from "./useFollowUpEvaluation";
 import {
   loadEvaluationArchiveItemsFromSupabase,
   mergeEvaluationArchiveItems,
-  saveEvaluationToSupabase,
 } from "@/lib/evaluationsSupabase";
 import {
   canUserAnalyze,
   DEFAULT_USAGE_LIMIT_STATUS,
-  incrementAnalysisUsage,
+  getSupabaseAccessToken,
   type UsageLimitStatus,
 } from "@/lib/usageLimitsSupabase";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
@@ -609,6 +608,15 @@ setIsLoadingSimilar(false);
   }
 
   function goBackInsideApp() {
+    const dismissOverlay = document.querySelector<HTMLButtonElement>(
+      '[data-kishib-dismiss-overlay="true"]',
+    );
+
+    if (dismissOverlay) {
+      dismissOverlay.click();
+      return true;
+    }
+
     const screen = currentScreenRef.current;
 
     if (screen === "follow-up") {
@@ -1329,6 +1337,7 @@ async function handleAnalyze() {
         formData.append("uploadedImageUrls", url);
       });
       formData.append("uploadedImageUrl", uploadedImageUrl);
+      if (cloudinaryPublicId) formData.append("cloudinaryPublicId", cloudinaryPublicId);
       cloudinaryDurationMs = performance.now() - cloudinaryStartedAt;
       logDevelopmentTiming("cloudinaryUpload", cloudinaryStartedAt, {
         imageCount: selectedFiles.slice(0, 6).length,
@@ -1443,17 +1452,37 @@ async function handleAnalyze() {
 
     // 4) Analyze with OpenAI
     const aiPipelineStartedAt = performance.now();
+    const accessToken = await getSupabaseAccessToken();
+    if (!accessToken) {
+      throw new Error(getUsageMessage(locale, "auth"));
+    }
+    const analysisRequestId = crypto.randomUUID();
     const response = await fetch("/api/analyze", {
       method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "X-KISHIB-REQUEST-ID": analysisRequestId,
+      },
       body: formData,
     });
 
     const data = await response.json();
+    const serverEvaluationId =
+      typeof data?.evaluationId === "string" ? data.evaluationId : analysisRequestId;
     logDevelopmentTiming("aiPipeline", aiPipelineStartedAt, {
       note: "Server logs split primaryAI, secondaryAI, DeepSeek, and merges",
     });
 
     if (!response.ok) {
+      if (data?.code === "TRIAL_LIMIT_REACHED") {
+        setUsageStatus((current) => ({
+          ...current,
+          canAnalyze: false,
+          remainingCredits: 0,
+          reason: "limit_reached",
+        }));
+        openSubscriptionModal();
+      }
       throw new Error(data?.error || "Failed to analyze request.");
     }
 
@@ -1636,8 +1665,7 @@ if (uploadedImageUrl) {
   });
 }
 
-const usageAfterSuccessfulAnalysis = await incrementAnalysisUsage();
-setUsageStatus(usageAfterSuccessfulAnalysis);
+await refreshUsageStatus();
 
 const finalJsonStartedAt = performance.now();
 setSimilarImages(finalSimilarImages);
@@ -1684,7 +1712,7 @@ const analyzedArchiveResult = finalResult as AnalysisResult & {
   objectName?: string;
 };
 const archiveItem: ArchiveItem = {
-  id: crypto.randomUUID(),
+  id: serverEvaluationId,
   title:
     analyzedArchiveResult?.title ||
     analyzedArchiveResult?.itemName ||
@@ -1735,17 +1763,7 @@ void (async () => {
   const archiveSavePromise = saveHistory(archiveItem).finally(() => {
     logDevelopmentTiming("saveArchive", archiveSaveStartedAt);
   });
-  const supabaseSaveStartedAt = performance.now();
-  const supabaseSavePromise = saveEvaluationToSupabase({
-    archiveItem,
-    locale,
-    imageUrl: uploadedImageUrl || finalResult.imageUrl,
-    cloudinaryPublicId,
-  }).finally(() => {
-    logDevelopmentTiming("saveEvaluationSupabase", supabaseSaveStartedAt);
-  });
-
-  await Promise.allSettled([archiveSavePromise, supabaseSavePromise]);
+  await Promise.allSettled([archiveSavePromise]);
   logDevelopmentTiming("backgroundSaveGroup", backgroundSaveStartedAt, {
     execution: "parallel",
     blocksResultDisplay: false,

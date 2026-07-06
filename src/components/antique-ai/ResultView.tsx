@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Kishib3DLoader from "@/components/ui/Kishib3DLoader";
 import {
   ArrowLeft,
   ArrowRight,
@@ -592,6 +593,8 @@ export default function ResultView({
   onBack,
 }: Props) {
   const [openImageIndex, setOpenImageIndex] = useState<number | null>(null);
+  const [openedSimilarImage, setOpenedSimilarImage] =
+    useState<SimilarImageResult | null>(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [failedImageSources, setFailedImageSources] = useState<Set<string>>(
     () => new Set(),
@@ -677,7 +680,7 @@ useEffect(() => {
     openImageIndex !== null ? galleryImages[openImageIndex] : null;
 
   useEffect(() => {
-    if (!openedImage && !isReportOpen) return;
+    if (!openedImage && !openedSimilarImage && !isReportOpen) return;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -685,6 +688,7 @@ useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setOpenImageIndex(null);
+        setOpenedSimilarImage(null);
         setIsReportOpen(false);
       }
 
@@ -711,7 +715,7 @@ useEffect(() => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [openedImage, isReportOpen, galleryImages.length]);
+  }, [openedImage, openedSimilarImage, isReportOpen, galleryImages.length]);
 
   if (!result) return null;
 
@@ -1319,22 +1323,24 @@ useEffect(() => {
             </div>
 
             {isLoadingSimilar ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="aspect-[4/3] animate-pulse rounded-[16px] border border-[#d2b98f] bg-[#fff4e2]/70"
-                  />
-                ))}
+              <div>
+                <Kishib3DLoader compact label={locale === "ar" ? "نكشف الأثر" : "Revealing the trace"} />
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="aspect-[4/3] animate-pulse rounded-[16px] border border-[#d2b98f] bg-[#fff4e2]/70"
+                    />
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {resolvedSimilarImages.map((item, index) => (
-                  <a
+                  <button
+                    type="button"
                     key={`${item.imageUrl}-${index}`}
-                    href={item.link || item.imageUrl}
-                    target="_blank"
-                    rel="noreferrer"
+                    onClick={() => setOpenedSimilarImage(item)}
                     className="group overflow-hidden rounded-[16px] border border-[#d2b98f] bg-[#fff4e2]/90 shadow-[0_8px_24px_rgba(62,39,22,0.08)] transition hover:border-[#b88a3d]/65 hover:shadow-[0_10px_28px_rgba(62,39,22,0.13)]"
                   >
                     <div className="aspect-[4/3] overflow-hidden bg-[#d9b59e]">
@@ -1362,7 +1368,7 @@ useEffect(() => {
                         </span>
                       </div>
                     </div>
-                  </a>
+                  </button>
                 ))}
               </div>
             )}
@@ -1416,6 +1422,7 @@ useEffect(() => {
             }}
             className="absolute end-4 top-4 z-30 grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/10 text-white/85 backdrop-blur-xl transition hover:bg-white/15 hover:text-white"
             aria-label="Close image"
+            data-kishib-dismiss-overlay="true"
           >
             <X className="h-4 w-4" />
           </button>
@@ -1467,6 +1474,56 @@ useEffect(() => {
         </div>
       )}
 
+      {openedSimilarImage ? (
+        <div
+          className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#160805]/92 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setOpenedSimilarImage(null)}
+        >
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setOpenedSimilarImage(null);
+            }}
+            className="absolute end-4 top-[max(1rem,env(safe-area-inset-top))] grid h-11 w-11 place-items-center rounded-full bg-[#F3E7D2] text-[#3B1712] shadow-lg"
+            aria-label={reportLabels.close}
+            data-kishib-dismiss-overlay="true"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          <div
+            className="flex max-h-[90dvh] w-full max-w-3xl flex-col overflow-hidden rounded-[22px] bg-[#F3E7D2] shadow-[0_28px_90px_rgba(0,0,0,0.55)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <img
+              src={openedSimilarImage.imageUrl}
+              alt={openedSimilarImage.title || labels.similar}
+              className="min-h-0 w-full flex-1 object-contain"
+            />
+            <div className="border-t border-[#C79A45]/30 px-4 py-3">
+              {cleanDisplayText(openedSimilarImage.title) ? (
+                <p className="text-sm font-medium text-[#3B1712]">
+                  {cleanDisplayText(openedSimilarImage.title)}
+                </p>
+              ) : null}
+              {openedSimilarImage.link ? (
+                <a
+                  href={openedSimilarImage.link}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 inline-flex text-xs font-semibold text-[#9A3D2A] underline decoration-[#C79A45]/55 underline-offset-4"
+                >
+                  {locale === "ar" ? "فتح المصدر" : "Open source"}
+                </a>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {isReportOpen && (
         <div
           className="fixed inset-0 z-[99998] overflow-x-hidden bg-[#efe3cf] text-[#241913]"
@@ -1478,6 +1535,7 @@ useEffect(() => {
               <button
                 type="button"
                 onClick={() => setIsReportOpen(false)}
+                data-kishib-dismiss-overlay="true"
                 className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-[12px] border border-[#d2b98f] bg-[#efe3cf]/70 px-3 text-[12px] font-semibold text-[#735f4b]"
               >
                 <ChevronLeft className="h-4 w-4" />
