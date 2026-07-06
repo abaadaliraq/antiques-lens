@@ -11,11 +11,12 @@ import CompleteProfileModal from "@/components/antique-ai/CompleteProfileModal";
 import CookieBar from "@/components/antique-ai/CookieBar";
 import EvaluationComposer from "@/components/antique-ai/EvaluationComposer";
 import FollowUpEvaluationPanel from "@/components/antique-ai/FollowUpEvaluationPanel";
-import Kishib3DLoader from "@/components/ui/Kishib3DLoader";
+import KishibLoader from "@/components/antique-ai/KishibLoader";
 import NotificationsButton from "@/components/antique-ai/NotificationsButton";
 import PlatformNewsTicker from "@/components/antique-ai/PlatformNewsTicker";
 import ResultView from "@/components/antique-ai/ResultView";
 import SubscriptionModal from "@/components/antique-ai/SubscriptionModal";
+import ThinkingMotion from "@/components/antique-ai/ThinkingMotion";
 import UserMenu from "@/components/antique-ai/UserMenu";
 import {
   ensureCurrentUserProfile,
@@ -249,10 +250,11 @@ export default function AntiqueLensShell() {
   const [profileReady, setProfileReady] = useState(false);
   const [profileComplete, setProfileComplete] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [appRestoring, setAppRestoring] = useState(false);
 
-  async function refreshProfile({ silent = false }: { silent?: boolean } = {}) {
+  async function refreshProfile() {
     try {
-      if (!silent) setProfileReady(false);
+      setProfileReady(false);
       const result = await ensureCurrentUserProfile();
       setProfile(result.profile);
       setProfileComplete(result.complete);
@@ -415,6 +417,8 @@ export default function AntiqueLensShell() {
       if (isRestoring) return;
 
       isRestoring = true;
+      setAppRestoring(true);
+
       try {
         const supabase = getSupabaseBrowserClient();
         const { data } = await supabase.auth.getSession();
@@ -425,7 +429,7 @@ export default function AntiqueLensShell() {
         setAuthReady(true);
 
         if (sessionIsActive) {
-          await refreshProfile({ silent: true });
+          await refreshProfile();
         } else {
           setProfile(null);
           setProfileComplete(false);
@@ -435,6 +439,7 @@ export default function AntiqueLensShell() {
         console.warn("Visible app session restore skipped.");
       } finally {
         isRestoring = false;
+        setAppRestoring(false);
       }
     }
 
@@ -485,7 +490,7 @@ export default function AntiqueLensShell() {
   });
 
   if (!authReady) {
-    return <Kishib3DLoader />;
+    return <KishibLoader />;
   }
 
   if (!hasSession) {
@@ -502,7 +507,7 @@ export default function AntiqueLensShell() {
   }
 
   if (!profileReady) {
-    return <Kishib3DLoader />;
+    return <KishibLoader />;
   }
 
   if (!profileComplete) {
@@ -527,7 +532,7 @@ export default function AntiqueLensShell() {
   );
   const copy = homeCopy(lens.locale);
   const latestItems = lens.history;
-  const showHomeTicker = !lens.result;
+  const showHomeTicker = !lens.result && !lens.isAnalyzing;
 
   function handleDeleteArchiveItem(id: string) {
     const confirmed = window.confirm(
@@ -635,6 +640,8 @@ export default function AntiqueLensShell() {
       {!lens.result ? <AntiqueBackground /> : null}
 
       <div className="relative z-10 min-h-dvh">
+        {appRestoring ? <KishibLoader overlay /> : null}
+
         {showHomeTicker ? (
 <div className="kishib-app-chrome fixed inset-x-0 top-0 z-50">
             <PlatformNewsTicker locale={lens.locale} />
@@ -704,7 +711,7 @@ export default function AntiqueLensShell() {
             showHomeTicker ? "pt-20 lg:pt-24" : "pt-10 lg:pt-10",
           ].join(" ")}
         >
-          {!lens.result && (
+          {!lens.result && !lens.isAnalyzing && (
             <div className="mx-auto flex w-full max-w-[520px] flex-col gap-5 lg:max-w-6xl lg:gap-10">
               <section className="mx-auto w-full lg:max-w-[720px]">
                 <div className="mb-5 text-center lg:text-center">
@@ -753,7 +760,14 @@ export default function AntiqueLensShell() {
             </div>
           )}
 
-          {lens.isAnalyzing ? <Kishib3DLoader overlay /> : null}
+          {lens.isAnalyzing && (
+            <div className="flex min-h-[calc(100dvh-8rem)] items-center justify-center">
+              <ThinkingMotion
+                locale={lens.locale}
+                imagePreview={lens.imagePreview ?? null}
+              />
+            </div>
+          )}
 
           {lens.result && !lens.isAnalyzing && (
             <div className="mx-auto w-full max-w-md pt-2 sm:max-w-xl lg:max-w-5xl xl:max-w-6xl">

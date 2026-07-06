@@ -1,11 +1,5 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
-import {
-  authorizeAnalysisRequest,
-  failAndRefundAnalysis,
-  persistAndCompleteAnalysis,
-} from "@/lib/analysisAccessServer";
-import { shouldForceStagingAiFailure } from "@/lib/stagingForcedAiFailure";
 import { buildKnowledgeContext } from "../../../lib/antiqueKnowledge";
 import { buildArtistKnowledgeContext } from "@/data/artistKnowledgeBase";
 export const runtime = "nodejs";
@@ -2628,48 +2622,19 @@ async function fileToDataUrl(file: File) {
   return `data:${mimeType};base64,${base64}`;
 }
 
-class AnalysisRequestError extends Error {
-  constructor(message: string, readonly status: number, readonly code: string) {
-    super(message);
-  }
-}
-
 export async function POST(request: Request) {
   let requestLocale: Locale = "ar";
-  let activeAttempt: { userId: string; requestId: string } | null = null;
   const totalStartedAt = performance.now();
 
   try {
-    const access = await authorizeAnalysisRequest(request);
-    if (!access.ok) {
-      return NextResponse.json(
-        { error: access.message, code: access.code },
-        { status: access.status },
-      );
-    }
-    if (access.action === "cached") {
-      return NextResponse.json({
-        ...access.decision.cachedResult,
-        evaluationId: access.decision.evaluationId,
-        analysisRequestId: access.requestId,
-        replayed: true,
-      });
-    }
-    activeAttempt = { userId: access.user.id, requestId: access.requestId };
-
-    // Staging-only test hook: authorization has already reserved the credit, while
-    // no provider client has been created and no successful evaluation can exist.
-    if (shouldForceStagingAiFailure()) {
-      throw new AnalysisRequestError(
-        "STAGING_FORCED_AI_FAILURE",
-        500,
-        "STAGING_FORCED_AI_FAILURE",
-      );
-    }
-
     const apiKey = process.env.OPENAI_API_KEY;
 
-    if (!apiKey) throw new AnalysisRequestError("OPENAI_API_KEY is missing", 503, "PROVIDER_NOT_CONFIGURED");
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "OPENAI_API_KEY is missing" },
+        { status: 500 }
+      );
+    }
 
     const client = new OpenAI({ apiKey });
 
@@ -2684,7 +2649,6 @@ const uploadedImageUrls = formData
   .getAll("uploadedImageUrls")
   .filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
   .map((entry) => entry.trim());
-const cloudinaryPublicId = safeString(formData.get("cloudinaryPublicId")) || null;
 const notes = safeString(formData.get("notes"));
 const rawFollowUpClaim = safeString(formData.get("followUpClaim"));
 const followUpClaim = cleanText(rawFollowUpClaim, FOLLOW_UP_NOTE_MAX_CHARS);
@@ -2700,7 +2664,10 @@ if (
   isFollowUpUpdate &&
   rawFollowUpClaim.length > FOLLOW_UP_HARD_NOTE_MAX_CHARS
 ) {
-  throw new AnalysisRequestError(getCleanTooLongMessage(locale), 413, "REQUEST_TOO_LARGE");
+  return NextResponse.json(
+    { error: getCleanTooLongMessage(locale) },
+    { status: 413 },
+  );
 }
 
 console.log("========== ANALYZE DEBUG ==========");
@@ -3002,13 +2969,19 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
     const hasImage = images.length > 0 || uploadedImageUrls.length > 0;
 
     if (!hasImage && !notes) {
-      throw new AnalysisRequestError("Please provide an image or a description.", 400, "INVALID_ANALYSIS_INPUT");
+      return NextResponse.json(
+        { error: "Please provide an image or a description." },
+        { status: 400 }
+      );
     }
 
     const oversizedImage = images.find((file) => file.size > 8 * 1024 * 1024);
 
     if (oversizedImage) {
-      throw new AnalysisRequestError("Image is too large. Please upload an image smaller than 8MB.", 400, "IMAGE_TOO_LARGE");
+      return NextResponse.json(
+        { error: "Image is too large. Please upload an image smaller than 8MB." },
+        { status: 400 }
+      );
     }
 
     const visionImageCount = images.length > 0 ? images.length : uploadedImageUrls.length;
@@ -3066,7 +3039,10 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
         imageCount: visionImageCount,
       }).length > FOLLOW_UP_PROMPT_MAX_CHARS
     ) {
-      throw new AnalysisRequestError(getCleanTooLongMessage(locale), 413, "REQUEST_TOO_LARGE");
+      return NextResponse.json(
+        { error: getCleanTooLongMessage(locale) },
+        { status: 413 },
+      );
     }
 
     const inputContent: Array<
@@ -3155,7 +3131,13 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
     try {
       parsed = JSON.parse(rawText) as Partial<AnalysisResult>;
     } catch {
-      throw new AnalysisRequestError("AI returned invalid JSON", 502, "MALFORMED_PROVIDER_RESPONSE");
+      return NextResponse.json(
+        {
+          error: "AI returned invalid JSON",
+          raw: rawText,
+        },
+        { status: 500 }
+      );
     }
     logDevelopmentTiming("primaryJsonParsing", primaryJsonStartedAt);
 
@@ -3326,50 +3308,20 @@ const finalReviewedResult = mergeDeepSeekLogicReview(
 logDevelopmentTiming("mergeModelResults", finalMergeStartedAt);
 
 const finalJsonStartedAt = performance.now();
-const completedResult = normalizeResult(finalReviewedResult, fallback, locale) as Record<string, unknown>;
-const hasIdentity = [completedResult.title, completedResult.itemType, completedResult.lookup]
-  .some((value) => typeof value === "string" && value.trim().length > 0);
-const hasNarrative = [completedResult.history, completedResult.description]
-  .some((value) => typeof value === "string" && value.trim().length > 0);
-if (!hasIdentity || !hasNarrative || typeof completedResult.confidence !== "number") {
-  throw new Error("MALFORMED_ANALYSIS_RESULT");
-}
-
-await persistAndCompleteAnalysis({
-  user: access.user,
-  requestId: access.requestId,
-  result: completedResult,
-  locale,
-  notes,
-  uploadedImageUrls,
-  cloudinaryPublicId,
-});
-
-const finalResponse = NextResponse.json({
-  ...completedResult,
-  evaluationId: access.requestId,
-  analysisRequestId: access.requestId,
-  replayed: false,
-});
-finalResponse.headers.set("X-KISHIB-ACCESS-CODE", access.decision.code);
-finalResponse.headers.set("X-KISHIB-REMAINING-CREDITS", String(access.decision.remainingCredits));
+const finalResponse = NextResponse.json(
+  normalizeResult(finalReviewedResult, fallback, locale),
+);
 logDevelopmentTiming("finalJsonProcessing", finalJsonStartedAt);
 logDevelopmentTiming("analyzeRouteTotal", totalStartedAt);
 return finalResponse;
   } catch (error) {
     console.error("Analyze API error:", error);
 
-    if (activeAttempt) {
-      const reason = error instanceof Error ? error.message : "UNKNOWN_ANALYSIS_FAILURE";
-      await failAndRefundAnalysis(activeAttempt.userId, activeAttempt.requestId, reason);
-    }
-
     return NextResponse.json(
       {
-        error: error instanceof AnalysisRequestError ? error.message : sanitizeApiError(error, requestLocale),
-        code: error instanceof AnalysisRequestError ? error.code : "ANALYSIS_FAILED",
+        error: sanitizeApiError(error, requestLocale),
       },
-      { status: error instanceof AnalysisRequestError ? error.status : 500 },
+      { status: 500 }
     );
   }
 }

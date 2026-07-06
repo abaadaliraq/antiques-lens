@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:staging": "node scripts/dev-staging.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -17,8 +16,6 @@
     "@capacitor/core": "^8.4.0",
     "@capacitor/share": "^8.0.1",
     "@capgo/capacitor-social-login": "^8.3.22",
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.6.1",
     "@supabase/supabase-js": "^2.106.2",
     "browser-image-compression": "^2.0.2",
     "cloudinary": "^2.10.0",
@@ -28,8 +25,7 @@
     "next": "16.2.6",
     "openai": "^6.39.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "three": "^0.185.1"
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -87,9 +87,22 @@ export async function canUserAnalyze(): Promise<UsageLimitStatus> {
   }
 }
 
-export async function getSupabaseAccessToken() {
-  const supabase = getSupabaseBrowserClient();
-  const { data, error } = await supabase.auth.getSession();
-  if (error) return null;
-  return data.session?.access_token ?? null;
+export async function incrementAnalysisUsage(): Promise<UsageLimitStatus> {
+  try {
+    const user = await getAuthenticatedUser();
+
+    if (!user) return DEFAULT_USAGE_LIMIT_STATUS;
+
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase.rpc("increment_analysis_usage");
+
+    if (error) throw error;
+
+    return normalizeUsageStatus(data);
+  } catch {
+    return {
+      ...DEFAULT_USAGE_LIMIT_STATUS,
+      reason: "usage_increment_failed",
+    };
+  }
 }
