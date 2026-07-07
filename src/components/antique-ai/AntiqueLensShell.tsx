@@ -2,8 +2,6 @@
 
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
-import { Share } from "@capacitor/share";
-import { toBlob } from "html-to-image";
 import AntiqueBackground from "@/components/antique-ai/AntiqueBackground";
 import AuthScreen from "@/components/antique-ai/AuthScreen";
 import BottomBar from "@/components/antique-ai/BottomBar";
@@ -11,12 +9,19 @@ import CompleteProfileModal from "@/components/antique-ai/CompleteProfileModal";
 import CookieBar from "@/components/antique-ai/CookieBar";
 import EvaluationComposer from "@/components/antique-ai/EvaluationComposer";
 import FollowUpEvaluationPanel from "@/components/antique-ai/FollowUpEvaluationPanel";
+import ThinkingMotion from "@/components/antique-ai/ThinkingMotion";
 import KishibLoader from "@/components/antique-ai/KishibLoader";
 import NotificationsButton from "@/components/antique-ai/NotificationsButton";
 import PlatformNewsTicker from "@/components/antique-ai/PlatformNewsTicker";
 import ResultView from "@/components/antique-ai/ResultView";
 import SubscriptionModal from "@/components/antique-ai/SubscriptionModal";
 import UserMenu from "@/components/antique-ai/UserMenu";
+import {
+  buildReportFileName,
+  createReportPdfBlob,
+  createReportPngBlob,
+  shareOrDownloadFile,
+} from "@/components/antique-ai/reportExport";
 import {
   ensureCurrentUserProfile,
   PROFILE_UPDATED_EVENT,
@@ -226,6 +231,10 @@ function homeCopy(locale: Locale) {
   return text[locale] || text.en;
 }
 
+function isRtlLocale(locale: Locale) {
+  return locale === "ar" || locale === "fa" || locale === "ku";
+}
+
 function getMetalPricesNavLabel(locale: Locale) {
   const labels: Record<Locale, string> = {
     ar: "بورصة المعادن",
@@ -249,6 +258,9 @@ export default function AntiqueLensShell() {
   const [profileReady, setProfileReady] = useState(false);
   const [profileComplete, setProfileComplete] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isSharingReport, setIsSharingReport] = useState(false);
+  const [isSavingPdf, setIsSavingPdf] = useState(false);
+  const [exportMessage, setExportMessage] = useState("");
 
   async function refreshProfile({ silent = false }: { silent?: boolean } = {}) {
     try {
@@ -485,6 +497,16 @@ export default function AntiqueLensShell() {
   });
 
   if (!authReady) {
+    return (
+      <main
+        dir={lens.t.dir}
+        data-theme={lens.theme ?? "light"}
+        className="relative min-h-dvh overflow-hidden kishib-bg-home text-[#241913]"
+      >
+        <AntiqueBackground />
+        <KishibLoader label="loading..." />
+      </main>
+    );
   }
 
   if (!hasSession) {
@@ -501,6 +523,16 @@ export default function AntiqueLensShell() {
   }
 
   if (!profileReady) {
+    return (
+      <main
+        dir={lens.t.dir}
+        data-theme={lens.theme ?? "light"}
+        className="relative min-h-dvh overflow-hidden kishib-bg-home text-[#241913]"
+      >
+        <AntiqueBackground />
+        <KishibLoader label="loading..." />
+      </main>
+    );
   }
 
   if (!profileComplete) {
@@ -516,6 +548,28 @@ export default function AntiqueLensShell() {
     );
   }
 
+  if (lens.isAnalyzing) {
+    return (
+      <main
+        dir={lens.t.dir}
+        data-theme={lens.theme ?? "light"}
+        className="relative min-h-dvh overflow-hidden kishib-bg-home text-[#241913]"
+      >
+        <AntiqueBackground />
+        <div className="relative z-10 min-h-dvh">
+          <ThinkingMotion
+            locale={lens.locale}
+            imagePreview={lens.imagePreview}
+            cancelLabel={lens.t.cancelAnalysis}
+            cancellingLabel={lens.t.cancellingAnalysis}
+            isCancellingAnalysis={lens.isCancellingAnalysis}
+            onCancelAnalysis={lens.cancelAnalysis}
+          />
+        </div>
+      </main>
+    );
+  }
+
   const activeLocale = String(lens.locale);
   const safeSimilarImages = getSafeSimilarImages(lens);
   const isSimilarLoading =
@@ -526,6 +580,9 @@ export default function AntiqueLensShell() {
   const copy = homeCopy(lens.locale);
   const latestItems = lens.history;
   const showHomeTicker = !lens.result;
+  const isHomeRtl = isRtlLocale(lens.locale);
+  const metalPricesLabel = lens.t.metalPrices || getMetalPricesNavLabel(lens.locale);
+  const statusMessage = exportMessage || lens.analysisNotice;
 
   function handleDeleteArchiveItem(id: string) {
     const confirmed = window.confirm(
@@ -539,64 +596,115 @@ export default function AntiqueLensShell() {
     lens.deleteHistoryItem(id);
   }
 
-  async function handleShareResult() {
-    const url = window.location.href;
-    const title = lens.result?.title || "KISHIB";
-    const text = lens.locale === "ar" ? "نتيجة تقييمي من KISHIB" : "My KISHIB evaluation result";
-
-    try {
-      await Share.share({ title, text, url, dialogTitle: lens.t.share });
-    } catch {
-      // Closing the native share sheet is not an application error.
+  function getReportExportCopy() {
+    if (lens.locale === "ar") {
+      return {
+        title: lens.result?.title || "KISHIB",
+        text: "تقرير تقييمي من KISHIB",
+        pdf: "PDF",
+        ready: "تم تجهيز التقرير",
+        missing: "تعذر العثور على نسخة التقرير للتصدير.",
+        failed: "تعذر تجهيز التقرير. حاول مرة أخرى.",
+      };
     }
+
+    return {
+      title: lens.result?.title || "KISHIB",
+      text: "My KISHIB evaluation report",
+      pdf: "PDF",
+      ready: "Report is ready",
+      missing: "The export report could not be found.",
+      failed: "Could not prepare the report. Please try again.",
+    };
+  }
+
+  function getReportElement() {
+    return document.querySelector<HTMLElement>(
+      ".report-print-area .antique-report-document",
+    );
+  }
+
+  function isLikelyShareCancel(error: unknown) {
+    const message =
+      error && typeof error === "object" && "message" in error
+        ? String((error as { message?: unknown }).message || "")
+        : String(error || "");
+
+    return /cancel|abort|dismiss|canceled|cancelled/i.test(message);
+  }
+
+  function showExportMessage(message: string) {
+    setExportMessage(message);
+    window.setTimeout(() => {
+      setExportMessage((current) => (current === message ? "" : current));
+    }, 2_400);
   }
 
   async function handleShareReportImage() {
-    const title = lens.result?.title || "KISHIB";
-    const text = lens.locale === "ar" ? "نتيجة تقييمي من KISHIB" : "My KISHIB evaluation result";
-    const report = document.querySelector<HTMLElement>(
-      ".report-print-area .antique-report-document",
-    );
+    if (isSharingReport || isSavingPdf) return;
 
-    if (!report) return;
+    const copy = getReportExportCopy();
+    const report = getReportElement();
+
+    if (!report) {
+      showExportMessage(copy.missing);
+      return;
+    }
 
     try {
-      await Promise.all(
-        Array.from(report.querySelectorAll("img")).map((image) =>
-          image.complete
-            ? Promise.resolve()
-            : image.decode().catch(() => undefined),
-        ),
-      );
+      setIsSharingReport(true);
+      const blob = await createReportPngBlob(report);
 
-      const blob = await toBlob(report, {
-        backgroundColor: "#f7f0e6",
-        cacheBust: true,
-        pixelRatio: 2,
-        width: 794,
-        height: report.scrollHeight,
+      await shareOrDownloadFile({
+        blob,
+        fileName: buildReportFileName("png"),
+        title: copy.title,
+        text: copy.text,
+        dialogTitle: lens.t.share,
+        mimeType: "image/png",
       });
 
-      if (!blob) throw new Error("Unable to create report image");
-
-      const file = new File([blob], `KISHIB-${Date.now()}.png`, {
-        type: "image/png",
-      });
-      const shareData = { title, text, files: [file] };
-
-      if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
-        await navigator.share(shareData);
-        return;
+      showExportMessage(copy.ready);
+    } catch (error) {
+      if (!isLikelyShareCancel(error)) {
+        showExportMessage(copy.failed);
       }
+    } finally {
+      setIsSharingReport(false);
+    }
+  }
 
-      const downloadUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = file.name;
-      link.click();
-      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1_000);
-    } catch {
-      // Closing the share sheet is not an application error.
+  async function handleSaveReportPdf() {
+    if (isSavingPdf || isSharingReport) return;
+
+    const copy = getReportExportCopy();
+    const report = getReportElement();
+
+    if (!report) {
+      showExportMessage(copy.missing);
+      return;
+    }
+
+    try {
+      setIsSavingPdf(true);
+      const blob = await createReportPdfBlob(report);
+
+      await shareOrDownloadFile({
+        blob,
+        fileName: buildReportFileName("pdf"),
+        title: copy.title,
+        text: copy.text,
+        dialogTitle: copy.pdf,
+        mimeType: "application/pdf",
+      });
+
+      showExportMessage(copy.ready);
+    } catch (error) {
+      if (!isLikelyShareCancel(error)) {
+        showExportMessage(copy.failed);
+      }
+    } finally {
+      setIsSavingPdf(false);
     }
   }
 
@@ -634,39 +742,57 @@ export default function AntiqueLensShell() {
 
       <div className="relative z-10 min-h-dvh">
         {showHomeTicker ? (
-<div className="kishib-app-chrome fixed inset-x-0 top-0 z-50">
+          <div className="kishib-app-chrome fixed inset-x-0 top-0 z-50">
             <PlatformNewsTicker locale={lens.locale} />
           </div>
         ) : null}
+
         {showHomeTicker ? (
           <div
             dir="ltr"
-            className="kishib-app-chrome fixed inset-x-0 top-[34px] z-40 flex items-center gap-2 border-y ... border-white/10 bg-[#241913]/18 px-2 py-1 shadow-[0_8px_22px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:top-[34px] sm:px-3"
+            className="kishib-app-chrome fixed inset-x-0 top-[34px] z-40 flex items-center justify-between gap-2 border-y border-white/10 bg-[#241913]/20 px-2 py-1.5 shadow-[0_8px_22px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:top-[34px] sm:px-3"
           >
-            <div className="flex shrink-0 items-center gap-1.5">
-              <NotificationsButton locale={lens.locale} compact />
-              <UserMenu
-                locale={lens.locale}
-                setLocale={lens.changeLocale}
-                compact
-              />
-            </div>
-
-            <div
-              dir={lens.t.dir}
-              className="flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            >
+            {isHomeRtl ? (
               <Link
                 href="/metal-prices"
-                className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full px-1.5 text-[10.5px] font-normal text-white/95 transition hover:bg-white/10 sm:px-2 sm:text-[11px]"
+                className="inline-flex h-9 max-w-[48vw] shrink-0 items-center gap-1.5 rounded-full border border-[#dcc18a]/35 bg-[#fff4e2]/12 px-3 text-[11px] font-bold text-[#fff4e2] transition hover:bg-[#fff4e2]/18 sm:max-w-none sm:text-[12px]"
               >
-                <span className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-white/10 text-white/80">
-                  <Coins className="h-2.5 w-2.5" />
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#dcc18a]/20 text-[#f3d99b]">
+                  <Coins className="h-3.5 w-3.5" />
                 </span>
-                {getMetalPricesNavLabel(lens.locale)}
+                <span className="truncate">{metalPricesLabel}</span>
               </Link>
-            </div>
+            ) : (
+              <div className="flex shrink-0 items-center gap-1.5">
+                <NotificationsButton locale={lens.locale} compact />
+                <UserMenu
+                  locale={lens.locale}
+                  setLocale={lens.changeLocale}
+                  compact
+                />
+              </div>
+            )}
 
+            {isHomeRtl ? (
+              <div className="flex shrink-0 items-center gap-1.5">
+                <NotificationsButton locale={lens.locale} compact />
+                <UserMenu
+                  locale={lens.locale}
+                  setLocale={lens.changeLocale}
+                  compact
+                />
+              </div>
+            ) : (
+              <Link
+                href="/metal-prices"
+                className="inline-flex h-9 max-w-[48vw] shrink-0 items-center gap-1.5 rounded-full border border-[#dcc18a]/35 bg-[#fff4e2]/12 px-3 text-[11px] font-bold text-[#fff4e2] transition hover:bg-[#fff4e2]/18 sm:max-w-none sm:text-[12px]"
+              >
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#dcc18a]/20 text-[#f3d99b]">
+                  <Coins className="h-3.5 w-3.5" />
+                </span>
+                <span className="truncate">{metalPricesLabel}</span>
+              </Link>
+            )}
           </div>
         ) : !lens.result ? (
           <>
@@ -731,7 +857,7 @@ export default function AntiqueLensShell() {
                     removeImage={lens.removeImage}
                     removeImageAt={lens.removeImageAt}
                     handleAnalyze={lens.handleAnalyze}
-                    isAnalyzing={lens.isAnalyzing}
+                    isAnalyzing={lens.isAnalyzing || lens.isCancellingAnalysis}
                     usageStatus={lens.usageStatus}
                     isUsageLoading={lens.isUsageLoading}
                     onOpenSubscription={lens.openSubscriptionModal}
@@ -750,8 +876,6 @@ export default function AntiqueLensShell() {
               />
             </div>
           )}
-{lens.isAnalyzing && <KishibLoader />}
-
           {lens.result && !lens.isAnalyzing && (
             <div className="mx-auto w-full max-w-md pt-2 sm:max-w-xl lg:max-w-5xl xl:max-w-6xl">
               <ResultView
@@ -790,6 +914,8 @@ export default function AntiqueLensShell() {
                 userNote={lens.prompt}
                 followUpPanel={followUpPanel}
                 onBack={lens.resetEvaluation}
+                onSavePdf={() => void handleSaveReportPdf()}
+                isSavingPdf={isSavingPdf}
               />
             </div>
           )}
@@ -800,14 +926,24 @@ export default function AntiqueLensShell() {
     labels={{
       new: lens.t.new,
       share: lens.t.share,
+      pdf: getReportExportCopy().pdf,
       addInfo: lens.t.addInfo || (lens.locale === "ar" ? "إضافة معلومة" : "Add Info"),
     }}
     hasResult={Boolean(lens.result)}
     onNew={lens.resetEvaluation}
     onShare={() => void handleShareReportImage()}
+    onPdf={() => void handleSaveReportPdf()}
     onAddInfo={canUseFollowUp ? lens.handleAddInfo : undefined}
+    isSharing={isSharingReport}
+    isPdfLoading={isSavingPdf}
   />
 </div>
+
+        {statusMessage ? (
+          <div className="fixed inset-x-4 bottom-[calc(5.2rem+env(safe-area-inset-bottom))] z-[70] mx-auto max-w-sm rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/95 px-4 py-3 text-center text-[12px] font-semibold text-[#735f4b] shadow-[0_14px_34px_rgba(62,39,22,0.16)] backdrop-blur-xl">
+            {statusMessage}
+          </div>
+        ) : null}
 
         <SubscriptionModal
           open={lens.isSubscriptionModalOpen}

@@ -3,7 +3,6 @@
 import {
   ArrowLeft,
   ArrowRight,
-  ChevronUp,
   ChevronLeft,
   ChevronRight,
   FileText,
@@ -53,6 +52,13 @@ type Props = {
   userNote?: string;
   followUpPanel?: React.ReactNode;
   onBack?: () => void;
+  onSavePdf?: () => void;
+  isSavingPdf?: boolean;
+};
+
+type ResultSectionLink = {
+  id: string;
+  label: string;
 };
 
 function getResultExperienceLabels(locale: Locale) {
@@ -485,6 +491,28 @@ function getSilverScenarioLabels(locale: Locale) {
   return labels[locale] || labels.en;
 }
 
+function getResultSectionFallbackLabels(locale: Locale) {
+  if (locale === "ar") {
+    return {
+      evaluation: "التقييم",
+      identification: "التعريف",
+      similar: "الصور المشابهة",
+      authenticity: "الأصالة",
+      pricing: "سبب السعر",
+      care: "العناية",
+    };
+  }
+
+  return {
+    evaluation: "Evaluation",
+    identification: "Identification",
+    similar: "Similar images",
+    authenticity: "Authenticity",
+    pricing: "Price reason",
+    care: "Care",
+  };
+}
+
 const luxuryCategoryKeywords = [
   "watch",
   "watches",
@@ -590,6 +618,8 @@ export default function ResultView({
   userNote = "",
   followUpPanel,
   onBack,
+  onSavePdf,
+  isSavingPdf = false,
 }: Props) {
   const [openImageIndex, setOpenImageIndex] = useState<number | null>(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
@@ -599,9 +629,11 @@ export default function ResultView({
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
   const [hasDraggedSheet, setHasDraggedSheet] = useState(false);
   const sheetRef = useRef<HTMLElement | null>(null);
+  const scrollRootRef = useRef<HTMLDivElement | null>(null);
   const dragStartYRef = useRef<number | null>(null);
   const dragMovedRef = useRef(false);
   const ignoreNextClickRef = useRef(false);
+  const [activeSectionId, setActiveSectionId] = useState("result-valuation");
 useEffect(() => {
   if (isReportOpen) {
     document.body.classList.add("kishib-report-open");
@@ -620,6 +652,7 @@ useEffect(() => {
   const itemTypeLabel = getItemTypeLabel(locale);
   const silverScenarioLabels = getSilverScenarioLabels(locale);
   const experienceLabels = getResultExperienceLabels(locale);
+  const sectionFallbackLabels = getResultSectionFallbackLabels(locale);
 
   const resultWithArchiveImages = result as AnalysisResult & {
     imagePreview?: string;
@@ -713,6 +746,39 @@ useEffect(() => {
     };
   }, [openedImage, isReportOpen, galleryImages.length]);
 
+  useEffect(() => {
+    if (!result) return;
+
+    const root = scrollRootRef.current;
+    if (!root) return;
+
+    const sectionElements = Array.from(
+      root.querySelectorAll<HTMLElement>("[data-result-section='true']"),
+    );
+    if (sectionElements.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleEntry = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if (visibleEntry?.target.id) {
+          setActiveSectionId(visibleEntry.target.id);
+        }
+      },
+      {
+        root,
+        rootMargin: "-72px 0px -52% 0px",
+        threshold: [0.05, 0.2, 0.45, 0.7],
+      },
+    );
+
+    sectionElements.forEach((element) => observer.observe(element));
+
+    return () => observer.disconnect();
+  }, [result, isLoadingSimilar, similarImages.length]);
+
   if (!result) return null;
 
   const resolvedSimilarImages = filterVisibleSimilarImages(
@@ -753,6 +819,79 @@ useEffect(() => {
         cleanDisplayText(markAnalysis.possibleMeaning) ||
         markReferenceMatches.length > 0),
   );
+  const hasIdentificationSection = Boolean(
+    cleanDisplayText(result.lookup) ||
+      cleanDisplayText(result.historicalReading) ||
+      cleanDisplayText(result.history || result.description) ||
+      cleanDisplayText(result.itemType) ||
+      cleanDisplayText(result.timePeriod || result.period) ||
+      cleanDisplayText(result.material) ||
+      cleanDisplayText(result.origin),
+  );
+  const hasAuthenticitySection = Boolean(
+    shouldShowMarkAnalysis ||
+      canShowBrandAssessment ||
+      cleanDisplayText(result.condition) ||
+      cleanDisplayText(result.authenticity),
+  );
+  const hasPricingSection = Boolean(
+    cleanDisplayText(result.priceReasoning) ||
+      (Array.isArray(result.valueDrivers) &&
+        result.valueDrivers.some((item) => cleanDisplayText(item))) ||
+      (Array.isArray(result.valueReducers) &&
+        result.valueReducers.some((item) => cleanDisplayText(item))),
+  );
+  const hasCareSection = Boolean(
+    (Array.isArray(result.safeInitialChecks) &&
+      result.safeInitialChecks.some((item) => cleanDisplayText(item))) ||
+      (Array.isArray(result.carePreservationTips) &&
+        result.carePreservationTips.some((item) => cleanDisplayText(item))),
+  );
+  const resultSections = (() => {
+    const sections: ResultSectionLink[] = [
+      {
+        id: "result-valuation",
+        label: sectionFallbackLabels.evaluation,
+      },
+    ];
+
+    if (hasIdentificationSection) {
+      sections.push({
+        id: "result-identification",
+        label: labels.lookup || sectionFallbackLabels.identification,
+      });
+    }
+
+    if (isLoadingSimilar || resolvedSimilarImages.length > 0) {
+      sections.push({
+        id: "result-similar",
+        label: labels.similar || sectionFallbackLabels.similar,
+      });
+    }
+
+    if (hasAuthenticitySection) {
+      sections.push({
+        id: "result-authenticity",
+        label: labels.authenticity || sectionFallbackLabels.authenticity,
+      });
+    }
+
+    if (hasPricingSection) {
+      sections.push({
+        id: "result-pricing",
+        label: labels.priceReason || sectionFallbackLabels.pricing,
+      });
+    }
+
+    if (hasCareSection) {
+      sections.push({
+        id: "result-care",
+        label: labels.carePreservation || sectionFallbackLabels.care,
+      });
+    }
+
+    return sections;
+  })();
 
   function openImage(index: number) {
     setOpenImageIndex(index);
@@ -833,6 +972,30 @@ useEffect(() => {
 
     setIsSheetExpanded((current) => !current);
     setHasDraggedSheet(true);
+  }
+
+  function scrollToResultSection(sectionId: string) {
+    setIsSheetExpanded(true);
+    setHasDraggedSheet(true);
+    setActiveSectionId(sectionId);
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const root = scrollRootRef.current;
+        const target = document.getElementById(sectionId);
+        if (!root || !target) return;
+
+        const rootRect = root.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const stickyOffset = 76;
+        const top = root.scrollTop + targetRect.top - rootRect.top - stickyOffset;
+
+        root.scrollTo({
+          top: Math.max(0, top),
+          behavior: "smooth",
+        });
+      });
+    });
   }
 
   return (
@@ -947,42 +1110,53 @@ useEffect(() => {
         ].join(" ")}
         aria-label={labels.result}
       >
-        <button
-          type="button"
-          onPointerDown={handleSheetPointerDown}
-          onPointerMove={handleSheetPointerMove}
-          onPointerUp={handleSheetPointerEnd}
-          onPointerCancel={handleSheetPointerEnd}
-          onClick={toggleSheet}
-          aria-expanded={isSheetExpanded}
-          className="block w-full touch-none select-none px-5 pb-3 pt-3 text-center"
-        >
-          <span className="mx-auto block h-1.5 w-12 rounded-full bg-[#3B1712]/24" />
-          <span className="mt-1.5 flex items-center justify-center gap-1 text-[11px] font-medium text-[#735f4b]">
-            <ChevronUp
-              className={[
-                "h-4 w-4 text-[#9A3D2A] transition-transform duration-300",
-                isSheetExpanded ? "rotate-180" : hasDraggedSheet ? "opacity-60" : "animate-[kishib-sheet-hint_2.4s_ease-in-out_infinite]",
-              ].join(" ")}
-            />
-            {isSheetExpanded ? experienceLabels.collapse : experienceLabels.swipe}
-          </span>
-        </button>
+        <div className="sticky top-0 z-30 border-y border-[#C79A45]/22 bg-[#F3E7D2]/96 px-3 py-2.5 backdrop-blur-xl sm:px-6">
+          <button
+            type="button"
+            onPointerDown={handleSheetPointerDown}
+            onPointerMove={handleSheetPointerMove}
+            onPointerUp={handleSheetPointerEnd}
+            onPointerCancel={handleSheetPointerEnd}
+            onClick={toggleSheet}
+            aria-expanded={isSheetExpanded}
+            className="mx-auto mb-2 block touch-none select-none rounded-full px-4 py-1 text-center"
+            aria-label={isSheetExpanded ? experienceLabels.collapse : experienceLabels.swipe}
+          >
+            <span className="mx-auto block h-1.5 w-12 rounded-full bg-[#3B1712]/22" />
+          </button>
 
-        <div className="border-y border-[#C79A45]/22 px-5 py-3 sm:px-8">
-          <div className="mx-auto max-w-6xl">
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9A3D2A]">
-                {experienceLabels.value}
-              </p>
-              <p className="mt-1 truncate text-[20px] font-semibold text-[#3B1712] sm:text-[24px]">
-                {cleanDisplayText(result.estimatedValue) || fallbackText}
-              </p>
-            </div>
-          </div>
+          <nav
+            dir={locale === "ar" || locale === "ku" || locale === "fa" ? "rtl" : "ltr"}
+            aria-label={locale === "ar" ? "أقسام نتيجة التقييم" : "Evaluation result sections"}
+            className="mx-auto flex max-w-6xl gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {resultSections.map((section) => {
+              const isActive = activeSectionId === section.id;
+
+              return (
+                <button
+                  type="button"
+                  key={section.id}
+                  onClick={() => scrollToResultSection(section.id)}
+                  className={[
+                    "relative shrink-0 rounded-full px-3 py-1.5 text-[11px] font-semibold leading-5 transition sm:px-3.5 sm:text-[12px]",
+                    isActive
+                      ? "bg-[#fff4e2] text-[#6d241d] shadow-[inset_0_-2px_0_#b88a3d]"
+                      : "text-[#735f4b] hover:bg-[#fff4e2]/55 hover:text-[#6d241d]",
+                  ].join(" ")}
+                  aria-current={isActive ? "true" : undefined}
+                >
+                  {section.label}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        <div className="h-[calc(100%_-_8.4rem)] overflow-y-auto overscroll-contain px-3 pb-12 pt-1 [scrollbar-width:thin] sm:px-5">
+        <div
+          ref={scrollRootRef}
+          className="h-[calc(100%_-_4.9rem)] overflow-y-auto overscroll-contain px-3 pb-20 pt-1 [scrollbar-width:thin] sm:px-5"
+        >
       <div className="mx-auto w-full max-w-6xl">
 
         {cleanUserNote ? (
@@ -1002,12 +1176,18 @@ useEffect(() => {
           </section>
         ) : null}
 
-        <ValuationRangeCard
-          result={result}
-          locale={locale}
-        />
+        <div id="result-valuation" data-result-section="true" className="scroll-mt-24">
+          <ValuationRangeCard
+            result={result}
+            locale={locale}
+          />
+        </div>
 
-        <section className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5 border-y border-[#c7b99e] py-5 md:grid-cols-4">
+        <section
+          id="result-identification"
+          data-result-section="true"
+          className="mt-5 scroll-mt-24 grid grid-cols-2 gap-x-4 gap-y-5 border-y border-[#c7b99e] py-5 md:grid-cols-4"
+        >
           <MetricBlock
             label={itemTypeLabel}
             value={result.itemType}
@@ -1112,7 +1292,11 @@ useEffect(() => {
         ) : null}
 
         {shouldShowMarkAnalysis && markAnalysis ? (
-          <section className="mt-5 rounded-[20px] border border-[#c7b99e] bg-[#fff4e2]/90 p-4">
+          <section
+            id="result-authenticity"
+            data-result-section="true"
+            className="mt-5 scroll-mt-24 rounded-[20px] border border-[#c7b99e] bg-[#fff4e2]/90 p-4"
+          >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-semibold text-[#986f2e]">
                 {locale === "en" ? "Hallmark / signature analysis" : "تحليل الختم / التوقيع"}
@@ -1223,16 +1407,6 @@ useEffect(() => {
                   {locale === "ar" ? "الفنان المحتمل: " : "Potential artist: "}
                   {cleanDisplayText(result.artistAttribution.possibleArtist)}
                 </p>
-                <p className="mt-2 text-[12px] leading-6 text-[#735f4b]">
-                  {locale === "ar" ? "درجة المطابقة: " : "Match level: "}
-                  {locale === "ar"
-                    ? result.artistAttribution.matchLevel === "high"
-                      ? "عالية"
-                      : result.artistAttribution.matchLevel === "medium"
-                        ? "متوسطة"
-                        : "منخفضة"
-                    : result.artistAttribution.matchLevel}
-                </p>
               </div>
               <div>
                 <p className="text-[12px] font-medium text-[#233f32]">
@@ -1249,27 +1423,51 @@ useEffect(() => {
           </section>
         ) : null}
 
-        <div className="mt-7 grid grid-cols-1 gap-7 md:grid-cols-2">
+        <div
+          id={shouldShowMarkAnalysis ? undefined : "result-authenticity"}
+          data-result-section={shouldShowMarkAnalysis ? undefined : "true"}
+          className="mt-7 scroll-mt-24 grid grid-cols-1 gap-7 md:grid-cols-2"
+        >
           <TextSection title={labels.condition} body={result.condition} compact />
           <TextSection title={labels.authenticity} body={result.authenticity} compact />
         </div>
 
-        <SafeInitialChecksSection
-          title={labels.safeInitialChecks}
-          note={labels.safeInitialChecksNote}
-          items={result.safeInitialChecks}
-        />
+        <div id="result-care" data-result-section="true" className="scroll-mt-24">
+          <SafeInitialChecksSection
+            title={labels.safeInitialChecks}
+            note={labels.safeInitialChecksNote}
+            items={result.safeInitialChecks}
+          />
 
-        <CarePreservationSection
-          title={labels.carePreservation}
-          note={labels.carePreservationNote}
-          items={result.carePreservationTips}
-        />
+          <CarePreservationSection
+            title={labels.carePreservation}
+            note={labels.carePreservationNote}
+            items={result.carePreservationTips}
+          />
+        </div>
 
-        <section className="mt-8 grid grid-cols-1 gap-6 border-y border-[#c7b99e] py-7 md:grid-cols-2">
-          <SoftList title={labels.valueDrivers} items={result.valueDrivers} />
-          <SoftList title={labels.valueReducers} items={result.valueReducers} />
-        </section>
+        {hasPricingSection ? (
+          <section
+            id="result-pricing"
+            data-result-section="true"
+            className="mt-8 scroll-mt-24 border-y border-[#c7b99e] py-7"
+          >
+            <h2 className="mb-5 text-[20px] font-medium leading-7 tracking-[-0.03em] text-[#233f32] md:text-[22px]">
+              {labels.priceReason}
+            </h2>
+
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <SoftList title={labels.valueDrivers} items={result.valueDrivers} />
+              <SoftList title={labels.valueReducers} items={result.valueReducers} />
+            </div>
+
+            {cleanDisplayText(result.priceReasoning) ? (
+              <div className="mt-7 border-t border-[#c7b99e]/70 pt-5">
+                <TextSection title={labels.priceReason} body={result.priceReasoning} compact />
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         {canShowBrandAssessment ? (
           <section className="mt-8 border-t border-[#c7b99e] pt-6">
@@ -1303,12 +1501,12 @@ useEffect(() => {
           </section>
         ) : null}
 
-        <div className="mt-7">
-          <TextSection title={labels.priceReason} body={result.priceReasoning} compact />
-        </div>
-
         {(isLoadingSimilar || resolvedSimilarImages.length > 0) ? (
-          <section className="mt-8 border-t border-[#c7b99e] pt-7">
+          <section
+            id="result-similar"
+            data-result-section="true"
+            className="mt-8 scroll-mt-24 border-t border-[#c7b99e] pt-7"
+          >
             <div className="mb-5">
               <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.28em] text-[#986f2e]">
                 {similarSourceLabel}
@@ -1491,11 +1689,19 @@ useEffect(() => {
               <div className="flex shrink-0 items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="grid h-10 w-10 place-items-center rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/80 text-[#735f4b]"
+                  onClick={() => {
+                    if (onSavePdf) onSavePdf();
+                    else window.print();
+                  }}
+                  disabled={isSavingPdf}
+                  className="grid h-10 w-10 place-items-center rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/80 text-[#735f4b] disabled:cursor-wait disabled:opacity-60"
                   aria-label={reportLabels.print}
                 >
-                  <Printer className="h-4 w-4" />
+                  {isSavingPdf ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#735f4b]/30 border-t-[#735f4b]" />
+                  ) : (
+                    <Printer className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>

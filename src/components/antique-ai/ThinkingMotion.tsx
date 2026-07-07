@@ -112,6 +112,10 @@ const THINKING_COPY: Record<Locale, ThinkingCopy> = {
 type ThinkingMotionProps = {
   locale?: Locale;
   imagePreview?: string | null;
+  cancelLabel?: string;
+  cancellingLabel?: string;
+  isCancellingAnalysis?: boolean;
+  onCancelAnalysis?: () => void;
 };
 
 function isRtlLocale(locale: Locale) {
@@ -121,6 +125,10 @@ function isRtlLocale(locale: Locale) {
 export default function ThinkingMotion({
   locale = "ar",
   imagePreview = null,
+  cancelLabel,
+  cancellingLabel,
+  isCancellingAnalysis = false,
+  onCancelAnalysis,
 }: ThinkingMotionProps) {
   const copy = THINKING_COPY[locale] ?? THINKING_COPY.ar;
   const steps = copy.steps;
@@ -292,6 +300,17 @@ export default function ThinkingMotion({
                 className="h-full rounded-full bg-gradient-to-r from-[#6d2e1d] via-[#b88a3d] to-[#233f32] shadow-[0_0_16px_rgba(184,138,61,0.35)]"
               />
             </div>
+
+            {onCancelAnalysis && cancelLabel ? (
+              <button
+                type="button"
+                onClick={onCancelAnalysis}
+                disabled={isCancellingAnalysis}
+                className="mt-4 h-10 w-full rounded-full border border-[#d2b98f] bg-[#fff4e2]/72 px-4 text-[12px] font-semibold text-[#6d241d] transition hover:bg-[#fff4e2] disabled:cursor-wait disabled:opacity-60"
+              >
+                {isCancellingAnalysis ? cancellingLabel || cancelLabel : cancelLabel}
+              </button>
+            ) : null}
           </div>
         </div>
       </div>

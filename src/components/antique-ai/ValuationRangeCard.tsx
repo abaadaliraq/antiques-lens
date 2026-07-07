@@ -42,9 +42,9 @@ function text(locale: Locale) {
     ar: {
       estimated: "القيمة التقديرية",
       based: "تقدير أولي حسب المعلومات المتوفرة",
-      low: "ثقة منخفضة",
-      medium: "ثقة متوسطة",
-      high: "ثقة عالية",
+      low: "",
+      medium: "",
+      high: "",
       min: "الأدنى",
       mid: "المتوسط",
       max: "الأعلى",
@@ -58,9 +58,9 @@ function text(locale: Locale) {
     en: {
       estimated: "Estimated Value",
       based: "Preliminary estimate from available information",
-      low: "Low confidence",
-      medium: "Medium confidence",
-      high: "High confidence",
+      low: "",
+      medium: "",
+      high: "",
       min: "Low",
       mid: "Mid",
       max: "High",
@@ -74,9 +74,9 @@ function text(locale: Locale) {
     ku: {
       estimated: "نرخی خەمڵێنراو",
       based: "خەمڵاندنی سەرەتایی بەپێی زانیارییە بەردەستەکان",
-      low: "متمانەی نزم",
-      medium: "متمانەی مامناوەند",
-      high: "متمانەی بەرز",
+      low: "",
+      medium: "",
+      high: "",
       min: "کەمترین",
       mid: "ناوەند",
       max: "زۆرترین",
@@ -90,9 +90,9 @@ function text(locale: Locale) {
     fr: {
       estimated: "Valeur estimée",
       based: "Estimation préliminaire selon les informations disponibles",
-      low: "Confiance faible",
-      medium: "Confiance moyenne",
-      high: "Confiance élevée",
+      low: "",
+      medium: "",
+      high: "",
       min: "Bas",
       mid: "Milieu",
       max: "Haut",
@@ -106,9 +106,9 @@ function text(locale: Locale) {
     hi: {
       estimated: "अनुमानित मूल्य",
       based: "उपलब्ध जानकारी के आधार पर प्रारंभिक अनुमान",
-      low: "कम भरोसा",
-      medium: "मध्यम भरोसा",
-      high: "अधिक भरोसा",
+      low: "",
+      medium: "",
+      high: "",
       min: "न्यूनतम",
       mid: "मध्य",
       max: "अधिकतम",
@@ -122,9 +122,9 @@ function text(locale: Locale) {
     fa: {
       estimated: "ارزش تخمینی",
       based: "برآورد اولیه بر اساس اطلاعات موجود",
-      low: "اطمینان پایین",
-      medium: "اطمینان متوسط",
-      high: "اطمینان بالا",
+      low: "",
+      medium: "",
+      high: "",
       min: "کمترین",
       mid: "میانه",
       max: "بیشترین",
@@ -138,9 +138,9 @@ function text(locale: Locale) {
     tr: {
       estimated: "Tahmini Değer",
       based: "Mevcut bilgilere göre ön tahmin",
-      low: "Düşük güven",
-      medium: "Orta güven",
-      high: "Yüksek güven",
+      low: "",
+      medium: "",
+      high: "",
       min: "Düşük",
       mid: "Orta",
       max: "Yüksek",
@@ -154,9 +154,9 @@ function text(locale: Locale) {
     ru: {
       estimated: "Оценочная стоимость",
       based: "Предварительная оценка по доступной информации",
-      low: "Низкая уверенность",
-      medium: "Средняя уверенность",
-      high: "Высокая уверенность",
+      low: "",
+      medium: "",
+      high: "",
       min: "Низко",
       mid: "Средне",
       max: "Высоко",
@@ -392,7 +392,6 @@ export default function ValuationRangeCard({ result, locale }: Props) {
   const scenarios = useMemo(() => getScenarios(result, locale), [result, locale]);
   const [activeIndex, setActiveIndex] = useState(0);
   const active = scenarios[Math.min(activeIndex, scenarios.length - 1)];
-  const confidence = active.confidence || confidenceFromResult(result);
   const mid = getMid(active.min, active.max);
   const rtl = isRtl(locale);
   const silverMentionText = getSilverMentionText(result, active.note);
@@ -433,17 +432,12 @@ export default function ValuationRangeCard({ result, locale }: Props) {
       className="-mx-3 mt-4 border-y border-[#7b4a37]/25 bg-[#4d1b17] text-[#fff4e2] sm:-mx-5"
     >
       <div className="px-4 py-3 sm:px-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold text-[#e9c979]">{labels.estimated}</p>
-            <h2 dir="ltr" className="mt-1 text-3xl font-semibold tracking-[-0.04em] text-white">
-              {formatMoney(active.min, active.currency)}
-              {active.max !== active.min ? ` - ${formatMoney(active.max, active.currency)}` : ""}
-            </h2>
-          </div>
-          <span className="shrink-0 rounded-full border border-[#f1d08a]/35 bg-[#fff4e2]/12 px-2.5 py-1 text-[11px] font-semibold text-[#fff4e2]">
-            {confidence === "high" ? labels.high : confidence === "medium" ? labels.medium : labels.low}
-          </span>
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold text-[#e9c979]">{labels.estimated}</p>
+          <h2 dir="ltr" className="mt-1 text-3xl font-semibold tracking-[-0.04em] text-white">
+            {formatMoney(active.min, active.currency)}
+            {active.max !== active.min ? ` - ${formatMoney(active.max, active.currency)}` : ""}
+          </h2>
         </div>
 
         <div className="mt-3">

@@ -40,6 +40,7 @@ import {
   normalizeProvince,
   provinceLabel as getProvinceOptionLabel,
 } from "@/lib/locationOptions";
+import { getDefaultProfileAvatar, getProfileAvatarUrl } from "./profileAvatar";
 import type { Locale } from "./types";
 
 type UserMenuProps = {
@@ -105,6 +106,8 @@ type MenuCopy = {
   saved: string;
   supportText: string;
   close: string;
+  openProfileImage: string;
+  closeProfileImage: string;
   monthlyPlan: string;
   annualPlan: string;
   reportsPack: string;
@@ -149,6 +152,8 @@ const COPY: Record<Locale, MenuCopy> = {
     saved: "تم الحفظ",
     supportText: "للدعم والمساعدة تواصل معنا عبر البريد الإلكتروني",
     close: "إغلاق",
+    openProfileImage: "فتح صورة الحساب",
+    closeProfileImage: "إغلاق صورة الحساب",
     monthlyPlan: "الاشتراك الشهري",
     annualPlan: "الاشتراك السنوي",
     reportsPack: "باقة التقارير",
@@ -190,6 +195,8 @@ const COPY: Record<Locale, MenuCopy> = {
     saved: "Saved",
     supportText: "For support and help, contact us by email",
     close: "Close",
+    openProfileImage: "Open profile photo",
+    closeProfileImage: "Close profile photo",
     monthlyPlan: "Monthly subscription",
     annualPlan: "Annual subscription",
     reportsPack: "Reports package",
@@ -231,6 +238,8 @@ const COPY: Record<Locale, MenuCopy> = {
     saved: "EnregistrÃ©",
     supportText: "Pour obtenir de l'aide, contactez-nous par e-mail",
     close: "Fermer",
+    openProfileImage: "Ouvrir la photo de profil",
+    closeProfileImage: "Fermer la photo de profil",
     monthlyPlan: "Abonnement mensuel",
     annualPlan: "Abonnement annuel",
     reportsPack: "Pack de rapports",
@@ -272,6 +281,8 @@ const COPY: Record<Locale, MenuCopy> = {
     saved: "à¤¸à¤¹à¥‡à¤œà¤¾ à¤—à¤¯à¤¾",
     supportText: "à¤¸à¤¹à¤¾à¤¯à¤¤à¤¾ à¤•à¥‡ à¤²à¤¿à¤ à¤¹à¤®à¥‡à¤‚ à¤ˆà¤®à¥‡à¤² à¤¸à¥‡ à¤¸à¤‚à¤ªà¤°à¥à¤• à¤•à¤°à¥‡à¤‚",
     close: "à¤¬à¤‚à¤¦ à¤•à¤°à¥‡à¤‚",
+    openProfileImage: "प्रोफ़ाइल फ़ोटो खोलें",
+    closeProfileImage: "प्रोफ़ाइल फ़ोटो बंद करें",
     monthlyPlan: "à¤®à¤¾à¤¸à¤¿à¤• à¤¸à¤¦à¤¸à¥à¤¯à¤¤à¤¾",
     annualPlan: "à¤µà¤¾à¤°à¥à¤·à¤¿à¤• à¤¸à¤¦à¤¸à¥à¤¯à¤¤à¤¾",
     reportsPack: "à¤°à¤¿à¤ªà¥‹à¤°à¥à¤Ÿ à¤ªà¥ˆà¤•à¥‡à¤œ",
@@ -313,6 +324,8 @@ const COPY: Record<Locale, MenuCopy> = {
     saved: "Ø°Ø®ÛŒØ±Ù‡ Ø´Ø¯",
     supportText: "Ø¨Ø±Ø§ÛŒ Ù¾Ø´ØªÛŒØ¨Ø§Ù†ÛŒ Ùˆ Ú©Ù…Ú© Ø§Ø² Ø·Ø±ÛŒÙ‚ Ø§ÛŒÙ…ÛŒÙ„ Ø¨Ø§ Ù…Ø§ ØªÙ…Ø§Ø³ Ø¨Ú¯ÛŒØ±ÛŒØ¯",
     close: "Ø¨Ø³ØªÙ†",
+    openProfileImage: "باز کردن عکس پروفایل",
+    closeProfileImage: "بستن عکس پروفایل",
     monthlyPlan: "Ø§Ø´ØªØ±Ø§Ú© Ù…Ø§Ù‡Ø§Ù†Ù‡",
     annualPlan: "Ø§Ø´ØªØ±Ø§Ú© Ø³Ø§Ù„Ø§Ù†Ù‡",
     reportsPack: "Ø¨Ø³ØªÙ‡ Ú¯Ø²Ø§Ø±Ø´â€ŒÙ‡Ø§",
@@ -354,6 +367,8 @@ const COPY: Record<Locale, MenuCopy> = {
     saved: "Kaydedildi",
     supportText: "Destek ve yardÄ±m iÃ§in bize e-posta ile ulaÅŸÄ±n",
     close: "Kapat",
+    openProfileImage: "Profil fotoğrafını aç",
+    closeProfileImage: "Profil fotoğrafını kapat",
     monthlyPlan: "AylÄ±k abonelik",
     annualPlan: "YÄ±llÄ±k abonelik",
     reportsPack: "Rapor paketi",
@@ -395,6 +410,8 @@ const COPY: Record<Locale, MenuCopy> = {
     saved: "Ð¡Ð¾Ñ…Ñ€Ð°Ð½ÐµÐ½Ð¾",
     supportText: "Ð”Ð»Ñ Ð¿Ð¾Ð´Ð´ÐµÑ€Ð¶ÐºÐ¸ Ð¸ Ð¿Ð¾Ð¼Ð¾Ñ‰Ð¸ ÑÐ²ÑÐ¶Ð¸Ñ‚ÐµÑÑŒ Ñ Ð½Ð°Ð¼Ð¸ Ð¿Ð¾ ÑÐ»ÐµÐºÑ‚Ñ€Ð¾Ð½Ð½Ð¾Ð¹ Ð¿Ð¾Ñ‡Ñ‚Ðµ",
     close: "Ð—Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ",
+    openProfileImage: "Открыть фото профиля",
+    closeProfileImage: "Закрыть фото профиля",
     monthlyPlan: "ÐœÐµÑÑÑ‡Ð½Ð°Ñ Ð¿Ð¾Ð´Ð¿Ð¸ÑÐºÐ°",
     annualPlan: "Ð“Ð¾Ð´Ð¾Ð²Ð°Ñ Ð¿Ð¾Ð´Ð¿Ð¸ÑÐºÐ°",
     reportsPack: "ÐŸÐ°ÐºÐµÑ‚ Ð¾Ñ‚Ñ‡ÐµÑ‚Ð¾Ð²",
@@ -436,6 +453,8 @@ const COPY: Record<Locale, MenuCopy> = {
     saved: "Ù¾Ø§Ø´Û•Ú©Û•ÙˆØª Ú©Ø±Ø§",
     supportText: "Ø¨Û† Ù¾Ø§ÚµÙ¾Ø´ØªÛŒ Ùˆ ÛŒØ§Ø±Ù…Û•ØªÛŒ Ù„Û• Ú•ÛŽÚ¯Û•ÛŒ Ø¦ÛŒÙ…Û•ÛŒÙ„ Ù¾Û•ÛŒÙˆÛ•Ù†Ø¯ÛŒÙ…Ø§Ù† Ù¾ÛŽÙˆÛ• Ø¨Ú©Û•",
     close: "Ø¯Ø§Ø®Ø³ØªÙ†",
+    openProfileImage: "وێنەی پڕۆفایل بکەرەوە",
+    closeProfileImage: "وێنەی پڕۆفایل دابخە",
     monthlyPlan: "Ø¨Û•Ø´Ø¯Ø§Ø±Ø¨ÙˆÙˆÙ†ÛŒ Ù…Ø§Ù†Ú¯Ø§Ù†Û•",
     annualPlan: "Ø¨Û•Ø´Ø¯Ø§Ø±Ø¨ÙˆÙˆÙ†ÛŒ Ø³Ø§ÚµØ§Ù†Û•",
     reportsPack: "Ù¾Ø§Ú©ÛŽØ¬ÛŒ Ú•Ø§Ù¾Û†Ø±ØªÛ•Ú©Ø§Ù†",
@@ -591,33 +610,39 @@ function Avatar({
   name,
   email,
   avatarUrl,
+  gender,
   className,
 }: {
   name: string;
   email: string;
   avatarUrl?: string;
+  gender?: string;
   className?: string;
 }) {
-  const initial = getInitial(name, email);
+  const [imageSrc, setImageSrc] = useState(() =>
+    getProfileAvatarUrl({ avatarUrl, gender }),
+  );
+  const fallbackAvatar = getDefaultProfileAvatar(gender);
   const baseClass = [
     "grid place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#dcc18a] via-[#b88a3d] to-[#6d241d] font-bold text-[#fff4e2] ring-1 ring-[#b88a3d]/25",
     className || "",
   ].join(" ");
 
-  if (avatarUrl) {
-    return (
-      <span className={baseClass}>
-        <img
-          src={avatarUrl}
-          alt={name || email || "KISHIB user"}
-          className="h-full w-full object-cover"
-          referrerPolicy="no-referrer"
-        />
-      </span>
-    );
-  }
+  useEffect(() => {
+    setImageSrc(getProfileAvatarUrl({ avatarUrl, gender }));
+  }, [avatarUrl, gender]);
 
-  return <span className={baseClass}>{initial}</span>;
+  return (
+    <span className={baseClass}>
+      <img
+        src={imageSrc}
+        alt={name || email || "KISHIB user"}
+        className="h-full w-full object-cover"
+        referrerPolicy="no-referrer"
+        onError={() => setImageSrc(fallbackAvatar)}
+      />
+    </span>
+  );
 }
 
 export default function UserMenu({
@@ -637,6 +662,7 @@ export default function UserMenu({
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [profileInfo, setProfileInfo] = useState<ProfileInfo | null>(null);
+  const [profileImageOpen, setProfileImageOpen] = useState(false);
   const [formProfile, setFormProfile] = useState<EditableProfile>({
     name: "",
     phone: "",
@@ -648,7 +674,7 @@ export default function UserMenu({
   });
   const menuRef = useRef<HTMLDivElement | null>(null);
 const panelRef = useRef<HTMLDivElement | null>(null);
-  const copy = locale === "ar" ? COPY.ar : COPY.en;
+  const copy = COPY[locale] ?? COPY.en;
   const rtl = isRtl(locale);
   const activeLanguage =
     MENU_LANGUAGES.find((item) => item.code === locale) ?? MENU_LANGUAGES[0];
@@ -656,6 +682,10 @@ const panelRef = useRef<HTMLDivElement | null>(null);
   const displayName = profileInfo?.name || getFallbackName(profileInfo?.email);
   const displayEmail = profileInfo?.email || copy.unknown;
   const avatarUrl = profileInfo?.avatarUrl || "";
+  const avatarDisplayUrl = getProfileAvatarUrl({
+    avatarUrl,
+    gender: profileInfo?.gender,
+  });
   const profileIncomplete = isProfileIncomplete(profileInfo);
   const provinceLabel =
     copy.province || (locale === "ar" ? "المحافظة" : "City / Province");
@@ -920,6 +950,21 @@ const panelRef = useRef<HTMLDivElement | null>(null);
     }
   }
 
+  function handleProfileImageKeyDown(event: KeyboardEvent) {
+    if (event.key === "Escape") {
+      setProfileImageOpen(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!profileImageOpen) return;
+
+    document.addEventListener("keydown", handleProfileImageKeyDown);
+    return () => document.removeEventListener("keydown", handleProfileImageKeyDown);
+  }, [profileImageOpen]);
+
+
+
   function openPanel(panel: "support" | "plans" | "delete") {
     setLanguageOpen(false);
     setSupportOpen(panel === "support");
@@ -949,6 +994,7 @@ const panelRef = useRef<HTMLDivElement | null>(null);
           name={displayName}
           email={displayEmail}
           avatarUrl={avatarUrl}
+          gender={profileInfo?.gender}
           className={compact ? "h-6 w-6 text-[10px]" : "h-8 w-8 text-xs"}
         />
       </button>
@@ -977,12 +1023,20 @@ const panelRef = useRef<HTMLDivElement | null>(null);
             <div className="flex h-full flex-col overflow-y-auto p-3">
               <div className="rounded-[16px] border border-[#d2b98f] bg-[#efe3cf]/70 p-3">
                 <div className="flex items-center gap-3">
-                  <Avatar
-                    name={displayName}
-                    email={displayEmail}
-                    avatarUrl={avatarUrl}
-                    className="h-10 w-10 shrink-0 rounded-2xl text-sm"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setProfileImageOpen(true)}
+                    className="shrink-0 rounded-2xl outline-none ring-[#b88a3d]/35 transition hover:scale-[1.03] focus-visible:ring-2"
+                    aria-label={copy.openProfileImage}
+                  >
+                    <Avatar
+                      name={displayName}
+                      email={displayEmail}
+                      avatarUrl={avatarUrl}
+                      gender={profileInfo?.gender}
+                      className="h-10 w-10 rounded-2xl text-sm"
+                    />
+                  </button>
 
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-semibold text-[#241913]">
@@ -1263,6 +1317,41 @@ const panelRef = useRef<HTMLDivElement | null>(null);
                 <span className="flex-1">{copy.logout}</span>
               </button>
             </div>
+
+                        {profileImageOpen ? (
+              <div
+                className="fixed inset-0 z-[10020] flex items-center justify-center bg-[#241913]/78 p-6 backdrop-blur-sm"
+                onClick={() => setProfileImageOpen(false)}
+                role="dialog"
+                aria-modal="true"
+                aria-label={copy.closeProfileImage}
+              >
+                <div
+                  className="relative block max-h-[78dvh] max-w-[88vw]"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <img
+                    src={avatarDisplayUrl}
+                    alt={displayName || displayEmail || copy.profile}
+                    className="max-h-[78dvh] max-w-[88vw] rounded-[26px] border border-[#d2b98f]/70 bg-[#fff4e2] object-contain shadow-[0_28px_90px_rgba(0,0,0,0.32)]"
+                    referrerPolicy="no-referrer"
+                    onError={(event) => {
+                      event.currentTarget.src = getDefaultProfileAvatar(profileInfo?.gender);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setProfileImageOpen(false)}
+                    className="absolute -end-3 -top-3 grid h-9 w-9 place-items-center rounded-full border border-[#d2b98f] bg-[#fff4e2] text-[#6d241d] shadow-lg transition hover:bg-[#efe3cf]"
+                    aria-label={copy.closeProfileImage}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+
 
             {supportOpen ? (
               <MenuModal title={copy.support} closeLabel={copy.close} onClose={() => setSupportOpen(false)}>

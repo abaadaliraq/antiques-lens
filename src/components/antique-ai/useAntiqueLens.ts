@@ -71,7 +71,14 @@ function logDevelopmentTiming(
   }
 }
 
-type AppScreen = "home" | "result" | "archive-result" | "follow-up";
+type AppScreen = "home" | "analysis" | "result" | "archive-result" | "follow-up";
+
+type AnalysisStage =
+  | "uploadingImages"
+  | "analyzingItem"
+  | "searchingSimilar"
+  | "preparingResult"
+  | "analysisInProgress";
 
 function pushAppHistoryState(screen: AppScreen) {
   if (typeof window === "undefined") return;
@@ -404,7 +411,30 @@ function normalizeSimilarImageItems(items: unknown): SimilarImageResult[] {
     .filter((item): item is SimilarImageResult => Boolean(item));
 }
 
-async function safePostJson(url: string, body: unknown) {
+function isAbortError(error: unknown) {
+  if (error instanceof Error && error.name === "AbortError") return true;
+  if (!error || typeof error !== "object" || !("name" in error)) return false;
+
+  return (error as { name?: unknown }).name === "AbortError";
+}
+
+function createAbortError() {
+  if (typeof DOMException !== "undefined") {
+    return new DOMException("Analysis cancelled", "AbortError");
+  }
+
+  const error = new Error("Analysis cancelled");
+  error.name = "AbortError";
+  return error;
+}
+
+function throwIfAborted(signal?: AbortSignal) {
+  if (signal?.aborted) {
+    throw createAbortError();
+  }
+}
+
+async function safePostJson(url: string, body: unknown, signal?: AbortSignal) {
   try {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -430,10 +460,13 @@ async function safePostJson(url: string, body: unknown) {
       });
     }
 
+    throwIfAborted(signal);
+
     const response = await fetch(url, {
       method: "POST",
       headers,
       body: JSON.stringify(body),
+      signal,
     });
 
     let data: unknown = null;
@@ -461,6 +494,10 @@ async function safePostJson(url: string, body: unknown) {
 
     return { ok: response.ok, status: response.status, data };
   } catch (error) {
+    if (isAbortError(error)) {
+      throw error;
+    }
+
     if (process.env.NODE_ENV !== "production") {
       console.warn("[KISHIB similar] optional request failed", {
         url,
@@ -529,6 +566,9 @@ const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
   const goBackInsideAppRef = useRef<() => boolean>(() => false);
   const similarRequestKeysRef = useRef<Set<string>>(new Set());
   const evaluationTimingStartRef = useRef<number | null>(null);
+  const activeAnalysisAbortRef = useRef<AbortController | null>(null);
+  const activeAnalysisRequestIdRef = useRef(0);
+  const analysisNoticeTimerRef = useRef<number | null>(null);
 
   const [result, setResult] = useState<AnalysisResult | null>(null);
   
@@ -538,6 +578,9 @@ const [translatedResults, setTranslatedResults] = useState<
 
 const [isTranslatingResult, setIsTranslatingResult] = useState(false);
 const [isAnalyzing, setIsAnalyzing] = useState(false);
+const [isCancellingAnalysis, setIsCancellingAnalysis] = useState(false);
+const [analysisNotice, setAnalysisNotice] = useState("");
+const [analysisStage, setAnalysisStage] = useState<AnalysisStage>("analysisInProgress");
 const [error, setError] = useState("");
 const [selectedArchiveItemId, setSelectedArchiveItemId] = useState<string | null>(null);
 const [usageStatus, setUsageStatus] = useState<UsageLimitStatus>(
@@ -562,6 +605,44 @@ const [historyOpen, setHistoryOpen] = useState(false);
 const [history, setHistory] = useState<ArchiveItem[]>([]);
 
 const t = useMemo(() => content[locale], [locale]);
+
+function showAnalysisNotice(message: string) {
+  setAnalysisNotice(message);
+
+  if (analysisNoticeTimerRef.current) {
+    window.clearTimeout(analysisNoticeTimerRef.current);
+  }
+
+  analysisNoticeTimerRef.current = window.setTimeout(() => {
+    setAnalysisNotice((current) => (current === message ? "" : current));
+    analysisNoticeTimerRef.current = null;
+  }, 2_400);
+}
+
+function cancelAnalysis() {
+  if (!isAnalyzing && !activeAnalysisAbortRef.current) return;
+
+  setIsCancellingAnalysis(true);
+  setIsAnalyzing(false);
+  activeAnalysisAbortRef.current?.abort();
+  setError("");
+  setResult(null);
+  setSimilarImages([]);
+  setIsLoadingSimilar(false);
+  setAnalysisStage("analysisInProgress");
+  setAppScreen("home");
+  showAnalysisNotice(t.analysisCancelled);
+}
+
+useEffect(() => {
+  return () => {
+    activeAnalysisAbortRef.current?.abort();
+
+    if (analysisNoticeTimerRef.current) {
+      window.clearTimeout(analysisNoticeTimerRef.current);
+    }
+  };
+}, []);
 
 async function refreshUsageStatus() {
   setIsUsageLoading(true);
@@ -1072,7 +1153,7 @@ async function fetchSimilarImagesByImage(imageUrl: string) {
   }
 }
 
-async function fetchPinterestSimilarImages(result: AnalysisResult) {
+async function fetchPinterestSimilarImages(result: AnalysisResult, signal?: AbortSignal) {
   const query = buildPinterestSearchQuery(result);
 
   if (process.env.NODE_ENV !== "production") {
@@ -1085,7 +1166,7 @@ async function fetchPinterestSimilarImages(result: AnalysisResult) {
   if (!query) return [];
 
   try {
-    const { ok, data } = await safePostJson("/api/pinterest-search", { query });
+    const { ok, data } = await safePostJson("/api/pinterest-search", { query }, signal);
     const record =
       data && typeof data === "object" ? (data as Record<string, unknown>) : {};
     const rawItems = Array.isArray(record.items)
@@ -1103,6 +1184,10 @@ async function fetchPinterestSimilarImages(result: AnalysisResult) {
 
     return ok ? items : [];
   } catch (error) {
+    if (isAbortError(error)) {
+      throw error;
+    }
+
     if (process.env.NODE_ENV !== "production") {
       console.warn("[KISHIB similar] pinterest fallback failed", {
         message: error instanceof Error ? error.message : String(error),
@@ -1116,6 +1201,7 @@ async function fetchPinterestSimilarImages(result: AnalysisResult) {
 async function fetchGoogleLensSimilarImages(
   imageUrls: string[],
   requestKey: string,
+  signal?: AbortSignal,
 ) {
   const usableImageUrls = imageUrls.filter(Boolean).slice(0, 4);
 
@@ -1144,6 +1230,7 @@ async function fetchGoogleLensSimilarImages(
   const lensResults: SimilarImageResult[][] = [];
 
   for (const [imageIndex, imageUrl] of usableImageUrls.entries()) {
+    throwIfAborted(signal);
     if (process.env.NODE_ENV !== "production") {
       console.info("[KISHIB similar] google lens image request", {
         imageIndex: imageIndex + 1,
@@ -1159,7 +1246,7 @@ async function fetchGoogleLensSimilarImages(
 
     const { ok, status, data: lensData } = await safePostJson("/api/google-lens", {
       imageUrl,
-    });
+    }, signal);
     const lensRecord =
       lensData && typeof lensData === "object"
         ? (lensData as Record<string, unknown>)
@@ -1229,14 +1316,67 @@ async function fetchGoogleLensSimilarImages(
 }
 
 async function handleAnalyze() {
+  if (isCancellingAnalysis) return;
+
   if (!selectedFiles.length && !prompt.trim()) {
     setError(t.emptyError);
     return;
   }
 
-  const currentUsageStatus = await refreshUsageStatus();
+  const abortController = new AbortController();
+  const signal = abortController.signal;
+  const requestId = activeAnalysisRequestIdRef.current + 1;
+  activeAnalysisRequestIdRef.current = requestId;
+  activeAnalysisAbortRef.current?.abort();
+  activeAnalysisAbortRef.current = abortController;
+
+  // Enter the dedicated analysis screen before any upload, API request, or
+  // usage check. This keeps the submitted files and prompt in state so an
+  // error can return the user to the composer without losing their work.
+  setIsAnalyzing(true);
+  setIsCancellingAnalysis(false);
+  setAppScreen("analysis");
+  setError("");
+  setAnalysisNotice("");
+  setAnalysisStage(selectedFiles.length ? "uploadingImages" : "analyzingItem");
+  setResult(null);
+  setSimilarImages([]);
+  setIsLoadingSimilar(false);
+
+  let currentUsageStatus: UsageLimitStatus;
+
+  try {
+    currentUsageStatus = await refreshUsageStatus();
+    throwIfAborted(signal);
+  } catch (err) {
+    if (isAbortError(err)) {
+      if (activeAnalysisRequestIdRef.current === requestId) {
+        setError("");
+        setResult(null);
+        setSimilarImages([]);
+        setIsAnalyzing(false);
+        setIsCancellingAnalysis(false);
+        setIsLoadingSimilar(false);
+        setAppScreen("home");
+        activeAnalysisAbortRef.current = null;
+      }
+      return;
+    }
+
+    setError(
+      err instanceof Error ? err.message : getUsageMessage(locale, "checkFailed"),
+    );
+    setIsAnalyzing(false);
+    setIsCancellingAnalysis(false);
+    setAppScreen("home");
+    activeAnalysisAbortRef.current = null;
+    return;
+  }
 
   if (!currentUsageStatus.canAnalyze) {
+    setIsAnalyzing(false);
+    setAppScreen("home");
+
     if (currentUsageStatus.reason === "auth_required") {
       setError(getUsageMessage(locale, "auth"));
       return;
@@ -1252,11 +1392,8 @@ async function handleAnalyze() {
     return;
   }
 
-  setIsAnalyzing(true);
-  setError("");
-  setResult(null);
-  setSimilarImages([]);
-  setIsLoadingSimilar(false);
+  throwIfAborted(signal);
+  setAnalysisStage(selectedFiles.length ? "uploadingImages" : "analyzingItem");
 
   const analysisStartedAt = performance.now();
   const totalStartedAt = evaluationTimingStartRef.current ?? analysisStartedAt;
@@ -1285,6 +1422,7 @@ async function handleAnalyze() {
     const initialHouseRequest = safePostJson(
       "/api/house-comparables",
       { query: prompt },
+      signal,
     ).finally(() => {
       initialHouseDurationMs = performance.now() - initialHouseRequestStartedAt;
     });
@@ -1302,9 +1440,11 @@ async function handleAnalyze() {
           const uploadResponse = await fetch("/api/upload-image", {
             method: "POST",
             body: uploadFormData,
+            signal,
           });
 
           const uploadData = await uploadResponse.json();
+          throwIfAborted(signal);
 
           if (!uploadResponse.ok || !uploadData?.imageUrl) {
             throw new Error(uploadData?.error || "Failed to upload image.");
@@ -1341,6 +1481,7 @@ async function handleAnalyze() {
         earlyGoogleLensPromise = fetchGoogleLensSimilarImages(
           uploadedImageUrls,
           earlySimilarRequestKey,
+          signal,
         );
       }
     }
@@ -1348,6 +1489,7 @@ async function handleAnalyze() {
     // 2) House of Antiques internal comparables
     try {
       const { ok: houseOk, data: houseRawData } = await initialHouseRequest;
+      throwIfAborted(signal);
       const houseData =
         houseRawData && typeof houseRawData === "object"
           ? (houseRawData as Record<string, unknown>)
@@ -1399,7 +1541,8 @@ async function handleAnalyze() {
           })
           .join("\n");
       }
-    } catch {
+    } catch (error) {
+      if (isAbortError(error)) throw error;
       console.warn("House of Antiques comparables skipped.");
     } finally {
       logDevelopmentTiming(
@@ -1443,12 +1586,16 @@ async function handleAnalyze() {
 
     // 4) Analyze with OpenAI
     const aiPipelineStartedAt = performance.now();
+    throwIfAborted(signal);
+
     const response = await fetch("/api/analyze", {
       method: "POST",
       body: formData,
+      signal,
     });
 
     const data = await response.json();
+    throwIfAborted(signal);
     logDevelopmentTiming("aiPipeline", aiPipelineStartedAt, {
       note: "Server logs split primaryAI, secondaryAI, DeepSeek, and merges",
     });
@@ -1491,7 +1638,9 @@ async function handleAnalyze() {
         origin: analyzedResult.origin,
         description: analyzedResult.history || analyzedResult.description,
       },
+      signal,
     );
+    throwIfAborted(signal);
     const refinedHouseData =
       refinedHouseRawData && typeof refinedHouseRawData === "object"
         ? (refinedHouseRawData as Record<string, unknown>)
@@ -1522,7 +1671,8 @@ async function handleAnalyze() {
         setSimilarImages(mergeSimilarImages(houseSimilarImages, googleLensItems));
       }
     }
-  } catch {
+  } catch (error) {
+    if (isAbortError(error)) throw error;
     console.warn("Refined House of Antiques comparables skipped.");
   } finally {
     logDevelopmentTiming(
@@ -1543,6 +1693,7 @@ if (locale !== "ar") {
       headers: {
         "Content-Type": "application/json",
       },
+      signal,
       body: JSON.stringify({
         locale,
         result: analyzedResult,
@@ -1550,6 +1701,7 @@ if (locale !== "ar") {
     });
 
     const translateData = await translateResponse.json();
+    throwIfAborted(signal);
 
     if (translateResponse.ok) {
       finalResult = normalizeResult({
@@ -1558,10 +1710,12 @@ if (locale !== "ar") {
       });
     }
   } catch (translateError) {
+    if (isAbortError(translateError)) throw translateError;
     console.error("Initial result translation failed:", translateError);
   }
 }
 
+setAnalysisStage("searchingSimilar");
 const resultSimilarItems = getSimilarItems(finalResult);
 const resultExternalSimilarImages = filterExternalSimilarImages(resultSimilarItems);
 if (earlyGoogleLensPromise) {
@@ -1570,6 +1724,7 @@ if (earlyGoogleLensPromise) {
 
   try {
     googleLensItems = await earlyGoogleLensPromise;
+    throwIfAborted(signal);
 
     if (googleLensItems.length > 0) {
       setSimilarImages(googleLensItems);
@@ -1600,7 +1755,8 @@ if (finalSimilarImages.length === 0) {
   const pinterestStartedAt = performance.now();
 
   try {
-    const fallbackSimilarImages = await fetchPinterestSimilarImages(finalResult);
+    const fallbackSimilarImages = await fetchPinterestSimilarImages(finalResult, signal);
+    throwIfAborted(signal);
 
     if (fallbackSimilarImages.length > 0) {
       finalSimilarImages = fallbackSimilarImages;
@@ -1636,10 +1792,14 @@ if (uploadedImageUrl) {
   });
 }
 
+setAnalysisStage("preparingResult");
+throwIfAborted(signal);
 const usageAfterSuccessfulAnalysis = await incrementAnalysisUsage();
+throwIfAborted(signal);
 setUsageStatus(usageAfterSuccessfulAnalysis);
 
 const finalJsonStartedAt = performance.now();
+throwIfAborted(signal);
 setSimilarImages(finalSimilarImages);
 setResult(finalResult);
 setSelectedArchiveItemId(null);
@@ -1653,6 +1813,7 @@ logDevelopmentTiming("totalUntilResultVisible", totalStartedAt, {
   includesUserWaitAfterCompression: totalStartedAt !== analysisStartedAt,
 });
 
+throwIfAborted(signal);
 const archiveAssets =
   archiveImagePreviews.length && archiveOriginalImages.length
     ? {
@@ -1728,6 +1889,7 @@ console.info("[KISHIB archive] Prepared history item before save", {
   similarImagesCount: finalSimilarImages.length,
 });
 
+throwIfAborted(signal);
 setSelectedArchiveItemId(archiveItem.id);
 void (async () => {
   const backgroundSaveStartedAt = performance.now();
@@ -1754,10 +1916,24 @@ void (async () => {
 
 
   } catch (err) {
-    setError(err instanceof Error ? err.message : "Unexpected error.");
+    if (isAbortError(err)) {
+      if (activeAnalysisRequestIdRef.current === requestId) {
+        setError("");
+        setResult(null);
+        setSimilarImages([]);
+        setAppScreen("home");
+      }
+    } else if (activeAnalysisRequestIdRef.current === requestId) {
+      setError(err instanceof Error ? err.message : "Unexpected error.");
+      setAppScreen("home");
+    }
   } finally {
-    setIsAnalyzing(false);
-    setIsLoadingSimilar(false);
+    if (activeAnalysisRequestIdRef.current === requestId) {
+      setIsAnalyzing(false);
+      setIsCancellingAnalysis(false);
+      setIsLoadingSimilar(false);
+      activeAnalysisAbortRef.current = null;
+    }
   }
 
 }
@@ -1776,6 +1952,9 @@ return {
   imagePreview: imagePreviews[0] || null,
  result,
 isAnalyzing,
+isCancellingAnalysis,
+analysisNotice,
+analysisStage,
 isTranslatingResult,
 error,
   currentScreen,
@@ -1789,6 +1968,7 @@ error,
   removeImage,
   removeImageAt,
   handleAnalyze,
+  cancelAnalysis,
   similarImages,
   isLoadingSimilar,
   usageStatus,

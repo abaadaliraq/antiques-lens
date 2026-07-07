@@ -1,10 +1,11 @@
 "use client";
 
-import { Pencil, Plus, Share2 } from "lucide-react";
+import { FileText, Loader2, Pencil, Plus, Share2 } from "lucide-react";
 
 type BottomBarLabels = {
   new: string;
   share: string;
+  pdf: string;
   addInfo: string;
 };
 
@@ -13,7 +14,10 @@ type BottomBarProps = {
   hasResult: boolean;
   onNew: () => void;
   onShare: () => void;
+  onPdf?: () => void;
   onAddInfo?: () => void;
+  isSharing?: boolean;
+  isPdfLoading?: boolean;
 };
 
 export default function BottomBar({
@@ -21,7 +25,10 @@ export default function BottomBar({
   hasResult,
   onNew,
   onShare,
+  onPdf,
   onAddInfo,
+  isSharing = false,
+  isPdfLoading = false,
 }: BottomBarProps) {
   if (!hasResult) return null;
 
@@ -44,13 +51,36 @@ export default function BottomBar({
         <button
           type="button"
           onClick={onShare}
+          disabled={isSharing || isPdfLoading}
           title={labels.share}
           aria-label={labels.share}
-          className="flex min-w-[64px] flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-1 text-[#3B1712] transition hover:bg-[#C79A45]/12 active:scale-[0.98]"
+          className="flex min-w-[64px] flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-1 text-[#3B1712] transition hover:bg-[#C79A45]/12 active:scale-[0.98] disabled:cursor-wait disabled:opacity-60"
         >
-          <Share2 className="h-[18px] w-[18px] text-[#9A3D2A]" />
+          {isSharing ? (
+            <Loader2 className="h-[18px] w-[18px] animate-spin text-[#9A3D2A]" />
+          ) : (
+            <Share2 className="h-[18px] w-[18px] text-[#9A3D2A]" />
+          )}
           <span className="text-[11px] font-semibold leading-tight text-[#3B1712]">{labels.share}</span>
         </button>
+
+        {onPdf && (
+          <button
+            type="button"
+            onClick={onPdf}
+            disabled={isSharing || isPdfLoading}
+            title={labels.pdf}
+            aria-label={labels.pdf}
+            className="flex min-w-[64px] flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-1 text-[#3B1712] transition hover:bg-[#C79A45]/12 active:scale-[0.98] disabled:cursor-wait disabled:opacity-60"
+          >
+            {isPdfLoading ? (
+              <Loader2 className="h-[18px] w-[18px] animate-spin text-[#9A3D2A]" />
+            ) : (
+              <FileText className="h-[18px] w-[18px] text-[#9A3D2A]" />
+            )}
+            <span className="text-[11px] font-semibold leading-tight text-[#3B1712]">{labels.pdf}</span>
+          </button>
+        )}
 
         {onAddInfo && (
           <button
