@@ -134,7 +134,7 @@ function getSafeSimilarImages(lens: ReturnType<typeof useAntiqueLens>) {
 
   if (Array.isArray(lens.similarImages) && lens.similarImages.length > 0) {
     const externalSimilarImages = lens.similarImages.filter(
-      (item) => !isHouseStoreImage(item),
+      (item: SimilarImageResult) => !isHouseStoreImage(item),
     );
     if (externalSimilarImages.length > 0) return externalSimilarImages;
   }
@@ -871,6 +871,12 @@ export default function AntiqueLensShell() {
                 empty={copy.empty}
                 items={latestItems}
                 locale={lens.locale}
+                isLoading={lens.isArchiveLoading}
+                isRefreshing={lens.isArchiveRefreshing}
+                error={lens.archiveError}
+                hasMore={lens.archiveHasMore}
+                isLoadingMore={lens.isArchiveLoadingMore}
+                onLoadMore={lens.loadMoreArchiveItems}
                 onOpenItem={lens.openHistoryItem}
                 onDeleteItem={handleDeleteArchiveItem}
               />
@@ -963,6 +969,12 @@ function LatestCollection({
   empty,
   items,
   locale,
+  isLoading,
+  isRefreshing,
+  error,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
   onOpenItem,
   onDeleteItem,
 }: {
@@ -971,6 +983,12 @@ function LatestCollection({
   empty: string;
   items: ArchiveItem[];
   locale: Locale;
+  isLoading?: boolean;
+  isRefreshing?: boolean;
+  error?: string;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
   onOpenItem: (item: ArchiveItem) => void;
   onDeleteItem: (id: string) => void;
 }) {
@@ -985,68 +1003,99 @@ function LatestCollection({
         </div>
       </div>
 
-      {items.length === 0 ? (
+      {isLoading ? (
+        <div className="rounded-[18px] border border-[#d2b98f] bg-[#fff4e2]/80 px-4 py-5 text-sm font-semibold text-[#735f4b] lg:max-w-md">
+          {locale === "en" ? "Loading your archive..." : "جارٍ تحميل أرشيفك..."}
+        </div>
+      ) : error ? (
+        <div className="rounded-[18px] border border-[#a23b2a]/25 bg-[#fff2ed]/90 px-4 py-5 text-sm font-semibold text-[#8f2e24] lg:max-w-md">
+          {error}
+        </div>
+      ) : items.length === 0 ? (
         <div className="rounded-[18px] border border-[#d2b98f] bg-[#fff4e2]/80 px-4 py-5 text-sm text-[#735f4b] lg:max-w-md">
           {empty}
         </div>
       ) : (
-        <div className="grid max-h-[520px] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:grid-cols-4 lg:max-h-[calc(100dvh-430px)] lg:grid-cols-5 lg:gap-4 lg:pr-2 xl:grid-cols-6 2xl:grid-cols-7">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="group relative overflow-hidden rounded-[18px] border border-[#d2b98f] bg-[#fff4e2]/88 text-[#241913] shadow-[0_12px_28px_rgba(62,39,22,0.1)] transition hover:border-[#b88a3d]/60 lg:rounded-[20px]"
+        <>
+          {isRefreshing ? (
+            <p className="mb-2 text-[11px] font-semibold text-[#dcc18a]">
+              {locale === "en" ? "Refreshing archive..." : "جارٍ تحديث الأرشيف..."}
+            </p>
+          ) : null}
+          <div className="grid max-h-[520px] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:grid-cols-4 lg:max-h-[calc(100dvh-430px)] lg:grid-cols-5 lg:gap-4 lg:pr-2 xl:grid-cols-6 2xl:grid-cols-7">
+            {items.map((item) => (
+              <div
+                key={item.id}
+                className="group relative overflow-hidden rounded-[18px] border border-[#d2b98f] bg-[#fff4e2]/88 text-[#241913] shadow-[0_12px_28px_rgba(62,39,22,0.1)] transition hover:border-[#b88a3d]/60 lg:rounded-[20px]"
+              >
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onDeleteItem(item.id);
+                  }}
+                  className="absolute end-2 top-2 z-10 rounded-[10px] bg-[#fff4e2]/82 p-1.5 text-[#735f4b] backdrop-blur transition hover:bg-[#6d241d] hover:text-[#fff4e2]"
+                  aria-label="Delete archive item"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onOpenItem(item)}
+                  className="block w-full text-start"
+                >
+                  <div className="aspect-square bg-[#d9b59e]">
+                    {item.imagePreview ? (
+                      <img
+                        src={item.imagePreview}
+                        alt={item.title}
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                        className="h-full w-full object-cover opacity-90 transition duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_center,rgba(184,138,61,0.2),rgba(255,244,226,0.92))] text-xs font-semibold tracking-[0.24em] text-[#735f4b]">
+                        KISHIB
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="px-3 py-3 lg:px-4">
+                    <p className="truncate text-xs font-medium text-[#241913] lg:text-sm">
+                      {item.title}
+                    </p>
+                    <p className="mt-1 truncate text-[10px] text-[#735f4b] lg:text-[11px]">
+                      {formatArchiveDate(item.createdAt, locale)}
+                    </p>
+                    <p className="mt-1 truncate text-[10px] text-[#735f4b] lg:text-[11px]">
+                      {[item.result?.itemType || item.result?.lookup, item.locale]
+                        .filter(Boolean)
+                        .join(" - ")}
+                    </p>
+                  </div>
+                </button>
+              </div>
+            ))}
+          </div>
+          {hasMore && onLoadMore ? (
+            <button
+              type="button"
+              onClick={onLoadMore}
+              disabled={isLoadingMore}
+              className="mt-4 h-10 rounded-full border border-[#dcc18a]/55 bg-[#fff4e2]/88 px-5 text-[12px] font-bold text-[#6d241d] shadow-[0_12px_30px_rgba(62,39,22,0.12)] transition hover:bg-[#fff4e2] disabled:cursor-wait disabled:opacity-60"
             >
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onDeleteItem(item.id);
-                }}
-                className="absolute end-2 top-2 z-10 rounded-[10px] bg-[#fff4e2]/82 p-1.5 text-[#735f4b] backdrop-blur transition hover:bg-[#6d241d] hover:text-[#fff4e2]"
-                aria-label="Delete archive item"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onOpenItem(item)}
-                className="block w-full text-start"
-              >
-                <div className="aspect-square bg-[#d9b59e]">
-                  {item.imagePreview ? (
-                    <img
-                      src={item.imagePreview}
-                      alt={item.title}
-                      onError={(event) => {
-                        event.currentTarget.style.display = "none";
-                      }}
-                      className="h-full w-full object-cover opacity-90 transition duration-500 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_center,rgba(184,138,61,0.2),rgba(255,244,226,0.92))] text-xs font-semibold tracking-[0.24em] text-[#735f4b]">
-                      KISHIB
-                    </div>
-                  )}
-                </div>
-
-                <div className="px-3 py-3 lg:px-4">
-                  <p className="truncate text-xs font-medium text-[#241913] lg:text-sm">
-                    {item.title}
-                  </p>
-                  <p className="mt-1 truncate text-[10px] text-[#735f4b] lg:text-[11px]">
-                    {formatArchiveDate(item.createdAt, locale)}
-                  </p>
-                  <p className="mt-1 truncate text-[10px] text-[#735f4b] lg:text-[11px]">
-                    {[item.result?.itemType || item.result?.lookup, item.locale]
-                      .filter(Boolean)
-                      .join(" - ")}
-                  </p>
-                </div>
-              </button>
-            </div>
-          ))}
-        </div>
+              {isLoadingMore
+                ? locale === "en"
+                  ? "Loading..."
+                  : "جارٍ التحميل..."
+                : locale === "en"
+                  ? "Load more"
+                  : "تحميل المزيد"}
+            </button>
+          ) : null}
+        </>
       )}
     </section>
   );

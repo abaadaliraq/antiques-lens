@@ -18,9 +18,11 @@ export type ArchiveItem = {
 };
 
 export const ARCHIVE_STORAGE_KEY = "antiques-lens:history-v2";
+export const USER_ARCHIVE_STORAGE_PREFIX = "kishib_archive_";
+export const ARCHIVE_MIGRATION_STORAGE_PREFIX = "kishib_archive_migrated_";
+export const LEGACY_ARCHIVE_MIGRATED_KEY = "kishib_archive_legacy_migrated";
 export const ARCHIVE_STORAGE_EVENT = "kishib:archive-updated";
-export const MAX_ARCHIVE_ITEMS = 20;
-const QUOTA_SAVE_LIMITS = [20, 10, 5];
+const QUOTA_SAVE_LIMITS = [Number.MAX_SAFE_INTEGER];
 const MAX_SIMILAR_IMAGES_IN_ARCHIVE = 8;
 const ARCHIVE_IMAGE_DB_NAME = "kishib-archive-images";
 const ARCHIVE_IMAGE_STORE_NAME = "images";
@@ -35,6 +37,16 @@ const LEGACY_ARCHIVE_STORAGE_KEYS = [
 
 function isClientSide() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+export function getUserArchiveStorageKey(userId?: string | null) {
+  const cleanUserId = String(userId || "").trim();
+  return cleanUserId ? `${USER_ARCHIVE_STORAGE_PREFIX}${cleanUserId}` : "";
+}
+
+export function getUserArchiveMigrationKey(userId?: string | null) {
+  const cleanUserId = String(userId || "").trim();
+  return cleanUserId ? `${ARCHIVE_MIGRATION_STORAGE_PREFIX}${cleanUserId}` : "";
 }
 
 function isPersistentImage(value: unknown): value is string {
@@ -645,13 +657,14 @@ function mergeLegacyImages(currentItems: ArchiveItem[]): ArchiveItem[] {
   });
 }
 
-function notifyArchiveUpdated(count: number) {
+function notifyArchiveUpdated(count: number, key: string, userId?: string | null) {
   if (typeof window === "undefined") return;
 
   window.dispatchEvent(
     new CustomEvent(ARCHIVE_STORAGE_EVENT, {
       detail: {
-        key: ARCHIVE_STORAGE_KEY,
+        key,
+        userId: userId || null,
         count,
       },
     }),
@@ -676,67 +689,111 @@ export function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-export function loadArchiveItems(): ArchiveItem[] {
+export function loadArchiveItems(userId?: string | null): ArchiveItem[] {
   if (!isClientSide()) return [];
 
+  const key = getUserArchiveStorageKey(userId);
+  if (!key) return [];
+
   try {
-    let cleaned = mergeLegacyImages(readArchiveArrayFromStorage(ARCHIVE_STORAGE_KEY));
+    const cleaned = readArchiveArrayFromStorage(key);
 
-    if (!cleaned.length) {
-      for (const legacyKey of LEGACY_ARCHIVE_STORAGE_KEYS) {
-        cleaned = readArchiveArrayFromStorage(legacyKey);
-
-        if (cleaned.length) {
-          console.info("[KISHIB archive] Migrated archive items", {
-            from: legacyKey,
-            to: ARCHIVE_STORAGE_KEY,
-            count: cleaned.length,
-          });
-          saveArchiveItems(cleaned);
-          break;
-        }
-      }
-    }
-
-    console.info("[KISHIB archive] Loaded archive items", {
-      key: ARCHIVE_STORAGE_KEY,
+    console.info("[KISHIB archive] Loaded user archive cache", {
+      key,
+      userId,
       count: cleaned.length,
     });
 
     return cleaned;
   } catch (error) {
-    console.error("[KISHIB archive] Unable to load archive items:", error);
+    console.error("[KISHIB archive] Unable to load user archive cache:", error);
     return [];
   }
 }
 
-export async function loadArchiveItemsWithImages(): Promise<ArchiveItem[]> {
-  const items = loadArchiveItems();
+export function loadLegacyArchiveItemsForMigration(): ArchiveItem[] {
+  if (!isClientSide()) return [];
+
+  try {
+    const items = [ARCHIVE_STORAGE_KEY, ...LEGACY_ARCHIVE_STORAGE_KEYS]
+      .flatMap((key) => {
+        try {
+          return readArchiveArrayFromStorage(key);
+        } catch {
+          return [];
+        }
+      });
+    const seen = new Set<string>();
+
+    return mergeLegacyImages(items).filter((item) => {
+      if (!item.id || seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  } catch (error) {
+    console.error("[KISHIB archive] Unable to load legacy archive items:", error);
+    return [];
+  }
+}
+
+export function hasMigratedLegacyArchive(userId?: string | null) {
+  if (!isClientSide()) return true;
+  const key = getUserArchiveMigrationKey(userId);
+  return !key || window.localStorage.getItem(key) === "1";
+}
+
+export function markLegacyArchiveMigrated(userId?: string | null) {
+  if (!isClientSide()) return;
+  const key = getUserArchiveMigrationKey(userId);
+  if (key) window.localStorage.setItem(key, "1");
+}
+
+export function hasClaimedLegacyArchiveMigration() {
+  if (!isClientSide()) return true;
+  return window.localStorage.getItem(LEGACY_ARCHIVE_MIGRATED_KEY) === "1";
+}
+
+export function markLegacyArchiveMigrationClaimed() {
+  if (!isClientSide()) return;
+  window.localStorage.setItem(LEGACY_ARCHIVE_MIGRATED_KEY, "1");
+}
+
+export function clearLegacyArchiveStorageAfterMigration() {
+  if (!isClientSide()) return;
+
+  [ARCHIVE_STORAGE_KEY, ...LEGACY_ARCHIVE_STORAGE_KEYS].forEach((key) => {
+    window.localStorage.removeItem(key);
+  });
+}
+
+export async function loadArchiveItemsWithImages(userId?: string | null): Promise<ArchiveItem[]> {
+  const items = loadArchiveItems(userId);
 
   return Promise.all(items.map((item) => hydrateArchiveItemImages(item)));
 }
 
-export function saveArchiveItems(items: ArchiveItem[]): boolean {
+export function saveArchiveItems(items: ArchiveItem[], userId?: string | null): boolean {
   if (!isClientSide()) return false;
 
-  const cleaned = items
-    .map((item) => cleanArchiveItem(item))
-    .slice(0, MAX_ARCHIVE_ITEMS);
+  const key = getUserArchiveStorageKey(userId);
+  if (!key) return false;
+
+  const cleaned = items.map((item) => cleanArchiveItem(item));
 
   for (const limit of QUOTA_SAVE_LIMITS) {
     const trimmed = cleaned.slice(0, limit);
 
     try {
-      window.localStorage.setItem(ARCHIVE_STORAGE_KEY, JSON.stringify(trimmed));
+      window.localStorage.setItem(key, JSON.stringify(trimmed));
       console.info("[KISHIB archive] Saved archive items", {
-        key: ARCHIVE_STORAGE_KEY,
+        key,
         count: trimmed.length,
       });
-      notifyArchiveUpdated(trimmed.length);
+      notifyArchiveUpdated(trimmed.length, key, userId);
       return true;
     } catch (error) {
       console.error("[KISHIB archive] Unable to save archive with images:", {
-        key: ARCHIVE_STORAGE_KEY,
+        key,
         attemptedCount: trimmed.length,
         error,
       });
@@ -750,23 +807,23 @@ export function saveArchiveItems(items: ArchiveItem[]): boolean {
 
     try {
       window.localStorage.setItem(
-        ARCHIVE_STORAGE_KEY,
+        key,
         JSON.stringify(trimmed),
       );
       console.warn(
         "[KISHIB archive] Saved text-only archive after image storage failed",
         {
-          key: ARCHIVE_STORAGE_KEY,
+          key,
           count: trimmed.length,
         },
       );
-      notifyArchiveUpdated(trimmed.length);
+      notifyArchiveUpdated(trimmed.length, key, userId);
       return true;
     } catch (fallbackError) {
       console.error(
         "[KISHIB archive] Unable to save text-only archive fallback:",
         {
-          key: ARCHIVE_STORAGE_KEY,
+          key,
           attemptedCount: trimmed.length,
           error: fallbackError,
         },
@@ -777,26 +834,25 @@ export function saveArchiveItems(items: ArchiveItem[]): boolean {
   return false;
 }
 
-export async function addArchiveItem(item: ArchiveItem): Promise<ArchiveItem[]> {
-  return (await addArchiveItemWithStatus(item)).items;
+export async function addArchiveItem(item: ArchiveItem, userId?: string | null): Promise<ArchiveItem[]> {
+  return (await addArchiveItemWithStatus(item, userId)).items;
 }
 
-export async function addArchiveItemWithStatus(item: ArchiveItem): Promise<{
+export async function addArchiveItemWithStatus(item: ArchiveItem, userId?: string | null): Promise<{
   items: ArchiveItem[];
   saved: boolean;
 }> {
   const cleanedItem = cleanArchiveItem(item);
-  const previousItems = await loadArchiveItemsWithImages();
-  const updatedItems = [cleanedItem, ...previousItems].slice(
-    0,
-    MAX_ARCHIVE_ITEMS,
-  );
+  const previousItems = await loadArchiveItemsWithImages(userId);
+  const updatedItems = [cleanedItem, ...previousItems];
   const storageItems = await Promise.all(
     updatedItems.map((archiveItem) => moveArchiveImagesToIndexedDb(archiveItem)),
   );
 
+  const key = getUserArchiveStorageKey(userId);
+
   console.info("[KISHIB archive] Adding archive item", {
-    key: ARCHIVE_STORAGE_KEY,
+    key,
     id: cleanedItem.id,
     title: cleanedItem.title,
     previousCount: updatedItems.length - 1,
@@ -805,17 +861,18 @@ export async function addArchiveItemWithStatus(item: ArchiveItem): Promise<{
     hasOriginalImage: Boolean(cleanedItem.originalImage),
   });
 
-  const saved = saveArchiveItems(storageItems);
+  const saved = saveArchiveItems(storageItems, userId);
   return {
     items: updatedItems,
     saved,
   };
 }
 
-export function clearArchiveItems(): void {
+export function clearArchiveItems(userId?: string | null): void {
   if (!isClientSide()) return;
 
-  window.localStorage.removeItem(ARCHIVE_STORAGE_KEY);
+  const key = getUserArchiveStorageKey(userId);
+  if (key) window.localStorage.removeItem(key);
 }
 
 export function formatArchiveDate(createdAt: string, locale = "en"): string {
@@ -928,9 +985,9 @@ export async function createArchiveImagePreviews(files: File[]): Promise<string[
   }
 }
 
-export function deleteArchiveItem(id: string): ArchiveItem[] {
-  const updatedItems = loadArchiveItems().filter((item) => item.id !== id);
+export function deleteArchiveItem(id: string, userId?: string | null): ArchiveItem[] {
+  const updatedItems = loadArchiveItems(userId).filter((item) => item.id !== id);
 
-  saveArchiveItems(updatedItems);
+  saveArchiveItems(updatedItems, userId);
   return updatedItems;
 }

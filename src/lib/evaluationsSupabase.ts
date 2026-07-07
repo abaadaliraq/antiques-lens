@@ -1,27 +1,14 @@
-"use client";
+﻿"use client";
 
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { getCurrentUserProfile } from "@/lib/profilesSupabase";
 import type { ArchiveItem } from "@/components/antique-ai/archiveStore";
 import type { AnalysisResult, Locale } from "@/components/antique-ai/types";
 
-type SupabaseTableClient = {
-  from: (table: string) => {
-    select: (columns: string) => {
-      eq: (column: string, value: string) => {
-        order: (
-          column: string,
-          options: { ascending: boolean },
-        ) => {
-          limit: (count: number) => Promise<{ data: unknown; error: unknown }>;
-        };
-      };
-    };
-    insert: (
-      payload: Record<string, unknown>,
-    ) => Promise<{ error: unknown }>;
-  };
-};
+export const EVALUATION_ARCHIVE_PAGE_SIZE = 20;
+
+const EVALUATION_SELECT_COLUMNS =
+  "id,user_id,user_email,user_name,user_phone,user_country,user_country_code,user_country_name_en,user_city,user_province,user_province_code,user_province_name_en,user_gender,title,locale,item_type,image_url,main_image,cloudinary_public_id,analysis_result,status,created_at,updated_at";
 
 type EvaluationRow = {
   id: string;
@@ -41,8 +28,10 @@ type EvaluationRow = {
   locale: string | null;
   item_type: string | null;
   image_url: string | null;
+  main_image?: string | null;
   cloudinary_public_id: string | null;
   analysis_result: Record<string, unknown> | null;
+  status?: string | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -52,6 +41,13 @@ type SaveEvaluationInput = {
   locale: Locale;
   imageUrl?: string;
   cloudinaryPublicId?: string;
+};
+
+export type EvaluationArchivePage = {
+  items: ArchiveItem[];
+  hasMore: boolean;
+  userId: string | null;
+  page: number;
 };
 
 function readMetadataText(metadata: Record<string, unknown>, keys: string[]) {
@@ -80,7 +76,10 @@ function mapEvaluationRowToArchiveItem(row: EvaluationRow): ArchiveItem {
     userNote?: string;
     cloudinaryPublicId?: string;
   };
-  const imageUrl = getResultImageUrl(result, row.image_url || undefined);
+  const imageUrl = getResultImageUrl(
+    result,
+    row.main_image || row.image_url || undefined,
+  );
   const title = row.title || result.title || result.itemType || "Untitled item";
   const similarImages =
     (Array.isArray(result.similarImages) && result.similarImages) ||
@@ -102,6 +101,7 @@ function mapEvaluationRowToArchiveItem(row: EvaluationRow): ArchiveItem {
       ...result,
       title,
       itemType: row.item_type || result.itemType,
+      status: row.status || (result as { status?: string }).status || "completed",
       uploadedImageUrl: imageUrl || result.uploadedImageUrl,
       sourceImageUrl: imageUrl || result.sourceImageUrl,
       imageUrl: imageUrl || result.imageUrl,
@@ -117,12 +117,12 @@ function mapEvaluationRowToArchiveItem(row: EvaluationRow): ArchiveItem {
 }
 
 export function mergeEvaluationArchiveItems(
-  localItems: ArchiveItem[],
-  supabaseItems: ArchiveItem[],
+  primaryItems: ArchiveItem[],
+  secondaryItems: ArchiveItem[],
 ) {
   const seen = new Set<string>();
 
-  return [...supabaseItems, ...localItems]
+  return [...primaryItems, ...secondaryItems]
     .filter((item) => {
       if (!item.id || seen.has(item.id)) return false;
       seen.add(item.id);
@@ -135,29 +135,61 @@ export function mergeEvaluationArchiveItems(
     });
 }
 
-export async function loadEvaluationArchiveItemsFromSupabase() {
+export async function getCurrentEvaluationUserId() {
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase.auth.getUser();
+
+  if (error || !data.user) return null;
+  return data.user.id;
+}
+
+export async function loadEvaluationArchivePageFromSupabase({
+  page = 0,
+  pageSize = EVALUATION_ARCHIVE_PAGE_SIZE,
+}: {
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<EvaluationArchivePage> {
   try {
     const supabase = getSupabaseBrowserClient();
     const { data: userData, error: userError } = await supabase.auth.getUser();
 
-    if (userError || !userData.user) return [];
+    if (userError || !userData.user) {
+      return { items: [], hasMore: false, userId: null, page };
+    }
 
-    const { data, error } = await (supabase as unknown as SupabaseTableClient)
+    const from = page * pageSize;
+    const to = from + pageSize;
+    const { data, error } = await supabase
       .from("evaluations")
-      .select(
-        "id,user_id,user_email,user_name,user_phone,user_country,user_country_code,user_country_name_en,user_city,user_province,user_province_code,user_province_name_en,user_gender,title,locale,item_type,image_url,cloudinary_public_id,analysis_result,created_at,updated_at",
-      )
+      .select(EVALUATION_SELECT_COLUMNS)
       .eq("user_id", userData.user.id)
       .order("created_at", { ascending: false })
-      .limit(50);
+      .range(from, to);
 
     if (error) throw error;
 
-    return ((data || []) as EvaluationRow[]).map(mapEvaluationRowToArchiveItem);
-  } catch {
-    console.warn("Supabase evaluations load skipped.");
-    return [];
+    const rows = ((data || []) as EvaluationRow[]).map(mapEvaluationRowToArchiveItem);
+
+    return {
+      items: rows.slice(0, pageSize),
+      hasMore: rows.length > pageSize,
+      userId: userData.user.id,
+      page,
+    };
+  } catch (error) {
+    console.warn("Supabase evaluations load skipped.", error);
+    return { items: [], hasMore: false, userId: null, page };
   }
+}
+
+export async function loadEvaluationArchiveItemsFromSupabase() {
+  const firstPage = await loadEvaluationArchivePageFromSupabase({
+    page: 0,
+    pageSize: EVALUATION_ARCHIVE_PAGE_SIZE,
+  });
+
+  return firstPage.items;
 }
 
 export async function saveEvaluationToSupabase({
@@ -170,8 +202,11 @@ export async function saveEvaluationToSupabase({
     const supabase = getSupabaseBrowserClient();
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
+
+    if (!user) return false;
+
     const { profile } = await getCurrentUserProfile();
-    const metadata = user?.user_metadata ?? {};
+    const metadata = user.user_metadata ?? {};
     const userName = readMetadataText(metadata, [
       "full_name",
       "name",
@@ -186,6 +221,7 @@ export async function saveEvaluationToSupabase({
       ...archiveItem.result,
       userNote: archiveItem.prompt || "",
       cloudinaryPublicId: finalCloudinaryPublicId || undefined,
+      status: "completed",
       userProfile: {
         phone: profile?.phone ?? null,
         gender: profile?.gender ?? null,
@@ -201,8 +237,8 @@ export async function saveEvaluationToSupabase({
 
     const payload = {
       id: archiveItem.id,
-      user_id: user?.id ?? null,
-      user_email: profile?.email ?? user?.email ?? null,
+      user_id: user.id,
+      user_email: profile?.email ?? user.email ?? null,
       user_name: profile?.full_name || userName || null,
       user_phone: profile?.phone ?? null,
       user_country: profile?.country ?? null,
@@ -217,18 +253,48 @@ export async function saveEvaluationToSupabase({
       locale,
       item_type: result.itemType || result.lookup || null,
       image_url: finalImageUrl || null,
+      main_image: finalImageUrl || null,
       cloudinary_public_id: finalCloudinaryPublicId || null,
       analysis_result: analysisResult,
+      status: "completed",
       created_at: archiveItem.createdAt,
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await (supabase as unknown as SupabaseTableClient)
-      .from("evaluations")
-      .insert(payload);
+    const { error } = await (supabase as any).from("evaluations").insert(payload);
 
     if (error) throw error;
-  } catch {
-    console.warn("Supabase evaluation save skipped.");
+    return true;
+  } catch (error) {
+    const code =
+      error && typeof error === "object" && "code" in error
+        ? String((error as { code?: unknown }).code || "")
+        : "";
+
+    if (code === "23505") return true;
+
+    console.warn("Supabase evaluation save skipped.", error);
+    return false;
+  }
+}
+
+export async function deleteEvaluationFromSupabase(id: string) {
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !userData.user) return false;
+
+    const { error } = await (supabase as any)
+      .from("evaluations")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", userData.user.id);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.warn("Supabase evaluation delete skipped.", error);
+    return false;
   }
 }

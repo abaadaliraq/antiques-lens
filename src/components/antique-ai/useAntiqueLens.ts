@@ -1,5 +1,4 @@
 ﻿"use client";
-
 import {
   Camera,
   CameraResultType,
@@ -10,7 +9,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { useFollowUpEvaluation } from "./useFollowUpEvaluation";
 import {
-  loadEvaluationArchiveItemsFromSupabase,
+  EVALUATION_ARCHIVE_PAGE_SIZE,
+  deleteEvaluationFromSupabase,
+  getCurrentEvaluationUserId,
+  loadEvaluationArchivePageFromSupabase,
   mergeEvaluationArchiveItems,
   saveEvaluationToSupabase,
 } from "@/lib/evaluationsSupabase";
@@ -28,12 +30,18 @@ import {
   ARCHIVE_STORAGE_EVENT,
   ARCHIVE_STORAGE_KEY,
   clearArchiveItems,
+  clearLegacyArchiveStorageAfterMigration,
   createArchiveImageAssets,
   createArchiveImagePreviews,
   deleteArchiveItem,
   fileToDataUrl,
-  loadArchiveItems,
+  hasClaimedLegacyArchiveMigration,
+  hasMigratedLegacyArchive,
   loadArchiveItemsWithImages,
+  loadLegacyArchiveItemsForMigration,
+  markLegacyArchiveMigrated,
+  markLegacyArchiveMigrationClaimed,
+  saveArchiveItems,
   type ArchiveItem,
 } from "./archiveStore";
 import { content, normalizeResult } from "./antiqueContent";
@@ -569,6 +577,7 @@ const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
   const activeAnalysisAbortRef = useRef<AbortController | null>(null);
   const activeAnalysisRequestIdRef = useRef(0);
   const analysisNoticeTimerRef = useRef<number | null>(null);
+  const activeArchiveRequestIdRef = useRef<string | null>(null);
 
   const [result, setResult] = useState<AnalysisResult | null>(null);
   
@@ -603,6 +612,13 @@ const followUp = useFollowUpEvaluation({
 
 const [historyOpen, setHistoryOpen] = useState(false);
 const [history, setHistory] = useState<ArchiveItem[]>([]);
+const [archiveUserId, setArchiveUserId] = useState<string | null>(null);
+const [archivePage, setArchivePage] = useState(0);
+const [archiveHasMore, setArchiveHasMore] = useState(false);
+const [isArchiveLoading, setIsArchiveLoading] = useState(true);
+const [isArchiveRefreshing, setIsArchiveRefreshing] = useState(false);
+const [isArchiveLoadingMore, setIsArchiveLoadingMore] = useState(false);
+const [archiveError, setArchiveError] = useState("");
 
 const t = useMemo(() => content[locale], [locale]);
 
@@ -708,8 +724,164 @@ setIsLoadingSimilar(false);
 
   goBackInsideAppRef.current = goBackInsideApp;
 
+  async function migrateLegacyArchiveForUser(userId: string) {
+    if (hasMigratedLegacyArchive(userId)) return [];
+
+    if (hasClaimedLegacyArchiveMigration()) {
+      markLegacyArchiveMigrated(userId);
+      return [];
+    }
+
+    const legacyItems = loadLegacyArchiveItemsForMigration();
+    if (!legacyItems.length) {
+      markLegacyArchiveMigrated(userId);
+      return [];
+    }
+
+    const migratedResults = await Promise.allSettled(
+      legacyItems.map((archiveItem) =>
+        saveEvaluationToSupabase({
+          archiveItem,
+          locale: (archiveItem.locale as Locale) || locale,
+          imageUrl:
+            archiveItem.originalImage ||
+            archiveItem.imagePreview ||
+            archiveItem.result?.uploadedImageUrl ||
+            archiveItem.result?.imageUrl,
+          cloudinaryPublicId: archiveItem.cloudinaryPublicId,
+        }),
+      ),
+    );
+    const migratedCount = migratedResults.filter(
+      (result) => result.status === "fulfilled" && result.value === true,
+    ).length;
+
+    if (migratedCount === legacyItems.length) {
+      saveArchiveItems(legacyItems, userId);
+      markLegacyArchiveMigrated(userId);
+      markLegacyArchiveMigrationClaimed();
+      clearLegacyArchiveStorageAfterMigration();
+    }
+
+    console.info("[KISHIB archive] Legacy archive migration checked", {
+      userId,
+      legacyCount: legacyItems.length,
+      migratedCount,
+    });
+
+    return legacyItems;
+  }
+
+  async function refreshArchiveForCurrentUser({
+    reset = true,
+    silent = false,
+  }: { reset?: boolean; silent?: boolean } = {}) {
+    const requestId = crypto.randomUUID();
+    activeArchiveRequestIdRef.current = requestId;
+
+    if (reset) {
+      setHistory([]);
+      setArchivePage(0);
+      setArchiveHasMore(false);
+    }
+
+    setArchiveError("");
+    if (!silent) setIsArchiveLoading(true);
+    if (silent) setIsArchiveRefreshing(true);
+
+    try {
+      const userId = await getCurrentEvaluationUserId();
+      if (activeArchiveRequestIdRef.current !== requestId) return;
+
+      setArchiveUserId(userId);
+
+      if (!userId) {
+        setHistory([]);
+        setArchivePage(0);
+        setArchiveHasMore(false);
+        return;
+      }
+
+      await migrateLegacyArchiveForUser(userId);
+      if (activeArchiveRequestIdRef.current !== requestId) return;
+
+      const firstPage = await loadEvaluationArchivePageFromSupabase({
+        page: 0,
+        pageSize: EVALUATION_ARCHIVE_PAGE_SIZE,
+      });
+      if (activeArchiveRequestIdRef.current !== requestId) return;
+
+      const cachedItems = await loadArchiveItemsWithImages(userId);
+      const archiveItems = mergeEvaluationArchiveItems(
+        firstPage.items,
+        cachedItems.filter((item) =>
+          firstPage.items.some((supabaseItem) => supabaseItem.id === item.id),
+        ),
+      );
+
+      setHistory(archiveItems);
+      setArchivePage(1);
+      setArchiveHasMore(firstPage.hasMore);
+      saveArchiveItems(archiveItems, userId);
+
+      console.info("[KISHIB archive] Loaded user archive from Supabase", {
+        userId,
+        count: archiveItems.length,
+        hasMore: firstPage.hasMore,
+      });
+    } catch (error) {
+      if (activeArchiveRequestIdRef.current === requestId) {
+        setArchiveError(
+          locale === "en"
+            ? "Could not load your archive. Pull to refresh or try again."
+            : "تعذر تحميل أرشيفك. حاول التحديث مرة أخرى.",
+        );
+        console.error("[KISHIB archive] User archive load failed", error);
+      }
+    } finally {
+      if (activeArchiveRequestIdRef.current === requestId) {
+        setIsArchiveLoading(false);
+        setIsArchiveRefreshing(false);
+      }
+    }
+  }
+
+  async function loadMoreArchiveItems() {
+    if (!archiveUserId || isArchiveLoadingMore || !archiveHasMore) return;
+
+    setIsArchiveLoadingMore(true);
+    setArchiveError("");
+
+    try {
+      const page = archivePage;
+      const nextPage = await loadEvaluationArchivePageFromSupabase({
+        page,
+        pageSize: EVALUATION_ARCHIVE_PAGE_SIZE,
+      });
+
+      if (nextPage.userId !== archiveUserId) return;
+
+      setHistory((current) => {
+        const merged = mergeEvaluationArchiveItems(current, nextPage.items);
+        saveArchiveItems(merged, archiveUserId);
+        return merged;
+      });
+      setArchivePage(page + 1);
+      setArchiveHasMore(nextPage.hasMore);
+    } catch (error) {
+      setArchiveError(
+        locale === "en"
+          ? "Could not load more archive items."
+          : "تعذر تحميل المزيد من عناصر الأرشيف.",
+      );
+      console.error("[KISHIB archive] Load more failed", error);
+    } finally {
+      setIsArchiveLoadingMore(false);
+    }
+  }
+
   useEffect(() => {
-    const timer = window.setTimeout(async () => {
+    const timer = window.setTimeout(() => {
       const savedLocale = window.localStorage.getItem(
         USER_LOCALE_STORAGE_KEY,
       ) as Locale | null;
@@ -718,21 +890,7 @@ setIsLoadingSimilar(false);
         setLocale(savedLocale);
       }
 
-      const [localArchiveItems, supabaseArchiveItems] = await Promise.all([
-        loadArchiveItemsWithImages(),
-        loadEvaluationArchiveItemsFromSupabase(),
-      ]);
-      const archiveItems = mergeEvaluationArchiveItems(
-        localArchiveItems,
-        supabaseArchiveItems,
-      );
-      console.info("[KISHIB archive] Initial archive load", {
-        key: ARCHIVE_STORAGE_KEY,
-        count: archiveItems.length,
-        localCount: localArchiveItems.length,
-        supabaseCount: supabaseArchiveItems.length,
-      });
-      setHistory(archiveItems);
+      void refreshArchiveForCurrentUser();
       void refreshUsageStatus();
     }, 0);
 
@@ -740,41 +898,45 @@ setIsLoadingSimilar(false);
   }, []);
 
   useEffect(() => {
-    async function refreshArchiveFromStorage() {
-      const [localArchiveItems, supabaseArchiveItems] = await Promise.all([
-        loadArchiveItemsWithImages(),
-        loadEvaluationArchiveItemsFromSupabase(),
-      ]);
-      const archiveItems = mergeEvaluationArchiveItems(
-        localArchiveItems,
-        supabaseArchiveItems,
-      );
+    const supabase = getSupabaseBrowserClient();
+    const { data } = supabase.auth.onAuthStateChange(() => {
+      activeArchiveRequestIdRef.current = crypto.randomUUID();
+      setArchiveUserId(null);
+      setHistory([]);
+      setArchivePage(0);
+      setArchiveHasMore(false);
+      setArchiveError("");
+      void refreshArchiveForCurrentUser();
+    });
 
-      console.info("[KISHIB archive] Refreshed archive from storage", {
-        key: ARCHIVE_STORAGE_KEY,
-        count: archiveItems.length,
-        localCount: localArchiveItems.length,
-        supabaseCount: supabaseArchiveItems.length,
-      });
-      setHistory(archiveItems);
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    function refreshArchiveFromScopedCache(event?: Event) {
+      const customEvent = event as CustomEvent<{ userId?: string | null }>;
+      const eventUserId = customEvent.detail?.userId;
+      if (!archiveUserId || eventUserId !== archiveUserId) return;
+      void refreshArchiveForCurrentUser({ reset: false, silent: true });
     }
 
     function handleStorage(event: StorageEvent) {
-      if (event.key && event.key !== ARCHIVE_STORAGE_KEY) return;
-      refreshArchiveFromStorage();
+      if (!archiveUserId || !event.key?.startsWith("kishib_archive_")) return;
+      if (event.key !== "kishib_archive_" + archiveUserId) return;
+      void refreshArchiveForCurrentUser({ reset: false, silent: true });
     }
 
     window.addEventListener("storage", handleStorage);
-    window.addEventListener(ARCHIVE_STORAGE_EVENT, refreshArchiveFromStorage);
+    window.addEventListener(ARCHIVE_STORAGE_EVENT, refreshArchiveFromScopedCache);
 
     return () => {
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener(
         ARCHIVE_STORAGE_EVENT,
-        refreshArchiveFromStorage,
+        refreshArchiveFromScopedCache,
       );
     };
-  }, []);
+  }, [archiveUserId]);
 
   useEffect(() => {
     if (historyReadyRef.current) return;
@@ -1055,8 +1217,12 @@ async function changeLocale(nextLocale: Locale) {
       hasImagePreview: Boolean(item.imagePreview),
       hasOriginalImage: Boolean(item.originalImage),
     });
-    const archiveSaveResult = await addArchiveItemWithStatus(item);
-    const updatedArchive = archiveSaveResult.items;
+    const userId = archiveUserId || (await getCurrentEvaluationUserId());
+    const archiveSaveResult = await addArchiveItemWithStatus(item, userId);
+    const updatedArchive = mergeEvaluationArchiveItems(
+      archiveSaveResult.items,
+      history,
+    );
     console.info("[KISHIB archive] History state updated", {
       key: ARCHIVE_STORAGE_KEY,
       count: updatedArchive.length,
@@ -1116,12 +1282,13 @@ setSelectedFiles([]);
 
   function clearHistory() {
     setHistory([]);
-    clearArchiveItems();
+    clearArchiveItems(archiveUserId);
   }
 
   function deleteHistoryItem(id: string) {
-    const updatedArchive = deleteArchiveItem(id);
-    setHistory(updatedArchive);
+    deleteArchiveItem(id, archiveUserId);
+    setHistory((current) => current.filter((item) => item.id !== id));
+    void deleteEvaluationFromSupabase(id);
 
     if (selectedArchiveItemId === id) {
       goHome({ replaceHistory: true });
@@ -1961,6 +2128,14 @@ error,
   historyOpen,
   setHistoryOpen,
   history,
+  archiveUserId,
+  archiveHasMore,
+  isArchiveLoading,
+  isArchiveRefreshing,
+  isArchiveLoadingMore,
+  archiveError,
+  loadMoreArchiveItems,
+  refreshArchive: () => refreshArchiveForCurrentUser({ silent: true }),
   changeLocale,
   resetEvaluation,
   handleImageChange,
@@ -1988,3 +2163,5 @@ error,
 
 };
 }
+
+

@@ -784,9 +784,10 @@ const panelRef = useRef<HTMLDivElement | null>(null);
   }, []);
 
   async function handleLogout() {
+    const userId = profileInfo?.userId;
     const supabase = getSupabaseBrowserClient();
     await supabase.auth.signOut();
-    window.localStorage.removeItem(AUTH_CACHE_KEY);
+    clearLocalAccountData(userId);
     window.location.reload();
   }
 
@@ -814,7 +815,11 @@ const panelRef = useRef<HTMLDivElement | null>(null);
 
     for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
       const key = window.localStorage.key(index);
-      if (key?.startsWith(PROFILE_CACHE_PREFIX)) {
+      if (
+        key?.startsWith(PROFILE_CACHE_PREFIX) ||
+        key?.startsWith("kishib_archive_") ||
+        key?.startsWith("kishib_archive_migrated_")
+      ) {
         window.localStorage.removeItem(key);
       }
     }
@@ -1729,3 +1734,4 @@ function MenuExternalButton({
     </button>
   );
 }
+
