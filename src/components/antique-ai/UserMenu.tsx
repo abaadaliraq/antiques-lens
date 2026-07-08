@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";import type { FormEvent, ReactNode } from "react";
+import { LANGUAGE_OPTIONS, isRtlLocale } from "@/i18n/common";
 import {
   getCurrentUserProfile,
   PROFILE_UPDATED_EVENT,
@@ -117,365 +118,38 @@ type MenuCopy = {
 
 const COPY: Record<Locale, MenuCopy> = {
   ar: {
-    profile: "الملف الشخصي",
-    account: "الحساب",
-    name: "الاسم",
-    email: "الإيميل",
-    phone: "رقم الهاتف",
-    gender: "الجنس",
-    male: "ذكر",
-    female: "أنثى",
-    country: "الدولة",
-    province: "المحافظة",
-    language: "اللغة",
-    subscriptions: "الاشتراكات",
-    support: "الدعم",
-    website: "موقع KISHIB",
-    cookies: "الكوكيز",
-    terms: "الشروط والأحكام",
-    privacy: "سياسة الخصوصية",
-    logout: "تسجيل خروج",
-    deleteAccount: "حذف الحساب",
-    deleteAccountTitle: "حذف الحساب",
-    deleteAccountWarning: "هذا الإجراء نهائي ولا يمكن التراجع عنه.",
-    deleteAccountDataWarning: "سيتم حذف الحساب وبيانات الملف الشخصي وسجل التقييمات والصور والملاحظات المرتبطة بالحساب قدر الإمكان.",
-    deleteAccountConfirmHint: "اكتب DELETE أو حذف لتفعيل الحذف.",
-    deleteAccountConfirmButton: "حذف الحساب نهائيًا",
-    deleteAccountSuccess: "تم حذف الحساب وبياناته بنجاح.",
-    deleteAccountFailed: "تعذر حذف الحساب. حاول مرة أخرى.",
-    comingSoon: "قريبًا",
-    paymentDisabled: "الدفع غير مفعل حاليًا",
-    unknown: "غير مضاف",
-    editProfile: "تعديل الملف الشخصي",
-    save: "حفظ",
-    cancel: "إلغاء",
-    saved: "تم الحفظ",
-    supportText: "للدعم والمساعدة تواصل معنا عبر البريد الإلكتروني",
-    close: "إغلاق",
-    openProfileImage: "فتح صورة الحساب",
-    closeProfileImage: "إغلاق صورة الحساب",
-    monthlyPlan: "الاشتراك الشهري",
-    annualPlan: "الاشتراك السنوي",
-    reportsPack: "باقة التقارير",
-    price: "السعر",
-    includes: "يشمل",
+    profile: "الملف الشخصي", account: "الحساب", name: "الاسم", email: "الإيميل", phone: "رقم الهاتف", gender: "الجنس", male: "ذكر", female: "أنثى", country: "الدولة", province: "المحافظة", language: "اللغة", subscriptions: "الاشتراكات", support: "الدعم", website: "موقع KISHIB", cookies: "الكوكيز", terms: "الشروط والأحكام", privacy: "سياسة الخصوصية", logout: "تسجيل خروج", deleteAccount: "حذف الحساب", deleteAccountTitle: "حذف الحساب", deleteAccountWarning: "هذا الإجراء نهائي ولا يمكن التراجع عنه.", deleteAccountDataWarning: "سيتم حذف الحساب وبيانات الملف الشخصي وسجل التقييمات والصور والملاحظات المرتبطة بالحساب قدر الإمكان.", deleteAccountConfirmHint: "اكتب DELETE أو حذف لتفعيل الحذف.", deleteAccountConfirmButton: "حذف الحساب نهائيًا", deleteAccountSuccess: "تم حذف الحساب وبياناته بنجاح.", deleteAccountFailed: "تعذر حذف الحساب. حاول مرة أخرى.", comingSoon: "قريبًا", paymentDisabled: "الدفع غير مفعل حاليًا", unknown: "غير مضاف", editProfile: "تعديل الملف الشخصي", save: "حفظ", cancel: "إلغاء", saved: "تم الحفظ", supportText: "للدعم والمساعدة تواصل معنا عبر البريد الإلكتروني", close: "إغلاق", openProfileImage: "فتح صورة الحساب", closeProfileImage: "إغلاق صورة الحساب", monthlyPlan: "الاشتراك الشهري", annualPlan: "الاشتراك السنوي", reportsPack: "باقة التقارير", price: "السعر", includes: "يشمل",
   },
   en: {
-    profile: "Profile",
-    account: "Account",
-    name: "Name",
-    email: "Email",
-    phone: "Phone",
-    gender: "Gender",
-    male: "Male",
-    female: "Female",
-    country: "Country",
-    language: "Language",
-    subscriptions: "Subscriptions",
-    support: "Support",
-    website: "KISHIB Website",
-    cookies: "Cookies",
-    terms: "Terms & Conditions",
-    privacy: "Privacy Policy",
-    logout: "Log out",
-    deleteAccount: "Delete account",
-    deleteAccountTitle: "Delete account",
-    deleteAccountWarning: "This action is permanent and cannot be undone.",
-    deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
-    deleteAccountConfirmButton: "Delete account permanently",
-    deleteAccountSuccess: "Account and associated data were deleted successfully.",
-    deleteAccountFailed: "Unable to delete account. Please try again.",
-    comingSoon: "Coming soon",
-    paymentDisabled: "Payment is not enabled yet",
-    unknown: "Not added",
-    editProfile: "Edit profile",
-    save: "Save",
-    cancel: "Cancel",
-    saved: "Saved",
-    supportText: "For support and help, contact us by email",
-    close: "Close",
-    openProfileImage: "Open profile photo",
-    closeProfileImage: "Close profile photo",
-    monthlyPlan: "Monthly subscription",
-    annualPlan: "Annual subscription",
-    reportsPack: "Reports package",
-    price: "Price",
-    includes: "Includes",
+    profile: "Profile", account: "Account", name: "Name", email: "Email", phone: "Phone", gender: "Gender", male: "Male", female: "Female", country: "Country", province: "City / Province", language: "Language", subscriptions: "Subscriptions", support: "Support", website: "KISHIB Website", cookies: "Cookies", terms: "Terms & Conditions", privacy: "Privacy Policy", logout: "Log out", deleteAccount: "Delete account", deleteAccountTitle: "Delete account", deleteAccountWarning: "This action is permanent and cannot be undone.", deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.", deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.", deleteAccountConfirmButton: "Delete account permanently", deleteAccountSuccess: "Account and associated data were deleted successfully.", deleteAccountFailed: "Unable to delete account. Please try again.", comingSoon: "Coming soon", paymentDisabled: "Payment is not enabled yet", unknown: "Not added", editProfile: "Edit profile", save: "Save", cancel: "Cancel", saved: "Saved", supportText: "For support and help, contact us by email", close: "Close", openProfileImage: "Open profile photo", closeProfileImage: "Close profile photo", monthlyPlan: "Monthly subscription", annualPlan: "Annual subscription", reportsPack: "Reports package", price: "Price", includes: "Includes",
   },
   fr: {
-    profile: "Profil",
-    account: "Compte",
-    name: "Nom",
-    email: "E-mail",
-    phone: "TÃ©lÃ©phone",
-    gender: "Genre",
-    male: "Homme",
-    female: "Femme",
-    country: "Pays",
-    language: "Langue",
-    subscriptions: "Abonnements",
-    support: "Support",
-    website: "Site KISHIB",
-    cookies: "Cookies",
-    terms: "Conditions",
-    privacy: "ConfidentialitÃ©",
-    logout: "DÃ©connexion",
-    deleteAccount: "Delete account",
-    deleteAccountTitle: "Delete account",
-    deleteAccountWarning: "This action is permanent and cannot be undone.",
-    deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
-    deleteAccountConfirmButton: "Delete account permanently",
-    deleteAccountSuccess: "Account and associated data were deleted successfully.",
-    deleteAccountFailed: "Unable to delete account. Please try again.",
-    comingSoon: "BientÃ´t",
-    paymentDisabled: "Paiement non activÃ©",
-    unknown: "Non ajoutÃ©",
-    editProfile: "Modifier le profil",
-    save: "Enregistrer",
-    cancel: "Annuler",
-    saved: "EnregistrÃ©",
-    supportText: "Pour obtenir de l'aide, contactez-nous par e-mail",
-    close: "Fermer",
-    openProfileImage: "Ouvrir la photo de profil",
-    closeProfileImage: "Fermer la photo de profil",
-    monthlyPlan: "Abonnement mensuel",
-    annualPlan: "Abonnement annuel",
-    reportsPack: "Pack de rapports",
-    price: "Prix",
-    includes: "Comprend",
+    profile: "Profil", account: "Compte", name: "Nom", email: "E-mail", phone: "Téléphone", gender: "Genre", male: "Homme", female: "Femme", country: "Pays", province: "Ville / Province", language: "Langue", subscriptions: "Abonnements", support: "Assistance", website: "Site KISHIB", cookies: "Cookies", terms: "Conditions générales", privacy: "Politique de confidentialité", logout: "Déconnexion", deleteAccount: "Supprimer le compte", deleteAccountTitle: "Supprimer le compte", deleteAccountWarning: "Cette action est définitive et ne peut pas être annulée.", deleteAccountDataWarning: "Votre compte, votre profil, l’historique des évaluations, les images importées et les notes associées seront supprimés autant que possible.", deleteAccountConfirmHint: "Tapez DELETE ou حذف pour activer la suppression.", deleteAccountConfirmButton: "Supprimer définitivement", deleteAccountSuccess: "Le compte et les données associées ont été supprimés.", deleteAccountFailed: "Impossible de supprimer le compte. Réessayez.", comingSoon: "Bientôt", paymentDisabled: "Le paiement n’est pas encore activé", unknown: "Non ajouté", editProfile: "Modifier le profil", save: "Enregistrer", cancel: "Annuler", saved: "Enregistré", supportText: "Pour obtenir de l’aide, contactez-nous par e-mail", close: "Fermer", openProfileImage: "Ouvrir la photo de profil", closeProfileImage: "Fermer la photo de profil", monthlyPlan: "Abonnement mensuel", annualPlan: "Abonnement annuel", reportsPack: "Pack de rapports", price: "Prix", includes: "Comprend",
   },
   hi: {
-    profile: "à¤ªà¥à¤°à¥‹à¤«à¤¼à¤¾à¤‡à¤²",
-    account: "à¤–à¤¾à¤¤à¤¾",
-    name: "à¤¨à¤¾à¤®",
-    email: "à¤ˆà¤®à¥‡à¤²",
-    phone: "à¤«à¤¼à¥‹à¤¨",
-    gender: "Gender",
-    male: "Male",
-    female: "Female",
-    country: "à¤¦à¥‡à¤¶",
-    language: "à¤­à¤¾à¤·à¤¾",
-    subscriptions: "à¤¸à¤¦à¤¸à¥à¤¯à¤¤à¤¾",
-    support: "Support",
-    website: "KISHIB Website",
-    cookies: "à¤•à¥à¤•à¥€à¤œà¤¼",
-    terms: "à¤¨à¤¿à¤¯à¤® à¤”à¤° à¤¶à¤°à¥à¤¤à¥‡à¤‚",
-    privacy: "à¤—à¥‹à¤ªà¤¨à¥€à¤¯à¤¤à¤¾ à¤¨à¥€à¤¤à¤¿",
-    logout: "à¤²à¥‰à¤— à¤†à¤‰à¤Ÿ",
-    deleteAccount: "Delete account",
-    deleteAccountTitle: "Delete account",
-    deleteAccountWarning: "This action is permanent and cannot be undone.",
-    deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
-    deleteAccountConfirmButton: "Delete account permanently",
-    deleteAccountSuccess: "Account and associated data were deleted successfully.",
-    deleteAccountFailed: "Unable to delete account. Please try again.",
-    comingSoon: "à¤œà¤²à¥à¤¦",
-    paymentDisabled: "à¤­à¥à¤—à¤¤à¤¾à¤¨ à¤…à¤­à¥€ à¤¸à¤•à¥à¤°à¤¿à¤¯ à¤¨à¤¹à¥€à¤‚ à¤¹à¥ˆ",
-    unknown: "à¤œà¥‹à¤¡à¤¼à¤¾ à¤¨à¤¹à¥€à¤‚ à¤—à¤¯à¤¾",
-    editProfile: "à¤ªà¥à¤°à¥‹à¤«à¤¼à¤¾à¤‡à¤² à¤¸à¤‚à¤ªà¤¾à¤¦à¤¿à¤¤ à¤•à¤°à¥‡à¤‚",
-    save: "à¤¸à¤¹à¥‡à¤œà¥‡à¤‚",
-    cancel: "à¤°à¤¦à¥à¤¦ à¤•à¤°à¥‡à¤‚",
-    saved: "à¤¸à¤¹à¥‡à¤œà¤¾ à¤—à¤¯à¤¾",
-    supportText: "à¤¸à¤¹à¤¾à¤¯à¤¤à¤¾ à¤•à¥‡ à¤²à¤¿à¤ à¤¹à¤®à¥‡à¤‚ à¤ˆà¤®à¥‡à¤² à¤¸à¥‡ à¤¸à¤‚à¤ªà¤°à¥à¤• à¤•à¤°à¥‡à¤‚",
-    close: "à¤¬à¤‚à¤¦ à¤•à¤°à¥‡à¤‚",
-    openProfileImage: "प्रोफ़ाइल फ़ोटो खोलें",
-    closeProfileImage: "प्रोफ़ाइल फ़ोटो बंद करें",
-    monthlyPlan: "à¤®à¤¾à¤¸à¤¿à¤• à¤¸à¤¦à¤¸à¥à¤¯à¤¤à¤¾",
-    annualPlan: "à¤µà¤¾à¤°à¥à¤·à¤¿à¤• à¤¸à¤¦à¤¸à¥à¤¯à¤¤à¤¾",
-    reportsPack: "à¤°à¤¿à¤ªà¥‹à¤°à¥à¤Ÿ à¤ªà¥ˆà¤•à¥‡à¤œ",
-    price: "à¤®à¥‚à¤²à¥à¤¯",
-    includes: "à¤¶à¤¾à¤®à¤¿à¤²",
+    profile: "प्रोफ़ाइल", account: "खाता", name: "नाम", email: "ईमेल", phone: "फ़ोन", gender: "लिंग", male: "पुरुष", female: "महिला", country: "देश", province: "शहर / प्रांत", language: "भाषा", subscriptions: "सदस्यताएँ", support: "सहायता", website: "KISHIB वेबसाइट", cookies: "कुकीज़", terms: "नियम और शर्तें", privacy: "गोपनीयता नीति", logout: "लॉग आउट", deleteAccount: "खाता हटाएँ", deleteAccountTitle: "खाता हटाएँ", deleteAccountWarning: "यह कार्रवाई स्थायी है और वापस नहीं ली जा सकती.", deleteAccountDataWarning: "आपका खाता, प्रोफ़ाइल डेटा, मूल्यांकन इतिहास, अपलोड की गई तस्वीरें और संबंधित नोट यथासंभव हटाए जाएंगे.", deleteAccountConfirmHint: "हटाने के लिए DELETE या حذف लिखें.", deleteAccountConfirmButton: "खाता स्थायी रूप से हटाएँ", deleteAccountSuccess: "खाता और संबंधित डेटा सफलतापूर्वक हटाए गए.", deleteAccountFailed: "खाता हटाया नहीं जा सका. कृपया फिर प्रयास करें.", comingSoon: "जल्द", paymentDisabled: "भुगतान अभी सक्रिय नहीं है", unknown: "जोड़ा नहीं गया", editProfile: "प्रोफ़ाइल संपादित करें", save: "सहेजें", cancel: "रद्द करें", saved: "सहेजा गया", supportText: "सहायता के लिए हमें ईमेल से संपर्क करें", close: "बंद करें", openProfileImage: "प्रोफ़ाइल फ़ोटो खोलें", closeProfileImage: "प्रोफ़ाइल फ़ोटो बंद करें", monthlyPlan: "मासिक सदस्यता", annualPlan: "वार्षिक सदस्यता", reportsPack: "रिपोर्ट पैकेज", price: "मूल्य", includes: "शामिल",
   },
   fa: {
-    profile: "Ù¾Ø±ÙˆÙØ§ÛŒÙ„",
-    account: "Ø­Ø³Ø§Ø¨",
-    name: "Ù†Ø§Ù…",
-    email: "Ø§ÛŒÙ…ÛŒÙ„",
-    phone: "Ø´Ù…Ø§Ø±Ù‡ ØªÙ„ÙÙ†",
-    gender: "جنسیت",
-    male: "مرد",
-    female: "زن",
-    country: "Ú©Ø´ÙˆØ±",
-    language: "Ø²Ø¨Ø§Ù†",
-    subscriptions: "Ø§Ø´ØªØ±Ø§Ú©â€ŒÙ‡Ø§",
-    support: "Ù¾Ø´ØªÛŒØ¨Ø§Ù†ÛŒ",
-    website: "ÙˆØ¨â€ŒØ³Ø§ÛŒØª KISHIB",
-    cookies: "Ú©ÙˆÚ©ÛŒâ€ŒÙ‡Ø§",
-    terms: "Ø´Ø±Ø§ÛŒØ· Ùˆ Ù‚ÙˆØ§Ù†ÛŒÙ†",
-    privacy: "Ø­Ø±ÛŒÙ… Ø®ØµÙˆØµÛŒ",
-    logout: "Ø®Ø±ÙˆØ¬",
-    deleteAccount: "Delete account",
-    deleteAccountTitle: "Delete account",
-    deleteAccountWarning: "This action is permanent and cannot be undone.",
-    deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
-    deleteAccountConfirmButton: "Delete account permanently",
-    deleteAccountSuccess: "Account and associated data were deleted successfully.",
-    deleteAccountFailed: "Unable to delete account. Please try again.",
-    comingSoon: "Ø¨Ù‡â€ŒØ²ÙˆØ¯ÛŒ",
-    paymentDisabled: "Ù¾Ø±Ø¯Ø§Ø®Øª ÙØ¹Ù„Ø§Ù‹ ÙØ¹Ø§Ù„ Ù†ÛŒØ³Øª",
-    unknown: "Ø§Ø¶Ø§ÙÙ‡ Ù†Ø´Ø¯Ù‡",
-    editProfile: "ÙˆÛŒØ±Ø§ÛŒØ´ Ù¾Ø±ÙˆÙØ§ÛŒÙ„",
-    save: "Ø°Ø®ÛŒØ±Ù‡",
-    cancel: "Ù„ØºÙˆ",
-    saved: "Ø°Ø®ÛŒØ±Ù‡ Ø´Ø¯",
-    supportText: "Ø¨Ø±Ø§ÛŒ Ù¾Ø´ØªÛŒØ¨Ø§Ù†ÛŒ Ùˆ Ú©Ù…Ú© Ø§Ø² Ø·Ø±ÛŒÙ‚ Ø§ÛŒÙ…ÛŒÙ„ Ø¨Ø§ Ù…Ø§ ØªÙ…Ø§Ø³ Ø¨Ú¯ÛŒØ±ÛŒØ¯",
-    close: "Ø¨Ø³ØªÙ†",
-    openProfileImage: "باز کردن عکس پروفایل",
-    closeProfileImage: "بستن عکس پروفایل",
-    monthlyPlan: "Ø§Ø´ØªØ±Ø§Ú© Ù…Ø§Ù‡Ø§Ù†Ù‡",
-    annualPlan: "Ø§Ø´ØªØ±Ø§Ú© Ø³Ø§Ù„Ø§Ù†Ù‡",
-    reportsPack: "Ø¨Ø³ØªÙ‡ Ú¯Ø²Ø§Ø±Ø´â€ŒÙ‡Ø§",
-    price: "Ù‚ÛŒÙ…Øª",
-    includes: "Ø´Ø§Ù…Ù„",
+    profile: "پروفایل", account: "حساب", name: "نام", email: "ایمیل", phone: "شماره تلفن", gender: "جنسیت", male: "مرد", female: "زن", country: "کشور", province: "شهر / استان", language: "زبان", subscriptions: "اشتراک‌ها", support: "پشتیبانی", website: "وب‌سایت KISHIB", cookies: "کوکی‌ها", terms: "شرایط و قوانین", privacy: "حریم خصوصی", logout: "خروج", deleteAccount: "حذف حساب", deleteAccountTitle: "حذف حساب", deleteAccountWarning: "این اقدام دائمی است و قابل بازگشت نیست.", deleteAccountDataWarning: "حساب، اطلاعات پروفایل، تاریخچه ارزیابی‌ها، تصاویر بارگذاری‌شده و یادداشت‌های مرتبط تا حد امکان حذف می‌شوند.", deleteAccountConfirmHint: "برای فعال کردن حذف، DELETE یا حذف را بنویسید.", deleteAccountConfirmButton: "حذف دائمی حساب", deleteAccountSuccess: "حساب و داده‌های مرتبط با موفقیت حذف شدند.", deleteAccountFailed: "حذف حساب ممکن نشد. دوباره تلاش کنید.", comingSoon: "به‌زودی", paymentDisabled: "پرداخت هنوز فعال نیست", unknown: "افزوده نشده", editProfile: "ویرایش پروفایل", save: "ذخیره", cancel: "لغو", saved: "ذخیره شد", supportText: "برای پشتیبانی و کمک از طریق ایمیل با ما تماس بگیرید", close: "بستن", openProfileImage: "باز کردن عکس پروفایل", closeProfileImage: "بستن عکس پروفایل", monthlyPlan: "اشتراک ماهانه", annualPlan: "اشتراک سالانه", reportsPack: "بسته گزارش‌ها", price: "قیمت", includes: "شامل",
   },
   tr: {
-    profile: "Profil",
-    account: "Hesap",
-    name: "Ad",
-    email: "E-posta",
-    phone: "Telefon",
-    gender: "Cinsiyet",
-    male: "Erkek",
-    female: "Kadın",
-    country: "Ãœlke",
-    language: "Dil",
-    subscriptions: "Abonelikler",
-    support: "Destek",
-    website: "KISHIB Website",
-    cookies: "Ã‡erezler",
-    terms: "Åžartlar ve KoÅŸullar",
-    privacy: "Gizlilik PolitikasÄ±",
-    logout: "Ã‡Ä±kÄ±ÅŸ yap",
-    deleteAccount: "Delete account",
-    deleteAccountTitle: "Delete account",
-    deleteAccountWarning: "This action is permanent and cannot be undone.",
-    deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
-    deleteAccountConfirmButton: "Delete account permanently",
-    deleteAccountSuccess: "Account and associated data were deleted successfully.",
-    deleteAccountFailed: "Unable to delete account. Please try again.",
-    comingSoon: "YakÄ±nda",
-    paymentDisabled: "Ã–deme ÅŸu anda etkin deÄŸil",
-    unknown: "Eklenmedi",
-    editProfile: "Profili dÃ¼zenle",
-    save: "Kaydet",
-    cancel: "Ä°ptal",
-    saved: "Kaydedildi",
-    supportText: "Destek ve yardÄ±m iÃ§in bize e-posta ile ulaÅŸÄ±n",
-    close: "Kapat",
-    openProfileImage: "Profil fotoğrafını aç",
-    closeProfileImage: "Profil fotoğrafını kapat",
-    monthlyPlan: "AylÄ±k abonelik",
-    annualPlan: "YÄ±llÄ±k abonelik",
-    reportsPack: "Rapor paketi",
-    price: "Fiyat",
-    includes: "Ä°Ã§erir",
+    profile: "Profil", account: "Hesap", name: "Ad", email: "E-posta", phone: "Telefon", gender: "Cinsiyet", male: "Erkek", female: "Kadın", country: "Ülke", province: "Şehir / İl", language: "Dil", subscriptions: "Abonelikler", support: "Destek", website: "KISHIB web sitesi", cookies: "Çerezler", terms: "Şartlar ve koşullar", privacy: "Gizlilik politikası", logout: "Çıkış yap", deleteAccount: "Hesabı sil", deleteAccountTitle: "Hesabı sil", deleteAccountWarning: "Bu işlem kalıcıdır ve geri alınamaz.", deleteAccountDataWarning: "Hesabınız, profil verileriniz, değerlendirme geçmişiniz, yüklenen görselleriniz ve ilgili notlar mümkün olduğunca silinecektir.", deleteAccountConfirmHint: "Silmeyi etkinleştirmek için DELETE veya حذف yazın.", deleteAccountConfirmButton: "Hesabı kalıcı olarak sil", deleteAccountSuccess: "Hesap ve ilişkili veriler başarıyla silindi.", deleteAccountFailed: "Hesap silinemedi. Lütfen tekrar deneyin.", comingSoon: "Yakında", paymentDisabled: "Ödeme henüz etkin değil", unknown: "Eklenmedi", editProfile: "Profili düzenle", save: "Kaydet", cancel: "İptal", saved: "Kaydedildi", supportText: "Destek ve yardım için bize e-posta ile ulaşın", close: "Kapat", openProfileImage: "Profil fotoğrafını aç", closeProfileImage: "Profil fotoğrafını kapat", monthlyPlan: "Aylık abonelik", annualPlan: "Yıllık abonelik", reportsPack: "Rapor paketi", price: "Fiyat", includes: "İçerir",
   },
   ru: {
-    profile: "ÐŸÑ€Ð¾Ñ„Ð¸Ð»ÑŒ",
-    account: "ÐÐºÐºÐ°ÑƒÐ½Ñ‚",
-    name: "Ð˜Ð¼Ñ",
-    email: "Email",
-    phone: "Ð¢ÐµÐ»ÐµÑ„Ð¾Ð½",
-    gender: "Пол",
-    male: "Мужской",
-    female: "Женский",
-    country: "Ð¡Ñ‚Ñ€Ð°Ð½Ð°",
-    language: "Ð¯Ð·Ñ‹Ðº",
-    subscriptions: "ÐŸÐ¾Ð´Ð¿Ð¸ÑÐºÐ¸",
-    support: "ÐŸÐ¾Ð´Ð´ÐµÑ€Ð¶ÐºÐ°",
-    website: "KISHIB Website",
-    cookies: "Cookies",
-    terms: "Ð£ÑÐ»Ð¾Ð²Ð¸Ñ",
-    privacy: "ÐŸÐ¾Ð»Ð¸Ñ‚Ð¸ÐºÐ° ÐºÐ¾Ð½Ñ„Ð¸Ð´ÐµÐ½Ñ†Ð¸Ð°Ð»ÑŒÐ½Ð¾ÑÑ‚Ð¸",
-    logout: "Ð’Ñ‹Ð¹Ñ‚Ð¸",
-    deleteAccount: "Delete account",
-    deleteAccountTitle: "Delete account",
-    deleteAccountWarning: "This action is permanent and cannot be undone.",
-    deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or حذف to enable deletion.",
-    deleteAccountConfirmButton: "Delete account permanently",
-    deleteAccountSuccess: "Account and associated data were deleted successfully.",
-    deleteAccountFailed: "Unable to delete account. Please try again.",
-    comingSoon: "Ð¡ÐºÐ¾Ñ€Ð¾",
-    paymentDisabled: "ÐžÐ¿Ð»Ð°Ñ‚Ð° Ð¿Ð¾ÐºÐ° Ð½Ðµ Ð²ÐºÐ»ÑŽÑ‡ÐµÐ½Ð°",
-    unknown: "ÐÐµ Ð´Ð¾Ð±Ð°Ð²Ð»ÐµÐ½Ð¾",
-    editProfile: "Ð ÐµÐ´Ð°ÐºÑ‚Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ Ð¿Ñ€Ð¾Ñ„Ð¸Ð»ÑŒ",
-    save: "Ð¡Ð¾Ñ…Ñ€Ð°Ð½Ð¸Ñ‚ÑŒ",
-    cancel: "ÐžÑ‚Ð¼ÐµÐ½Ð°",
-    saved: "Ð¡Ð¾Ñ…Ñ€Ð°Ð½ÐµÐ½Ð¾",
-    supportText: "Ð”Ð»Ñ Ð¿Ð¾Ð´Ð´ÐµÑ€Ð¶ÐºÐ¸ Ð¸ Ð¿Ð¾Ð¼Ð¾Ñ‰Ð¸ ÑÐ²ÑÐ¶Ð¸Ñ‚ÐµÑÑŒ Ñ Ð½Ð°Ð¼Ð¸ Ð¿Ð¾ ÑÐ»ÐµÐºÑ‚Ñ€Ð¾Ð½Ð½Ð¾Ð¹ Ð¿Ð¾Ñ‡Ñ‚Ðµ",
-    close: "Ð—Ð°ÐºÑ€Ñ‹Ñ‚ÑŒ",
-    openProfileImage: "Открыть фото профиля",
-    closeProfileImage: "Закрыть фото профиля",
-    monthlyPlan: "ÐœÐµÑÑÑ‡Ð½Ð°Ñ Ð¿Ð¾Ð´Ð¿Ð¸ÑÐºÐ°",
-    annualPlan: "Ð“Ð¾Ð´Ð¾Ð²Ð°Ñ Ð¿Ð¾Ð´Ð¿Ð¸ÑÐºÐ°",
-    reportsPack: "ÐŸÐ°ÐºÐµÑ‚ Ð¾Ñ‚Ñ‡ÐµÑ‚Ð¾Ð²",
-    price: "Ð¦ÐµÐ½Ð°",
-    includes: "Ð’ÐºÐ»ÑŽÑ‡Ð°ÐµÑ‚",
+    profile: "Профиль", account: "Аккаунт", name: "Имя", email: "Email", phone: "Телефон", gender: "Пол", male: "Мужской", female: "Женский", country: "Страна", province: "Город / регион", language: "Язык", subscriptions: "Подписки", support: "Поддержка", website: "Сайт KISHIB", cookies: "Cookies", terms: "Условия", privacy: "Политика конфиденциальности", logout: "Выйти", deleteAccount: "Удалить аккаунт", deleteAccountTitle: "Удалить аккаунт", deleteAccountWarning: "Это действие окончательное и не может быть отменено.", deleteAccountDataWarning: "Ваш аккаунт, данные профиля, история оценок, загруженные изображения и связанные заметки будут удалены насколько это возможно.", deleteAccountConfirmHint: "Введите DELETE или حذف, чтобы включить удаление.", deleteAccountConfirmButton: "Удалить аккаунт окончательно", deleteAccountSuccess: "Аккаунт и связанные данные успешно удалены.", deleteAccountFailed: "Не удалось удалить аккаунт. Попробуйте ещё раз.", comingSoon: "Скоро", paymentDisabled: "Оплата пока не включена", unknown: "Не добавлено", editProfile: "Редактировать профиль", save: "Сохранить", cancel: "Отмена", saved: "Сохранено", supportText: "Для поддержки свяжитесь с нами по электронной почте", close: "Закрыть", openProfileImage: "Открыть фото профиля", closeProfileImage: "Закрыть фото профиля", monthlyPlan: "Месячная подписка", annualPlan: "Годовая подписка", reportsPack: "Пакет отчётов", price: "Цена", includes: "Включает",
   },
   ku: {
-    profile: "Ù¾Ø±Û†ÙØ§ÛŒÙ„",
-    account: "Ù‡Û•Ú˜Ù…Ø§Ø±",
-    name: "Ù†Ø§Ùˆ",
-    email: "Ø¦ÛŒÙ…Û•ÛŒÙ„",
-    phone: "Ú˜Ù…Ø§Ø±Û•ÛŒ ØªÛ•Ù„Û•ÙÛ†Ù†",
-    gender: "ڕەگەز",
-    male: "نێر",
-    female: "مێ",
-    country: "ÙˆÚµØ§Øª",
-    language: "Ø²Ù…Ø§Ù†",
-    subscriptions: "Ø¨Û•Ø´Ø¯Ø§Ø±Ø¨ÙˆÙˆÙ†Û•Ú©Ø§Ù†",
-    support: "Ù¾Ø§ÚµÙ¾Ø´ØªÛŒ",
-    website: "Ù…Ø§ÚµÙ¾Û•Ú•ÛŒ KISHIB",
-    cookies: "Ú©ÙˆÚ©ÛŒØ²",
-    terms: "Ù…Û•Ø±Ø¬ Ùˆ Ú•ÛŽØ³Ø§Ú©Ø§Ù†",
-    privacy: "ØªØ§ÛŒØ¨Û•ØªÙ…Û•Ù†Ø¯ÛŒ",
-    logout: "Ú†ÙˆÙˆÙ†Û•Ø¯Û•Ø±Û•ÙˆÛ•",
-    deleteAccount: "Delete account",
-    deleteAccountTitle: "Delete account",
-    deleteAccountWarning: "This action is permanent and cannot be undone.",
-    deleteAccountDataWarning: "Your account, profile data, evaluation history, uploaded images, and notes associated with your account will be deleted as much as possible.",
-    deleteAccountConfirmHint: "Type DELETE or Ø­Ø°Ù to enable deletion.",
-    deleteAccountConfirmButton: "Delete account permanently",
-    deleteAccountSuccess: "Account and associated data were deleted successfully.",
-    deleteAccountFailed: "Unable to delete account. Please try again.",
-    comingSoon: "Ø¨Û•Ù… Ø²ÙˆÙˆØ§Ù†Û•",
-    paymentDisabled: "Ù¾Ø§Ø±Û•Ø¯Ø§Ù† Ù„Û• Ø¦ÛŽØ³ØªØ§Ø¯Ø§ Ú†Ø§Ù„Ø§Ú© Ù†ÛŒÛŒÛ•",
-    unknown: "Ø²ÛŒØ§Ø¯ Ù†Û•Ú©Ø±Ø§ÙˆÛ•",
-    editProfile: "Ø¯Û•Ø³ØªÚ©Ø§Ø±ÛŒ Ù¾Ø±Û†ÙØ§ÛŒÙ„",
-    save: "Ù¾Ø§Ø´Û•Ú©Û•ÙˆØª",
-    cancel: "Ù‡Û•ÚµÙˆÛ•Ø´Ø§Ù†Ø¯Ù†Û•ÙˆÛ•",
-    saved: "Ù¾Ø§Ø´Û•Ú©Û•ÙˆØª Ú©Ø±Ø§",
-    supportText: "Ø¨Û† Ù¾Ø§ÚµÙ¾Ø´ØªÛŒ Ùˆ ÛŒØ§Ø±Ù…Û•ØªÛŒ Ù„Û• Ú•ÛŽÚ¯Û•ÛŒ Ø¦ÛŒÙ…Û•ÛŒÙ„ Ù¾Û•ÛŒÙˆÛ•Ù†Ø¯ÛŒÙ…Ø§Ù† Ù¾ÛŽÙˆÛ• Ø¨Ú©Û•",
-    close: "Ø¯Ø§Ø®Ø³ØªÙ†",
-    openProfileImage: "وێنەی پڕۆفایل بکەرەوە",
-    closeProfileImage: "وێنەی پڕۆفایل دابخە",
-    monthlyPlan: "Ø¨Û•Ø´Ø¯Ø§Ø±Ø¨ÙˆÙˆÙ†ÛŒ Ù…Ø§Ù†Ú¯Ø§Ù†Û•",
-    annualPlan: "Ø¨Û•Ø´Ø¯Ø§Ø±Ø¨ÙˆÙˆÙ†ÛŒ Ø³Ø§ÚµØ§Ù†Û•",
-    reportsPack: "Ù¾Ø§Ú©ÛŽØ¬ÛŒ Ú•Ø§Ù¾Û†Ø±ØªÛ•Ú©Ø§Ù†",
-    price: "Ù†Ø±Ø®",
-    includes: "Ù„Û•Ø®Û†Ø¯Û•Ú¯Ø±ÛŽØª",
+    profile: "پڕۆفایل", account: "هەژمار", name: "ناو", email: "ئیمەیل", phone: "ژمارەی تەلەفۆن", gender: "ڕەگەز", male: "نێر", female: "مێ", country: "وڵات", province: "شار / پارێزگا", language: "زمان", subscriptions: "بەشداربوونەکان", support: "پاڵپشتی", website: "ماڵپەڕی KISHIB", cookies: "کوکیز", terms: "مەرج و ڕێساکان", privacy: "تایبەتمەندی", logout: "چوونەدەرەوە", deleteAccount: "سڕینەوەی هەژمار", deleteAccountTitle: "سڕینەوەی هەژمار", deleteAccountWarning: "ئەم کردارە کۆتاییە و ناکرێت بگەڕێنرێتەوە.", deleteAccountDataWarning: "هەژمار، زانیاری پڕۆفایل، مێژووی هەڵسەنگاندن، وێنە بارکراوەکان و تێبینییە پەیوەندیدارەکان تا دەتوانرێت دەسڕدرێنەوە.", deleteAccountConfirmHint: "بۆ چالاککردنی سڕینەوە DELETE یان حذف بنووسە.", deleteAccountConfirmButton: "سڕینەوەی هەژمار بە شێوەی کۆتایی", deleteAccountSuccess: "هەژمار و داتای پەیوەندیدار بە سەرکەوتوویی سڕایەوە.", deleteAccountFailed: "نەتوانرا هەژمار بسڕدرێتەوە. دووبارە هەوڵبدە.", comingSoon: "بەم زووانە", paymentDisabled: "پارەدان هێشتا چالاک نییە", unknown: "زیاد نەکراوە", editProfile: "دەستکاری پڕۆفایل", save: "پاشەکەوت", cancel: "هەڵوەشاندنەوە", saved: "پاشەکەوت کرا", supportText: "بۆ پاڵپشتی و یارمەتی بە ئیمەیل پەیوەندیمان پێوە بکە", close: "داخستن", openProfileImage: "وێنەی پڕۆفایل بکەرەوە", closeProfileImage: "وێنەی پڕۆفایل دابخە", monthlyPlan: "بەشداربوونی مانگانە", annualPlan: "بەشداربوونی ساڵانە", reportsPack: "پاکێجی ڕاپۆرتەکان", price: "نرخ", includes: "لەخۆدەگرێت",
+  },
+  es: {
+    profile: "Perfil", account: "Cuenta", name: "Nombre", email: "Correo", phone: "Teléfono", gender: "Género", male: "Masculino", female: "Femenino", country: "País", province: "Ciudad / provincia", language: "Idioma", subscriptions: "Suscripciones", support: "Soporte", website: "Sitio de KISHIB", cookies: "Cookies", terms: "Términos y condiciones", privacy: "Política de privacidad", logout: "Cerrar sesión", deleteAccount: "Eliminar cuenta", deleteAccountTitle: "Eliminar cuenta", deleteAccountWarning: "Esta acción es permanente y no se puede deshacer.", deleteAccountDataWarning: "Tu cuenta, perfil, historial de evaluaciones, imágenes subidas y notas asociadas se eliminarán en la medida de lo posible.", deleteAccountConfirmHint: "Escribe DELETE o حذف para habilitar la eliminación.", deleteAccountConfirmButton: "Eliminar cuenta definitivamente", deleteAccountSuccess: "La cuenta y los datos asociados se eliminaron correctamente.", deleteAccountFailed: "No se pudo eliminar la cuenta. Inténtalo de nuevo.", comingSoon: "Pronto", paymentDisabled: "El pago aún no está activado", unknown: "No añadido", editProfile: "Editar perfil", save: "Guardar", cancel: "Cancelar", saved: "Guardado", supportText: "Para soporte y ayuda, contáctanos por correo", close: "Cerrar", openProfileImage: "Abrir foto de perfil", closeProfileImage: "Cerrar foto de perfil", monthlyPlan: "Suscripción mensual", annualPlan: "Suscripción anual", reportsPack: "Paquete de informes", price: "Precio", includes: "Incluye",
   },
 };
-
-const MENU_LANGUAGES: { code: Locale; label: string; short: string }[] = [
-  { code: "ar", label: "Arabic", short: "AR" },
-  { code: "en", label: "English", short: "EN" },
-  { code: "fa", label: "Persian", short: "FA" },
-  { code: "tr", label: "Turkish", short: "TR" },
-  { code: "fr", label: "French", short: "FR" },
-  { code: "hi", label: "Hindi", short: "HI" },
-  { code: "ku", label: "Kurdish", short: "KU" },
-  { code: "ru", label: "Russian", short: "RU" },
-];
+const MENU_LANGUAGES: { code: Locale; label: string; short: string }[] =
+  LANGUAGE_OPTIONS.map(({ code, label, short }) => ({ code, label, short }));
 
 function isRtl(locale: Locale) {
-  return locale === "ar" || locale === "fa" || locale === "ku";
+  return isRtlLocale(locale);
 }
 
 function getInitial(name?: string | null, email?: string | null) {
@@ -606,6 +280,22 @@ function getGenderLabel(value: string | undefined, copy: MenuCopy) {
   return copy.unknown;
 }
 
+function getPlanFeatures(locale: Locale) {
+  const features: Record<Locale, { monthly: string[]; annual: string[]; reports: string[] }> = {
+    ar: { monthly: ["استخدام شهري", "إمكانية طباعة 5 تقارير"], annual: ["استخدام سنوي", "75 تقرير قابل للطباعة"], reports: ["150 تقرير", "يمكن شراؤها بشكل منفصل عن الاشتراك"] },
+    en: { monthly: ["Monthly use", "Print up to 5 reports"], annual: ["Annual use", "75 printable reports"], reports: ["150 reports", "Can be purchased separately from subscription"] },
+    ku: { monthly: ["بەکارهێنانی مانگانە", "چاپکردنی تا 5 ڕاپۆرت"], annual: ["بەکارهێنانی ساڵانە", "75 ڕاپۆرتی چاپکراو"], reports: ["150 ڕاپۆرت", "دەکرێت جیا لە بەشداربوون بکڕدرێت"] },
+    fr: { monthly: ["Utilisation mensuelle", "Imprimer jusqu’à 5 rapports"], annual: ["Utilisation annuelle", "75 rapports imprimables"], reports: ["150 rapports", "Peut être acheté séparément de l’abonnement"] },
+    hi: { monthly: ["मासिक उपयोग", "5 रिपोर्ट तक प्रिंट करें"], annual: ["वार्षिक उपयोग", "75 प्रिंट योग्य रिपोर्ट"], reports: ["150 रिपोर्ट", "सदस्यता से अलग खरीदा जा सकता है"] },
+    fa: { monthly: ["استفاده ماهانه", "چاپ تا 5 گزارش"], annual: ["استفاده سالانه", "75 گزارش قابل چاپ"], reports: ["150 گزارش", "می‌تواند جدا از اشتراک خریداری شود"] },
+    tr: { monthly: ["Aylık kullanım", "5 rapora kadar yazdırma"], annual: ["Yıllık kullanım", "75 yazdırılabilir rapor"], reports: ["150 rapor", "Abonelikten ayrı satın alınabilir"] },
+    ru: { monthly: ["Месячное использование", "Печать до 5 отчетов"], annual: ["Годовое использование", "75 отчетов для печати"], reports: ["150 отчетов", "Можно приобрести отдельно от подписки"] },
+    es: { monthly: ["Uso mensual", "Imprime hasta 5 informes"], annual: ["Uso anual", "75 informes imprimibles"], reports: ["150 informes", "Puede comprarse por separado de la suscripción"] },
+  };
+
+  return features[locale] || features.en;
+}
+
 function Avatar({
   name,
   email,
@@ -619,18 +309,14 @@ function Avatar({
   gender?: string;
   className?: string;
 }) {
-  const [imageSrc, setImageSrc] = useState(() =>
-    getProfileAvatarUrl({ avatarUrl, gender }),
-  );
+  const preferredAvatar = getProfileAvatarUrl({ avatarUrl, gender });
+  const [failedAvatar, setFailedAvatar] = useState("");
   const fallbackAvatar = getDefaultProfileAvatar(gender);
+  const imageSrc = failedAvatar === preferredAvatar ? fallbackAvatar : preferredAvatar;
   const baseClass = [
     "grid place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#dcc18a] via-[#b88a3d] to-[#6d241d] font-bold text-[#fff4e2] ring-1 ring-[#b88a3d]/25",
     className || "",
   ].join(" ");
-
-  useEffect(() => {
-    setImageSrc(getProfileAvatarUrl({ avatarUrl, gender }));
-  }, [avatarUrl, gender]);
 
   return (
     <span className={baseClass}>
@@ -639,7 +325,7 @@ function Avatar({
         alt={name || email || "KISHIB user"}
         className="h-full w-full object-cover"
         referrerPolicy="no-referrer"
-        onError={() => setImageSrc(fallbackAvatar)}
+        onError={() => setFailedAvatar(preferredAvatar)}
       />
     </span>
   );
@@ -676,6 +362,7 @@ export default function UserMenu({
 const panelRef = useRef<HTMLDivElement | null>(null);
   const copy = COPY[locale] ?? COPY.en;
   const rtl = isRtl(locale);
+  const planFeatures = getPlanFeatures(locale);
   const activeLanguage =
     MENU_LANGUAGES.find((item) => item.code === locale) ?? MENU_LANGUAGES[0];
 
@@ -1379,31 +1066,19 @@ const panelRef = useRef<HTMLDivElement | null>(null);
                     title={copy.monthlyPlan}
                     price="5$"
                     copy={copy}
-                    features={
-                      locale === "ar"
-                        ? ["استخدام شهري", "إمكانية طباعة 5 تقارير"]
-                        : ["Monthly use", "Print up to 5 reports"]
-                    }
+                    features={planFeatures.monthly}
                   />
                   <PlanCard
                     title={copy.annualPlan}
                     price="45$"
                     copy={copy}
-                    features={
-                      locale === "ar"
-                        ? ["استخدام سنوي", "75 تقرير قابل للطباعة"]
-                        : ["Annual use", "75 printable reports"]
-                    }
+                    features={planFeatures.annual}
                   />
                   <PlanCard
                     title={copy.reportsPack}
                     price="20$"
                     copy={copy}
-                    features={
-                      locale === "ar"
-                        ? ["150 تقرير", "يمكن شراؤها بشكل منفصل عن الاشتراك"]
-                        : ["150 reports", "Can be purchased separately from subscription"]
-                    }
+                    features={planFeatures.reports}
                   />
                 </div>
               </MenuModal>
@@ -1734,4 +1409,5 @@ function MenuExternalButton({
     </button>
   );
 }
+
 

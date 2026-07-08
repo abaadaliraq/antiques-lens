@@ -2,6 +2,7 @@
 
 import { MapPin, Phone, ShieldCheck, UserRound, Users } from "lucide-react";
 import { useEffect, useState } from "react";
+import { isRtlLocale } from "@/i18n/common";
 import {
   updateCurrentUserProfile,
   type RequiredProfileInput,
@@ -61,7 +62,7 @@ function getCopy(locale: Locale) {
 }
 
 function isRtl(locale: Locale) {
-  return locale === "ar" || locale === "fa" || locale === "ku";
+  return isRtlLocale(locale);
 }
 
 export default function CompleteProfileModal({
@@ -90,15 +91,19 @@ export default function CompleteProfileModal({
       ? getProvinceByCode(profile.province_code)
       : normalizeProvince(profile?.province || profile?.city);
 
-    setForm({
-      full_name: profile?.full_name || "",
-      phone: profile?.phone || "",
-      gender: profile?.gender || "",
-      country: normalizedCountry?.nameEn || profile?.country || "",
-      country_code: normalizedCountry?.code || "",
-      province_code: normalizedProvince?.code || "",
-      city: profile?.city || profile?.province || "",
-    });
+    const timer = window.setTimeout(() => {
+      setForm({
+        full_name: profile?.full_name || "",
+        phone: profile?.phone || "",
+        gender: profile?.gender || "",
+        country: normalizedCountry?.nameEn || profile?.country || "",
+        country_code: normalizedCountry?.code || "",
+        province_code: normalizedProvince?.code || "",
+        city: profile?.city || profile?.province || "",
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [profile]);
 
   async function handleSubmit() {

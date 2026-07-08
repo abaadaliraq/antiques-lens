@@ -34,7 +34,7 @@ import {
   type DeepSeekLogicReview,
 } from "@/lib/deepseek";
 
-type Locale = "ar" | "en" | "fr" | "hi" | "fa" | "tr" | "ru" | "ku";
+type Locale = "ar" | "en" | "fr" | "hi" | "fa" | "tr" | "ru" | "ku" | "es";
 
 function logDevelopmentTiming(
   label: string,
@@ -196,7 +196,8 @@ function normalizeLocale(locale: string): Locale {
     locale === "fa" ||
     locale === "tr" ||
     locale === "ru" ||
-    locale === "ku"
+    locale === "ku" ||
+    locale === "es"
   ) {
     return locale;
   }
@@ -220,6 +221,8 @@ function getLanguageName(locale: Locale) {
       return "Russian";
     case "ku":
       return "Sorani Kurdish";
+    case "es":
+      return "Spanish";
     case "ar":
     default:
       return "Arabic";
@@ -271,6 +274,12 @@ The visitor selected Sorani Kurdish.
 All user-facing JSON values must be written in Sorani Kurdish.
 Use clear, natural Sorani Kurdish for normal visitors.
 Do not use Arabic or any other language except necessary antique terms.
+`;
+    case "es":
+      return `
+The visitor selected Spanish.
+All user-facing JSON values must be written in natural, professional Spanish.
+Do not use Arabic, English, or any other language except necessary antique terms, artist names, marks, and brand names.
 `;
     case "ar":
     default:

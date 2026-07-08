@@ -16,7 +16,24 @@ type ShareFileInput = {
   text: string;
   dialogTitle: string;
   mimeType: string;
+  action?: "share" | "pdf" | "print";
 };
+
+type ReportExportStage =
+  | "DOM"
+  | "Fonts"
+  | "Images"
+  | "Canvas"
+  | "PDF"
+  | "Blob"
+  | "Filesystem"
+  | "Native Share"
+  | "Web Share"
+  | "Download";
+
+function logReportExportError(stage: ReportExportStage, error: unknown) {
+  console.error(`[Report Export][${stage}]`, error);
+}
 
 function sanitizeFileName(value: string) {
   return value
@@ -55,36 +72,147 @@ function blobToBase64(blob: Blob) {
   });
 }
 
-async function waitForReportImages(report: HTMLElement) {
-  const images = Array.from(report.querySelectorAll("img"));
+function isRemoteHttpUrl(value: string) {
+  return /^https?:\/\//i.test(value);
+}
+
+function isLocalAssetUrl(value: string) {
+  return value.startsWith("/");
+}
+
+function makeReportImagePlaceholder(label = "KISHIB") {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="720" viewBox="0 0 1080 720">
+    <rect width="1080" height="720" fill="#efe3d2"/>
+    <rect x="60" y="60" width="960" height="600" rx="36" fill="#f7f0e6" stroke="#d2b98f" stroke-width="4"/>
+    <text x="540" y="330" text-anchor="middle" font-family="serif" font-size="54" font-weight="700" fill="#735f4b">${label}</text>
+    <text x="540" y="398" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#9a7441">Image unavailable</text>
+  </svg>`;
+
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+async function blobToDataUrl(blob: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("Unable to convert image"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function resolveImageForCanvas(src: string) {
+  if (!src || src.startsWith("data:") || src.startsWith("blob:")) return src;
+  if (!isRemoteHttpUrl(src) && !isLocalAssetUrl(src)) return src;
+
+  try {
+    const response = await fetch(src, {
+      mode: isRemoteHttpUrl(src) ? "cors" : "same-origin",
+      cache: "force-cache",
+    });
+
+    if (!response.ok) {
+      throw new Error(`Image fetch failed with ${response.status}`);
+    }
+
+    return await blobToDataUrl(await response.blob());
+  } catch (error) {
+    logReportExportError("Images", { src, error });
+    return makeReportImagePlaceholder("KISHIB");
+  }
+}
+
+async function decodeImage(image: HTMLImageElement) {
+  if (image.decode) {
+    await image.decode();
+    return;
+  }
+
+  if (image.complete && image.naturalWidth > 0) return;
+
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error("Image failed to load"));
+  });
+}
+
+export async function waitForImages(container: HTMLElement) {
+  const images = Array.from(container.querySelectorAll("img"));
 
   await Promise.all(
-    images.map((image) => {
-      image.crossOrigin = image.crossOrigin || "anonymous";
-      return image.complete
-        ? Promise.resolve()
-        : image.decode().catch(() => undefined);
+    images.map(async (image) => {
+      const originalSrc = image.currentSrc || image.src || image.getAttribute("src") || "";
+
+      try {
+        image.crossOrigin = image.crossOrigin || "anonymous";
+
+        const safeSrc = await resolveImageForCanvas(originalSrc);
+        if (safeSrc && safeSrc !== image.src) {
+          image.src = safeSrc;
+        }
+
+        await decodeImage(image);
+
+        if (!image.naturalWidth) {
+          image.src = makeReportImagePlaceholder("KISHIB");
+          await decodeImage(image);
+        }
+      } catch (error) {
+        logReportExportError("Images", { src: originalSrc, error });
+        image.src = makeReportImagePlaceholder("KISHIB");
+
+        try {
+          await decodeImage(image);
+        } catch (placeholderError) {
+          logReportExportError("Images", placeholderError);
+        }
+      }
     }),
   );
 }
 
+async function waitForReportAssets(report: HTMLElement) {
+  if (!report) {
+    throw new Error("Report export DOM is missing");
+  }
+
+  try {
+    await document.fonts?.ready;
+  } catch (error) {
+    logReportExportError("Fonts", error);
+  }
+
+  await waitForImages(report);
+}
+
 export async function createReportPngBlob(report: HTMLElement) {
-  await waitForReportImages(report);
+  try {
+    await waitForReportAssets(report);
+  } catch (error) {
+    logReportExportError("DOM", error);
+    throw error;
+  }
 
   const width = Math.max(794, report.scrollWidth || 794);
   const height = Math.max(report.scrollHeight, report.offsetHeight, 1123);
 
-  const blob = await toBlob(report, {
-    backgroundColor: "#f7f0e6",
-    cacheBust: true,
-    pixelRatio: Math.max(2, 1080 / width),
-    width,
-    height,
-    style: {
-      transform: "none",
-      opacity: "1",
-    },
-  });
+  let blob: Blob | null = null;
+
+  try {
+    blob = await toBlob(report, {
+      backgroundColor: "#f7f0e6",
+      cacheBust: true,
+      pixelRatio: Math.max(2, 1080 / width),
+      width,
+      height,
+      style: {
+        transform: "none",
+        opacity: "1",
+      },
+    });
+  } catch (error) {
+    logReportExportError("Canvas", error);
+    throw error;
+  }
 
   if (!blob) throw new Error("Unable to create report image");
   return blob;
@@ -223,25 +351,42 @@ async function createA4JpegPagesFromPngBlob(blob: Blob) {
 }
 
 export async function createReportPdfBlob(report: HTMLElement) {
-  const pngBlob = await createReportPngBlob(report);
-  const jpegPages = await createA4JpegPagesFromPngBlob(pngBlob);
-  return makePdfFromJpegPages(jpegPages);
+  try {
+    const pngBlob = await createReportPngBlob(report);
+    const jpegPages = await createA4JpegPagesFromPngBlob(pngBlob);
+    return makePdfFromJpegPages(jpegPages);
+  } catch (error) {
+    logReportExportError("PDF", error);
+    throw error;
+  }
 }
 
 async function shareNativeFile(input: ShareFileInput) {
-  const base64 = await blobToBase64(input.blob);
-  const writtenFile = await Filesystem.writeFile({
-    path: input.fileName,
-    data: base64,
-    directory: Directory.Cache,
-  });
+  let writtenFile: { uri: string };
 
-  await Share.share({
-    title: input.title,
-    text: input.text,
-    files: [writtenFile.uri],
-    dialogTitle: input.dialogTitle,
-  });
+  try {
+    const base64 = await blobToBase64(input.blob);
+    writtenFile = await Filesystem.writeFile({
+      path: input.fileName,
+      data: base64,
+      directory: Directory.Cache,
+    });
+  } catch (error) {
+    logReportExportError("Filesystem", error);
+    throw error;
+  }
+
+  try {
+    await Share.share({
+      title: input.title,
+      text: input.text,
+      files: [writtenFile.uri],
+      dialogTitle: input.dialogTitle,
+    });
+  } catch (error) {
+    logReportExportError("Native Share", error);
+    throw error;
+  }
 }
 
 function downloadBlob(blob: Blob, fileName: string) {
@@ -263,9 +408,19 @@ export async function shareOrDownloadFile(input: ShareFileInput) {
   const shareData = { title: input.title, text: input.text, files: [file] };
 
   if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
-    await navigator.share(shareData);
-    return;
+    try {
+      await navigator.share(shareData);
+      return;
+    } catch (error) {
+      logReportExportError("Web Share", error);
+      throw error;
+    }
   }
 
-  downloadBlob(input.blob, input.fileName);
+  try {
+    downloadBlob(input.blob, input.fileName);
+  } catch (error) {
+    logReportExportError("Download", error);
+    throw error;
+  }
 }

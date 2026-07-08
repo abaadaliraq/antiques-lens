@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   fetchAppNotifications,
@@ -6,8 +6,9 @@ import {
   markNotificationRead,
   type AppNotification,
 } from "@/lib/notificationsSupabase";
+import { isRtlLocale } from "@/i18n/common";
 import { Bell, CheckCheck, ExternalLink, Loader2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Locale } from "./types";
 
 type Props = {
@@ -15,79 +16,21 @@ type Props = {
   compact?: boolean;
 };
 
-const RTL_LOCALES: Locale[] = ["ar", "fa", "ku"];
-
 function copy(locale: Locale) {
   const text = {
-    ar: {
-      title: "الإشعارات",
-      empty: "لا توجد إشعارات حالياً.",
-      markAll: "تحديد الكل كمقروء",
-      open: "فتح",
-      loading: "جاري التحميل...",
-      aria: "الإشعارات",
-    },
-    en: {
-      title: "Notifications",
-      empty: "No notifications right now.",
-      markAll: "Mark all as read",
-      open: "Open",
-      loading: "Loading...",
-      aria: "Notifications",
-    },
-    fr: {
-      title: "Notifications",
-      empty: "Aucune notification pour le moment.",
-      markAll: "Tout marquer comme lu",
-      open: "Ouvrir",
-      loading: "Chargement...",
-      aria: "Notifications",
-    },
-    hi: {
-      title: "Notifications",
-      empty: "अभी कोई सूचना नहीं है.",
-      markAll: "सब पढ़ा हुआ करें",
-      open: "Open",
-      loading: "Loading...",
-      aria: "Notifications",
-    },
-    fa: {
-      title: "اعلان‌ها",
-      empty: "فعلاً اعلانی وجود ندارد.",
-      markAll: "همه را خوانده‌شده کن",
-      open: "باز کردن",
-      loading: "در حال بارگذاری...",
-      aria: "اعلان‌ها",
-    },
-    tr: {
-      title: "Bildirimler",
-      empty: "Şu anda bildirim yok.",
-      markAll: "Tümünü okundu yap",
-      open: "Aç",
-      loading: "Yükleniyor...",
-      aria: "Bildirimler",
-    },
-    ru: {
-      title: "Уведомления",
-      empty: "Пока нет уведомлений.",
-      markAll: "Отметить все как прочитанные",
-      open: "Открыть",
-      loading: "Загрузка...",
-      aria: "Уведомления",
-    },
-    ku: {
-      title: "ئاگادارییەکان",
-      empty: "لە ئێستادا ئاگاداری نییە.",
-      markAll: "هەموویان وەک خوێندراو دیاری بکە",
-      open: "کردنەوە",
-      loading: "بارکردن...",
-      aria: "ئاگادارییەکان",
-    },
+    ar: { title: "الإشعارات", empty: "لا توجد إشعارات حالياً.", markAll: "تحديد الكل كمقروء", open: "فتح", loading: "جاري التحميل...", aria: "الإشعارات" },
+    en: { title: "Notifications", empty: "No notifications right now.", markAll: "Mark all as read", open: "Open", loading: "Loading...", aria: "Notifications" },
+    fr: { title: "Notifications", empty: "Aucune notification pour le moment.", markAll: "Tout marquer comme lu", open: "Ouvrir", loading: "Chargement...", aria: "Notifications" },
+    hi: { title: "सूचनाएँ", empty: "अभी कोई सूचना नहीं है.", markAll: "सबको पढ़ा हुआ करें", open: "खोलें", loading: "लोड हो रहा है...", aria: "सूचनाएँ" },
+    fa: { title: "اعلان‌ها", empty: "فعلاً اعلانی وجود ندارد.", markAll: "همه را خوانده‌شده کن", open: "باز کردن", loading: "در حال بارگذاری...", aria: "اعلان‌ها" },
+    tr: { title: "Bildirimler", empty: "Şu anda bildirim yok.", markAll: "Tümünü okundu yap", open: "Aç", loading: "Yükleniyor...", aria: "Bildirimler" },
+    ru: { title: "Уведомления", empty: "Пока нет уведомлений.", markAll: "Отметить все как прочитанные", open: "Открыть", loading: "Загрузка...", aria: "Уведомления" },
+    ku: { title: "ئاگادارییەکان", empty: "لە ئێستادا ئاگاداری نییە.", markAll: "هەموویان وەک خوێندراو دیاری بکە", open: "کردنەوە", loading: "بارکردن...", aria: "ئاگادارییەکان" },
+    es: { title: "Notificaciones", empty: "No hay notificaciones por ahora.", markAll: "Marcar todo como leído", open: "Abrir", loading: "Cargando...", aria: "Notificaciones" },
   } satisfies Record<Locale, Record<string, string>>;
 
   return text[locale] || text.en;
 }
-
 function formatDate(value: string, locale: Locale) {
   try {
     return new Intl.DateTimeFormat(locale === "ar" ? "ar-IQ" : locale, {
@@ -105,13 +48,13 @@ export default function NotificationsButton({ locale, compact = false }: Props) 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const text = copy(locale);
-  const rtl = RTL_LOCALES.includes(locale);
+  const rtl = isRtlLocale(locale);
   const unreadCount = useMemo(
     () => notifications.filter((item) => !item.read).length,
     [notifications],
   );
 
-  async function loadNotifications() {
+  const loadNotifications = useCallback(async () => {
     setLoading(true);
     try {
       const items = await fetchAppNotifications(locale);
@@ -119,13 +62,16 @@ export default function NotificationsButton({ locale, compact = false }: Props) 
     } finally {
       setLoading(false);
     }
-  }
+  }, [locale]);
 
   useEffect(() => {
-    void loadNotifications();
+    const initialTimer = window.setTimeout(() => void loadNotifications(), 0);
     const timer = window.setInterval(() => void loadNotifications(), 60_000);
-    return () => window.clearInterval(timer);
-  }, [locale]);
+    return () => {
+      window.clearTimeout(initialTimer);
+      window.clearInterval(timer);
+    };
+  }, [loadNotifications]);
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -266,3 +212,4 @@ export default function NotificationsButton({ locale, compact = false }: Props) 
     </div>
   );
 }
+

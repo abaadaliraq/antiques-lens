@@ -2,8 +2,10 @@
 
 import { Check, ChevronDown, Globe2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { LANGUAGE_OPTIONS } from "@/i18n/common";
+import type { Locale } from "./types";
 
-type LangCode = "ar" | "en" | "fr" | "hi" | "fa" | "tr" | "ru" | "ku";
+type LangCode = Locale;
 
 type LanguagePillsProps = {
   value?: LangCode;
@@ -15,21 +17,7 @@ type LanguagePillsProps = {
   onSelect?: (lang: LangCode) => void;
 };
 
-const LANGUAGES: {
-  code: LangCode;
-  native: string;
-  label: string;
-  short: string;
-}[] = [
-  { code: "en", native: "English", label: "English", short: "EN" },
-  { code: "ar", native: "العربية", label: "Arabic", short: "AR" },
-  { code: "fr", native: "Français", label: "French", short: "FR" },
-  { code: "hi", native: "हिन्दी", label: "Hindi", short: "HI" },
-  { code: "fa", native: "فارسی", label: "Persian", short: "FA" },
-  { code: "tr", native: "Türkçe", label: "Turkish", short: "TR" },
-  { code: "ru", native: "Русский", label: "Russian", short: "RU" },
-  { code: "ku", native: "Kurdî", label: "Kurdish", short: "KU" },
-];
+const LANGUAGES = LANGUAGE_OPTIONS;
 
 export default function LanguagePills({
   value,

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
@@ -28,6 +28,10 @@ import {
   type UserProfile,
 } from "@/lib/profilesSupabase";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
+import {
+  SUPPORTED_LOCALES as SUPPORTED_AUTH_LOCALES,
+  isRtlLocale,
+} from "@/i18n/common";
 import { Coins, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -36,17 +40,6 @@ import { formatArchiveDate, type ArchiveItem } from "./archiveStore";
 import type { Locale, SimilarImageResult } from "./types";
 import { useAntiqueLens } from "./useAntiqueLens";
 import { useUserActivityHeartbeat } from "./useUserActivityHeartbeat";
-
-const SUPPORTED_AUTH_LOCALES: Locale[] = [
-  "ar",
-  "en",
-  "fr",
-  "hi",
-  "fa",
-  "tr",
-  "ru",
-  "ku",
-];
 
 const PENDING_OAUTH_LOCALE_KEY = "kishib:pending-oauth-locale";
 const USER_LOCALE_STORAGE_KEY = "antiques-lens:locale";
@@ -162,94 +155,133 @@ function getSafeSimilarImages(lens: ReturnType<typeof useAntiqueLens>) {
 
 function homeCopy(locale: Locale) {
   const text = {
-    ar: {
-      eyebrow: "KISHIB",
-      title: "KISHIB",
-      slogan: "Scan. Value. Verify.",
-      collection: "مجموعتي",
-      latest: "آخر التقييمات",
-      empty: "لا توجد تقييمات بعد",
-    },
-    en: {
-      eyebrow: "KISHIB",
-      title: "KISHIB",
-      slogan: "Scan. Value. Verify.",
-      collection: "My collection",
-      latest: "Latest evaluations",
-      empty: "No evaluations yet",
-    },
-    fr: {
-      eyebrow: "KISHIB",
-      title: "KISHIB",
-      slogan: "Scan. Value. Verify.",
-      collection: "Ma collection",
-      latest: "Dernières évaluations",
-      empty: "Aucune évaluation",
-    },
-    hi: {
-      eyebrow: "KISHIB",
-      title: "KISHIB",
-      slogan: "Scan. Value. Verify.",
-      collection: "मेरा संग्रह",
-      latest: "हाल की जाँच",
-      empty: "अभी कोई मूल्यांकन नहीं",
-    },
-    fa: {
-      eyebrow: "KISHIB",
-      title: "KISHIB",
-      slogan: "Scan. Value. Verify.",
-      collection: "مجموعه من",
-      latest: "آخرین ارزیابی‌ها",
-      empty: "هنوز ارزیابی وجود ندارد",
-    },
-    tr: {
-      eyebrow: "KISHIB",
-      title: "KISHIB",
-      slogan: "Scan. Value. Verify.",
-      collection: "Koleksiyonum",
-      latest: "Son değerlendirmeler",
-      empty: "Henüz değerlendirme yok",
-    },
-    ru: {
-      eyebrow: "KISHIB",
-      title: "KISHIB",
-      slogan: "Scan. Value. Verify.",
-      collection: "Моя коллекция",
-      latest: "Последние оценки",
-      empty: "Оценок пока нет",
-    },
-    ku: {
-      eyebrow: "KISHIB",
-      title: "KISHIB",
-      slogan: "Scan. Value. Verify.",
-      collection: "کۆمەڵەکەم",
-      latest: "دوایین هەڵسەنگاندن",
-      empty: "هێشتا هەڵسەنگاندن نییە",
-    },
+    ar: { eyebrow: "KISHIB", title: "KISHIB", slogan: "Scan. Value. Verify.", collection: "مجموعتي", latest: "آخر التقييمات", empty: "لا توجد تقييمات بعد" },
+    en: { eyebrow: "KISHIB", title: "KISHIB", slogan: "Scan. Value. Verify.", collection: "My collection", latest: "Latest evaluations", empty: "No evaluations yet" },
+    fr: { eyebrow: "KISHIB", title: "KISHIB", slogan: "Scan. Value. Verify.", collection: "Ma collection", latest: "Dernières évaluations", empty: "Aucune évaluation" },
+    hi: { eyebrow: "KISHIB", title: "KISHIB", slogan: "Scan. Value. Verify.", collection: "मेरा संग्रह", latest: "नवीनतम मूल्यांकन", empty: "अभी कोई मूल्यांकन नहीं" },
+    fa: { eyebrow: "KISHIB", title: "KISHIB", slogan: "Scan. Value. Verify.", collection: "مجموعه من", latest: "آخرین ارزیابی‌ها", empty: "هنوز ارزیابی وجود ندارد" },
+    tr: { eyebrow: "KISHIB", title: "KISHIB", slogan: "Scan. Value. Verify.", collection: "Koleksiyonum", latest: "Son değerlendirmeler", empty: "Henüz değerlendirme yok" },
+    ru: { eyebrow: "KISHIB", title: "KISHIB", slogan: "Scan. Value. Verify.", collection: "Моя коллекция", latest: "Последние оценки", empty: "Оценок пока нет" },
+    ku: { eyebrow: "KISHIB", title: "KISHIB", slogan: "Scan. Value. Verify.", collection: "کۆمەڵەکەم", latest: "دوایین هەڵسەنگاندن", empty: "هێشتا هەڵسەنگاندن نییە" },
+    es: { eyebrow: "KISHIB", title: "KISHIB", slogan: "Scan. Value. Verify.", collection: "Mi colección", latest: "Últimas evaluaciones", empty: "Todavía no hay evaluaciones" },
   } satisfies Record<Locale, Record<string, string>>;
 
   return text[locale] || text.en;
 }
-
-function isRtlLocale(locale: Locale) {
-  return locale === "ar" || locale === "fa" || locale === "ku";
-}
-
 function getMetalPricesNavLabel(locale: Locale) {
   const labels: Record<Locale, string> = {
     ar: "بورصة المعادن",
     en: "Metal Prices",
     fr: "Prix des métaux",
-    hi: "Metal Prices",
+    hi: "धातु कीमतें",
     fa: "قیمت فلزات",
-    tr: "Metal Fiyatları",
+    tr: "Metal fiyatları",
     ru: "Цены на металлы",
     ku: "نرخی کانزاکان",
+    es: "Precios de metales",
   };
 
   return labels[locale] ?? labels.en;
 }
 
+function getHomeInteractionCopy(locale: Locale) {
+  const labels: Record<
+    Locale,
+    {
+      deleteConfirm: string;
+      translating: string;
+      archiveLoading: string;
+      archiveRefreshing: string;
+      archiveLoadMore: string;
+      archiveLoadingMore: string;
+      addInfo: string;
+    }
+  > = {
+    ar: {
+      deleteConfirm: "هل تريد حذف هذه القطعة من الأرشيف؟",
+      translating: "جاري ترجمة التقرير...",
+      archiveLoading: "جارٍ تحميل أرشيفك...",
+      archiveRefreshing: "جارٍ تحديث الأرشيف...",
+      archiveLoadMore: "تحميل المزيد",
+      archiveLoadingMore: "جارٍ التحميل...",
+      addInfo: "إضافة معلومة",
+    },
+    en: {
+      deleteConfirm: "Delete this item from your collection?",
+      translating: "Translating report...",
+      archiveLoading: "Loading your archive...",
+      archiveRefreshing: "Refreshing archive...",
+      archiveLoadMore: "Load more",
+      archiveLoadingMore: "Loading...",
+      addInfo: "Add Info",
+    },
+    ku: {
+      deleteConfirm: "دەتەوێت ئەم پارچەیە لە کۆمەڵەکەت بسڕیتەوە؟",
+      translating: "ڕاپۆرت وەردەگێڕدرێت...",
+      archiveLoading: "ئەرشیفەکەت بار دەکرێت...",
+      archiveRefreshing: "ئەرشیف نوێ دەکرێتەوە...",
+      archiveLoadMore: "زیاتر باربکە",
+      archiveLoadingMore: "بارکردن...",
+      addInfo: "زانیاری زیاد بکە",
+    },
+    fr: {
+      deleteConfirm: "Supprimer cette pièce de votre collection ?",
+      translating: "Traduction du rapport...",
+      archiveLoading: "Chargement de votre archive...",
+      archiveRefreshing: "Actualisation de l’archive...",
+      archiveLoadMore: "Charger plus",
+      archiveLoadingMore: "Chargement...",
+      addInfo: "Ajouter info",
+    },
+    hi: {
+      deleteConfirm: "क्या इस वस्तु को अपने संग्रह से हटाना चाहते हैं?",
+      translating: "रिपोर्ट का अनुवाद हो रहा है...",
+      archiveLoading: "आपका संग्रह लोड हो रहा है...",
+      archiveRefreshing: "संग्रह रीफ़्रेश हो रहा है...",
+      archiveLoadMore: "और लोड करें",
+      archiveLoadingMore: "लोड हो रहा है...",
+      addInfo: "जानकारी जोड़ें",
+    },
+    fa: {
+      deleteConfirm: "آیا می‌خواهید این قطعه را از مجموعه خود حذف کنید؟",
+      translating: "در حال ترجمه گزارش...",
+      archiveLoading: "در حال بارگذاری آرشیو شما...",
+      archiveRefreshing: "در حال به‌روزرسانی آرشیو...",
+      archiveLoadMore: "بارگذاری بیشتر",
+      archiveLoadingMore: "در حال بارگذاری...",
+      addInfo: "افزودن اطلاعات",
+    },
+    tr: {
+      deleteConfirm: "Bu parçayı koleksiyonunuzdan silmek istiyor musunuz?",
+      translating: "Rapor çevriliyor...",
+      archiveLoading: "Arşiviniz yükleniyor...",
+      archiveRefreshing: "Arşiv yenileniyor...",
+      archiveLoadMore: "Daha fazla yükle",
+      archiveLoadingMore: "Yükleniyor...",
+      addInfo: "Bilgi ekle",
+    },
+    ru: {
+      deleteConfirm: "Удалить этот предмет из вашей коллекции?",
+      translating: "Перевод отчета...",
+      archiveLoading: "Загрузка вашего архива...",
+      archiveRefreshing: "Обновление архива...",
+      archiveLoadMore: "Загрузить ещё",
+      archiveLoadingMore: "Загрузка...",
+      addInfo: "Добавить информацию",
+    },
+    es: {
+      deleteConfirm: "¿Quieres eliminar esta pieza de tu colección?",
+      translating: "Traduciendo el informe...",
+      archiveLoading: "Cargando tu archivo...",
+      archiveRefreshing: "Actualizando el archivo...",
+      archiveLoadMore: "Cargar más",
+      archiveLoadingMore: "Cargando...",
+      addInfo: "Añadir información",
+    },
+  };
+
+  return labels[locale] || labels.en;
+}
 export default function AntiqueLensShell() {
   const router = useRouter();
   const lens = useAntiqueLens();
@@ -260,6 +292,7 @@ export default function AntiqueLensShell() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isSharingReport, setIsSharingReport] = useState(false);
   const [isSavingPdf, setIsSavingPdf] = useState(false);
+  const [isPreparingPrint, setIsPreparingPrint] = useState(false);
   const [exportMessage, setExportMessage] = useState("");
 
   async function refreshProfile({ silent = false }: { silent?: boolean } = {}) {
@@ -570,7 +603,6 @@ export default function AntiqueLensShell() {
     );
   }
 
-  const activeLocale = String(lens.locale);
   const safeSimilarImages = getSafeSimilarImages(lens);
   const isSimilarLoading =
     Boolean(lens.isLoadingSimilar) && safeSimilarImages.length === 0;
@@ -583,13 +615,10 @@ export default function AntiqueLensShell() {
   const isHomeRtl = isRtlLocale(lens.locale);
   const metalPricesLabel = lens.t.metalPrices || getMetalPricesNavLabel(lens.locale);
   const statusMessage = exportMessage || lens.analysisNotice;
+  const homeInteractionCopy = getHomeInteractionCopy(lens.locale);
 
   function handleDeleteArchiveItem(id: string) {
-    const confirmed = window.confirm(
-      lens.locale === "en"
-        ? "Delete this item from your collection?"
-        : "هل تريد حذف هذه القطعة من الأرشيف؟",
-    );
+    const confirmed = window.confirm(homeInteractionCopy.deleteConfirm);
 
     if (!confirmed) return;
 
@@ -597,25 +626,31 @@ export default function AntiqueLensShell() {
   }
 
   function getReportExportCopy() {
-    if (lens.locale === "ar") {
-      return {
-        title: lens.result?.title || "KISHIB",
-        text: "تقرير تقييمي من KISHIB",
-        pdf: "PDF",
-        ready: "تم تجهيز التقرير",
-        missing: "تعذر العثور على نسخة التقرير للتصدير.",
-        failed: "تعذر تجهيز التقرير. حاول مرة أخرى.",
-      };
-    }
-
-    return {
-      title: lens.result?.title || "KISHIB",
-      text: "My KISHIB evaluation report",
-      pdf: "PDF",
-      ready: "Report is ready",
-      missing: "The export report could not be found.",
-      failed: "Could not prepare the report. Please try again.",
+    const copyByLocale: Record<Locale, {
+      title: string;
+      text: string;
+      pdf: string;
+      print: string;
+      preparingReport: string;
+      reportReady: string;
+      missing: string;
+      reportImageFailed: string;
+      pdfGenerationFailed: string;
+      printFailed: string;
+      shareFailed: string;
+    }> = {
+      ar: { title: lens.result?.title || "KISHIB", text: "تقرير تقييمي من KISHIB", pdf: "PDF", print: "طباعة / حفظ", preparingReport: "جارٍ تجهيز التقرير...", reportReady: "تم تجهيز التقرير", missing: "تعذر العثور على نسخة التقرير للتصدير.", reportImageFailed: "تعذر إنشاء صورة التقرير.", pdfGenerationFailed: "تعذر إنشاء ملف PDF.", printFailed: "تعذر تجهيز الطباعة.", shareFailed: "تعذر مشاركة الملف." },
+      en: { title: lens.result?.title || "KISHIB", text: "My KISHIB evaluation report", pdf: "PDF", print: "Print / Save", preparingReport: "Preparing report...", reportReady: "Report is ready", missing: "The export report could not be found.", reportImageFailed: "Could not create the report image.", pdfGenerationFailed: "Could not create the PDF file.", printFailed: "Could not prepare printing.", shareFailed: "Could not share the file." },
+      ku: { title: lens.result?.title || "KISHIB", text: "ڕاپۆرتی هەڵسەنگاندنی KISHIB", pdf: "PDF", print: "چاپ / پاشەکەوت", preparingReport: "ڕاپۆرت ئامادە دەکرێت...", reportReady: "ڕاپۆرت ئامادەیە", missing: "نەتوانرا وەشانی ڕاپۆرت بۆ هەناردن بدۆزرێتەوە.", reportImageFailed: "نەتوانرا وێنەی ڕاپۆرت دروست بکرێت.", pdfGenerationFailed: "نەتوانرا فایلێکی PDF دروست بکرێت.", printFailed: "نەتوانرا چاپ ئامادە بکرێت.", shareFailed: "نەتوانرا فایل هاوبەش بکرێت." },
+      fr: { title: lens.result?.title || "KISHIB", text: "Mon rapport d’évaluation KISHIB", pdf: "PDF", print: "Imprimer / Enregistrer", preparingReport: "Préparation du rapport...", reportReady: "Le rapport est prêt", missing: "Le rapport d’export est introuvable.", reportImageFailed: "Impossible de créer l’image du rapport.", pdfGenerationFailed: "Impossible de créer le fichier PDF.", printFailed: "Impossible de préparer l’impression.", shareFailed: "Impossible de partager le fichier." },
+      hi: { title: lens.result?.title || "KISHIB", text: "मेरी KISHIB मूल्यांकन रिपोर्ट", pdf: "PDF", print: "प्रिंट / सहेजें", preparingReport: "रिपोर्ट तैयार हो रही है...", reportReady: "रिपोर्ट तैयार है", missing: "निर्यात रिपोर्ट नहीं मिली.", reportImageFailed: "रिपोर्ट की छवि नहीं बन सकी.", pdfGenerationFailed: "PDF फ़ाइल नहीं बन सकी.", printFailed: "प्रिंट तैयार नहीं हो सका.", shareFailed: "फ़ाइल साझा नहीं हो सकी." },
+      fa: { title: lens.result?.title || "KISHIB", text: "گزارش ارزیابی KISHIB", pdf: "PDF", print: "چاپ / ذخیره", preparingReport: "در حال آماده‌سازی گزارش...", reportReady: "گزارش آماده است", missing: "نسخه خروجی گزارش پیدا نشد.", reportImageFailed: "ایجاد تصویر گزارش ممکن نشد.", pdfGenerationFailed: "ایجاد فایل PDF ممکن نشد.", printFailed: "آماده‌سازی چاپ ممکن نشد.", shareFailed: "اشتراک‌گذاری فایل ممکن نشد." },
+      tr: { title: lens.result?.title || "KISHIB", text: "KISHIB değerlendirme raporum", pdf: "PDF", print: "Yazdır / Kaydet", preparingReport: "Rapor hazırlanıyor...", reportReady: "Rapor hazır", missing: "Dışa aktarılacak rapor bulunamadı.", reportImageFailed: "Rapor görseli oluşturulamadı.", pdfGenerationFailed: "PDF dosyası oluşturulamadı.", printFailed: "Yazdırma hazırlanamadı.", shareFailed: "Dosya paylaşılamadı." },
+      ru: { title: lens.result?.title || "KISHIB", text: "Мой отчет оценки KISHIB", pdf: "PDF", print: "Печать / сохранить", preparingReport: "Подготовка отчета...", reportReady: "Отчет готов", missing: "Версия отчета для экспорта не найдена.", reportImageFailed: "Не удалось создать изображение отчета.", pdfGenerationFailed: "Не удалось создать PDF-файл.", printFailed: "Не удалось подготовить печать.", shareFailed: "Не удалось поделиться файлом." },
+      es: { title: lens.result?.title || "KISHIB", text: "Mi informe de evaluación KISHIB", pdf: "PDF", print: "Imprimir / Guardar", preparingReport: "Preparando informe...", reportReady: "El informe está listo", missing: "No se encontró el informe para exportar.", reportImageFailed: "No se pudo crear la imagen del informe.", pdfGenerationFailed: "No se pudo crear el archivo PDF.", printFailed: "No se pudo preparar la impresión.", shareFailed: "No se pudo compartir el archivo." },
     };
+
+    return copyByLocale[lens.locale] || copyByLocale.en;
   }
 
   function getReportElement() {
@@ -641,7 +676,7 @@ export default function AntiqueLensShell() {
   }
 
   async function handleShareReportImage() {
-    if (isSharingReport || isSavingPdf) return;
+    if (isSharingReport) return;
 
     const copy = getReportExportCopy();
     const report = getReportElement();
@@ -653,6 +688,7 @@ export default function AntiqueLensShell() {
 
     try {
       setIsSharingReport(true);
+      setExportMessage(copy.preparingReport);
       const blob = await createReportPngBlob(report);
 
       await shareOrDownloadFile({
@@ -662,12 +698,14 @@ export default function AntiqueLensShell() {
         text: copy.text,
         dialogTitle: lens.t.share,
         mimeType: "image/png",
+        action: "share",
       });
 
-      showExportMessage(copy.ready);
+      showExportMessage(copy.reportReady);
     } catch (error) {
       if (!isLikelyShareCancel(error)) {
-        showExportMessage(copy.failed);
+        console.error("[Report Export][Share Button]", error);
+        showExportMessage(copy.reportImageFailed || copy.shareFailed);
       }
     } finally {
       setIsSharingReport(false);
@@ -675,7 +713,7 @@ export default function AntiqueLensShell() {
   }
 
   async function handleSaveReportPdf() {
-    if (isSavingPdf || isSharingReport) return;
+    if (isSavingPdf) return;
 
     const copy = getReportExportCopy();
     const report = getReportElement();
@@ -687,6 +725,7 @@ export default function AntiqueLensShell() {
 
     try {
       setIsSavingPdf(true);
+      setExportMessage(copy.preparingReport);
       const blob = await createReportPdfBlob(report);
 
       await shareOrDownloadFile({
@@ -696,15 +735,59 @@ export default function AntiqueLensShell() {
         text: copy.text,
         dialogTitle: copy.pdf,
         mimeType: "application/pdf",
+        action: "pdf",
       });
 
-      showExportMessage(copy.ready);
+      showExportMessage(copy.reportReady);
     } catch (error) {
       if (!isLikelyShareCancel(error)) {
-        showExportMessage(copy.failed);
+        console.error("[Report Export][PDF Button]", error);
+        showExportMessage(copy.pdfGenerationFailed);
       }
     } finally {
       setIsSavingPdf(false);
+    }
+  }
+
+  async function handlePrintReport() {
+    if (isPreparingPrint) return;
+
+    const copy = getReportExportCopy();
+    const report = getReportElement();
+
+    if (!report) {
+      showExportMessage(copy.missing);
+      return;
+    }
+
+    if (!Capacitor.isNativePlatform()) {
+      window.print();
+      return;
+    }
+
+    try {
+      setIsPreparingPrint(true);
+      setExportMessage(copy.preparingReport);
+      const blob = await createReportPdfBlob(report);
+
+      await shareOrDownloadFile({
+        blob,
+        fileName: buildReportFileName("pdf"),
+        title: copy.title,
+        text: copy.text,
+        dialogTitle: copy.print,
+        mimeType: "application/pdf",
+        action: "print",
+      });
+
+      showExportMessage(copy.reportReady);
+    } catch (error) {
+      if (!isLikelyShareCancel(error)) {
+        console.error("[Report Export][Print Button]", error);
+        showExportMessage(copy.printFailed);
+      }
+    } finally {
+      setIsPreparingPrint(false);
     }
   }
 
@@ -811,13 +894,7 @@ export default function AntiqueLensShell() {
           <div className="fixed inset-x-0 top-20 z-50 mx-auto flex w-fit items-center gap-3 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/92 px-5 py-3 text-[12px] font-medium text-[#735f4b] shadow-[0_16px_38px_rgba(62,39,22,0.12)] backdrop-blur-2xl">
             <span className="h-2 w-2 animate-pulse rounded-full bg-[#b88a3d]" />
             <span>
-              {activeLocale === "en"
-                ? "Translating report..."
-                : activeLocale === "fr"
-                  ? "Traduction du rapport..."
-                  : activeLocale === "tr"
-                    ? "Rapor çevriliyor..."
-                    : "جاري ترجمة التقرير..."}
+              {homeInteractionCopy.translating}
             </span>
           </div>
         )}
@@ -921,7 +998,9 @@ export default function AntiqueLensShell() {
                 followUpPanel={followUpPanel}
                 onBack={lens.resetEvaluation}
                 onSavePdf={() => void handleSaveReportPdf()}
+                onPrintReport={() => void handlePrintReport()}
                 isSavingPdf={isSavingPdf}
+                isPreparingPrint={isPreparingPrint}
               />
             </div>
           )}
@@ -930,10 +1009,10 @@ export default function AntiqueLensShell() {
        <div className="kishib-app-chrome">
   <BottomBar
     labels={{
-      new: lens.t.new,
-      share: lens.t.share,
-      pdf: getReportExportCopy().pdf,
-      addInfo: lens.t.addInfo || (lens.locale === "ar" ? "إضافة معلومة" : "Add Info"),
+                  new: lens.t.new,
+                  share: lens.t.share,
+                  pdf: getReportExportCopy().pdf,
+      addInfo: lens.t.addInfo || homeInteractionCopy.addInfo,
     }}
     hasResult={Boolean(lens.result)}
     onNew={lens.resetEvaluation}
@@ -992,6 +1071,8 @@ function LatestCollection({
   onOpenItem: (item: ArchiveItem) => void;
   onDeleteItem: (id: string) => void;
 }) {
+  const archiveCopy = getHomeInteractionCopy(locale);
+
   return (
     <section className="mx-auto w-full pb-4 lg:max-w-6xl lg:pb-0">
       <div className="mb-3 flex items-end justify-between lg:mb-4">
@@ -1005,7 +1086,7 @@ function LatestCollection({
 
       {isLoading ? (
         <div className="rounded-[18px] border border-[#d2b98f] bg-[#fff4e2]/80 px-4 py-5 text-sm font-semibold text-[#735f4b] lg:max-w-md">
-          {locale === "en" ? "Loading your archive..." : "جارٍ تحميل أرشيفك..."}
+          {archiveCopy.archiveLoading}
         </div>
       ) : error ? (
         <div className="rounded-[18px] border border-[#a23b2a]/25 bg-[#fff2ed]/90 px-4 py-5 text-sm font-semibold text-[#8f2e24] lg:max-w-md">
@@ -1019,7 +1100,7 @@ function LatestCollection({
         <>
           {isRefreshing ? (
             <p className="mb-2 text-[11px] font-semibold text-[#dcc18a]">
-              {locale === "en" ? "Refreshing archive..." : "جارٍ تحديث الأرشيف..."}
+              {archiveCopy.archiveRefreshing}
             </p>
           ) : null}
           <div className="grid max-h-[520px] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:grid-cols-4 lg:max-h-[calc(100dvh-430px)] lg:grid-cols-5 lg:gap-4 lg:pr-2 xl:grid-cols-6 2xl:grid-cols-7">
@@ -1087,12 +1168,8 @@ function LatestCollection({
               className="mt-4 h-10 rounded-full border border-[#dcc18a]/55 bg-[#fff4e2]/88 px-5 text-[12px] font-bold text-[#6d241d] shadow-[0_12px_30px_rgba(62,39,22,0.12)] transition hover:bg-[#fff4e2] disabled:cursor-wait disabled:opacity-60"
             >
               {isLoadingMore
-                ? locale === "en"
-                  ? "Loading..."
-                  : "جارٍ التحميل..."
-                : locale === "en"
-                  ? "Load more"
-                  : "تحميل المزيد"}
+                ? archiveCopy.archiveLoadingMore
+                : archiveCopy.archiveLoadMore}
             </button>
           ) : null}
         </>
@@ -1100,3 +1177,6 @@ function LatestCollection({
     </section>
   );
 }
+
+
+

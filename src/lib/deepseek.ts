@@ -97,7 +97,9 @@ export async function getDeepSeekLogicReview({
         ? "English"
         : locale === "ar"
           ? "Arabic"
-          : "the same language used in the OpenAI result";
+          : locale === "es"
+            ? "Spanish"
+            : "the same language used in the OpenAI result";
     const prompt = `
 You are KISHIB's internal logic and pricing reviewer.
 You do not see images. Review only the text data, market context, OpenAI result, and Gemini reviewer notes.

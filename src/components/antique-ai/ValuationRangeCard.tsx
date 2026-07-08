@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import type { AnalysisResult, Locale, ValuationScenario } from "./types";
@@ -167,7 +167,22 @@ function text(locale: Locale) {
       rawSilver: "Стоимость сырого серебра",
       assumedPurity: "Примерный диапазон для пробы 800-999",
     },
-  };
+    es: {
+      estimated: "Valor estimado",
+      based: "Estimación preliminar según la información disponible",
+      low: "",
+      medium: "",
+      high: "",
+      min: "Mínimo",
+      mid: "Medio",
+      max: "Máximo",
+      warning: "Si la pieza es realmente plata o metal precioso, el valor bruto depende del peso en gramos y del precio de mercado de hoy.",
+      notConfirmed: "Una foto por sí sola no confirma la pureza, pero KISHIB puede mostrar un escenario condicional cuando hay peso o marca.",
+      primary: "Estimación principal",
+      ifSilver: "Si es plata auténtica",
+      rawSilver: "Valor bruto de la plata",
+      assumedPurity: "Rango aproximado usando pureza de 800 a 999",
+    },  };
 
   return labels[locale] || labels.en;
 }
@@ -517,3 +532,4 @@ export default function ValuationRangeCard({ result, locale }: Props) {
     </section>
   );
 }
+

@@ -2,8 +2,9 @@
 
 import { BadgeCheck, ChevronDown, Gem, Ruler, Scale, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { isRtlLocale } from "@/i18n/common";
 
-export type AppLocale = "ar" | "en" | "ku" | "fr" | "hi" | "fa" | "tr" | "ru";
+export type AppLocale = "ar" | "en" | "ku" | "fr" | "hi" | "fa" | "tr" | "ru" | "es";
 
 export type EvaluationKind =
   | "antique"
@@ -50,10 +51,8 @@ export const emptyGemstoneFormData: GemstoneFormData = {
   metalType: "",
 };
 
-const rtlLocales: AppLocale[] = ["ar", "ku", "fa"];
-
 function isRtl(locale: AppLocale) {
-  return rtlLocales.includes(locale);
+  return isRtlLocale(locale);
 }
 
 const text = {
@@ -384,6 +383,46 @@ const text = {
       "Фото клейма / пробы",
     ],
   },
+  es: {
+    typeTitle: "Tipo de evaluación",
+    notice:
+      "La valoración de gemas no depende solo de la foto. Peso, medidas, color, transparencia, certificado y tratamiento pueden cambiar mucho el valor.",
+    basicTitle: "Datos básicos",
+    advancedTitle: "Detalles avanzados para mayor precisión",
+    showAdvanced: "Mostrar detalles avanzados",
+    hideAdvanced: "Ocultar detalles avanzados",
+    knownGemstoneType: "Tipo de gema si se conoce",
+    knownGemstoneTypePh: "Ejemplo: ágata, turquesa, esmeralda, rubí, diamante...",
+    color: "Color",
+    colorPh: "Ejemplo: azul oscuro, verde oliva, rojo transparente...",
+    certificateLab: "Certificado",
+    caratWeight: "Peso en quilates",
+    gramWeight: "Peso en gramos",
+    dimensionsMm: "Dimensiones en mm",
+    cutShape: "Corte / forma",
+    transparency: "Transparencia",
+    naturalStatus: "¿Natural o sintética?",
+    treatment: "Tratamiento",
+    metalType: "Metal si es anillo o collar",
+    certificateNumber: "Número de certificado",
+    select: "Seleccionar",
+    helpfulPhotos: "Fotos para una evaluación más precisa",
+    kinds: {
+      antique: ["Antigüedad / artefacto", "General"],
+      loose_gemstone: ["Gema suelta", "Gema"],
+      ring: ["Anillo", "Joya"],
+      necklace: ["Collar", "Joya"],
+      beads: ["Cuentas / rosario", "Cuentas"],
+    },
+    photos: [
+      "Foto frontal clara",
+      "Foto posterior",
+      "Foto con luz blanca",
+      "Foto junto a una regla",
+      "Foto del certificado",
+      "Foto del sello o pureza",
+    ],
+  },
 } as const;
 
 const transparencyOptions = {
@@ -395,6 +434,7 @@ const transparencyOptions = {
   fa: ["شفاف", "نیمه‌شفاف", "کدر", "نامشخص"],
   tr: ["Şeffaf", "Yarı şeffaf", "Opak", "Bilinmiyor"],
   ru: ["Прозрачный", "Полупрозрачный", "Непрозрачный", "Неизвестно"],
+  es: ["Transparente", "Translúcida", "Opaca", "Desconocida"],
 };
 
 const naturalStatusOptions = {
@@ -406,6 +446,7 @@ const naturalStatusOptions = {
   fa: ["طبیعی", "مصنوعی / آزمایشگاهی", "بدلی / شیشه‌ای", "نامشخص"],
   tr: ["Doğal", "Sentetik / laboratuvar", "Taklit / cam", "Bilinmiyor"],
   ru: ["Натуральный", "Синтетический / лабораторный", "Имитация / стекло", "Неизвестно"],
+  es: ["Natural", "Sintética / laboratorio", "Imitación / vidrio", "Desconocido"],
 };
 
 const certificateLabs = ["No certificate", "GIA", "IGI", "GRS", "SSEF", "AGL", "Gübelin", "Other lab"];
@@ -421,6 +462,7 @@ const metalOptions = {
   fa: ["ندارد / فقط سنگ", "طلا", "نقره", "پلاتین", "مس", "فلز نامشخص"],
   tr: ["Yok / sadece taş", "Altın", "Gümüş", "Platin", "Bakır", "Bilinmeyen metal"],
   ru: ["Нет / только камень", "Золото", "Серебро", "Платина", "Медь", "Неизвестный металл"],
+  es: ["Ninguno / solo piedra", "Oro", "Plata", "Platino", "Cobre", "Metal desconocido"],
 };
 
 export function buildGemstoneContext(data: GemstoneFormData) {
@@ -496,7 +538,7 @@ export default function GemstoneFields({
 }: Props) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
-  const safeLocale: AppLocale = text[locale] ? locale : "ar";
+  const safeLocale: AppLocale = text[locale] ? locale : "en";
   const t = text[safeLocale];
   const dir = isRtl(safeLocale) ? "rtl" : "ltr";
   const isGemMode = value.evaluationKind !== "antique";

@@ -3,14 +3,16 @@
 import { Capacitor } from "@capacitor/core";
 import { Camera, Image as ImageIcon, Send, Sparkles, X } from "lucide-react";
 import type { ChangeEvent, MouseEvent } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { isRtlLocale } from "@/i18n/common";
+import type { Locale } from "./types";
 import GemstoneFields, {
   buildGemstoneContext,
   emptyGemstoneFormData,
 } from "./GemstoneFields";
 
 type ThemeMode = "dark" | "light";
-type AppLocale = "ar" | "en" | "ku" | "fr" | "hi" | "fa" | "tr" | "ru";
+type AppLocale = Locale;
 
 type Props = {
   theme: ThemeMode;
@@ -61,16 +63,17 @@ function normalizeLocale(locale?: string): AppLocale {
     locale === "hi" ||
     locale === "fa" ||
     locale === "tr" ||
-    locale === "ru"
+    locale === "ru" ||
+    locale === "es"
   ) {
     return locale;
   }
 
-  return "ar";
+  return "en";
 }
 
 function isRtl(locale: AppLocale) {
-  return locale === "ar" || locale === "fa" || locale === "ku";
+  return isRtlLocale(locale);
 }
 
 function copy(locale: AppLocale): Record<string, string> {
@@ -147,6 +150,18 @@ function copy(locale: AppLocale): Record<string, string> {
       main: "سەرەکی",
       ready: "وێنە ئامادەیە بۆ شیکردنەوە",
     },
+    es: {
+      uploadBox: "Sube o toma una foto",
+      optional: "Nota opcional sobre la pieza...",
+      start: "Iniciar análisis",
+      clear: "Borrar todo",
+      main: "Principal",
+      ready: "Foto lista para el análisis",
+      credits: "Evaluaciones gratuitas restantes",
+      oneLeft: "Te queda una sola evaluación gratuita",
+      subscribeAnalyze: "Suscríbete para activar el análisis",
+      of: "de",
+    },
   } satisfies Record<AppLocale, Record<string, string>>;
 
   const pickerText: Record<AppLocale, Record<string, string>> = {
@@ -206,9 +221,16 @@ function copy(locale: AppLocale): Record<string, string> {
       chooseGallery: "لە گەلەری هەڵبژێرە",
       close: "داخستن",
     },
+    es: {
+      sheetTitle: "Añadir imagen",
+      sheetHint: "Elige cómo añadir una imagen a tu evaluación KISHIB",
+      takePhoto: "Tomar foto",
+      chooseGallery: "Elegir de la galería",
+      close: "Cerrar",
+    },
   };
 
-  const usageFallback = locale === "ar" ? text.ar : text.en;
+  const usageFallback = text.en;
 
   return { ...usageFallback, ...text[locale], ...pickerText[locale] };
 }
@@ -229,6 +251,23 @@ function photoGuidance(locale: AppLocale) {
         "اجعل القطعة كاملة داخل الصورة بدون قص.",
         "التقط صورة قريبة للختم، التوقيع، القاعدة، أو أي علامة.",
         "صوّر أكثر من زاوية: الواجهة، الخلف، الجوانب، والتفاصيل.",
+      ],
+    };
+  }
+
+  if (locale === "es") {
+    return {
+      title: "Antes de tomar la foto",
+      hint: "Cuanto más claras sean las fotos y más ángulos incluyan, más precisa será la evaluación.",
+      openCamera: "Abrir cámara",
+      chooseGallery: "Elegir de la galería",
+      dontShowAgain: "No volver a mostrar",
+      tips: [
+        "Limpia la lente de la cámara antes de tomar la foto.",
+        "Fotografía la pieza con buena luz y evita un flash fuerte.",
+        "Mantén toda la pieza visible sin recortes.",
+        "Toma una foto cercana de marcas, firma, base o sello.",
+        "Captura varios ángulos: frente, reverso, lados y detalles.",
       ],
     };
   }
@@ -278,13 +317,18 @@ export default function EvaluationComposer({
   const [gemstoneData, setGemstoneData] = useState(emptyGemstoneFormData);
   const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
   const [hidePhotoTips, setHidePhotoTips] = useState(false);
-  const [hasSeenPhotoTips, setHasSeenPhotoTips] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.localStorage.getItem(PHOTO_TIPS_STORAGE_KEY) === "1";
-  });
+  const [hasSeenPhotoTips, setHasSeenPhotoTips] = useState(false);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const shouldShowPhotoTips = !hasSeenPhotoTips;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setHasSeenPhotoTips(window.localStorage.getItem(PHOTO_TIPS_STORAGE_KEY) === "1");
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const previews =
     imagePreviews.length > 0 ? imagePreviews : imagePreview ? [imagePreview] : [];

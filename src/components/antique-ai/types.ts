@@ -6,7 +6,8 @@ export type Locale =
   | "fa"
   | "tr"
   | "ru"
-  | "ku";
+  | "ku"
+  | "es";
 
 export type ThemeMode = "dark" | "light";
 

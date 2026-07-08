@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { BadgeCheck, LockKeyhole, X } from "lucide-react";
 import { useState } from "react";
@@ -72,7 +72,13 @@ const COPY: Record<Locale, ExpertCopy> = {
     text: "Bu hizmet yakında değerli parçalar ve profesyonel değerlendirmeler için özel abonelik kapsamında sunulacaktır.",
     gotIt: "Anladım",
   },
-};
+  es: {
+    button: "Experto en valoración",
+    badge: "Pronto",
+    title: "Contacto directo con un experto en valoración",
+    text: "Este servicio estará disponible pronto con una suscripción especial para piezas valiosas y evaluaciones profesionales.",
+    gotIt: "Entendido",
+  },};
 
 const RTL_LOCALES: Locale[] = ["ar", "ku", "fa"];
 
@@ -148,3 +154,4 @@ export default function ExpertContactButton({ locale }: { locale: Locale }) {
     </>
   );
 }
+

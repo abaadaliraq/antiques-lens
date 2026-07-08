@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 
 const HEARTBEAT_INTERVAL_MS = 60_000;
+const HEARTBEAT_TIMEOUT_MS = 15_000;
 
 type UserActivityHeartbeatOptions = {
   enabled: boolean;
@@ -40,13 +41,29 @@ export function useUserActivityHeartbeat({
 
     let cancelled = false;
     let inFlight = false;
+
     const supabase = getSupabaseBrowserClient();
 
     async function sendHeartbeat() {
       if (cancelled || inFlight) return;
-      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "hidden"
+      ) {
+        return;
+      }
+
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        return;
+      }
 
       inFlight = true;
+
+      const abortController = new AbortController();
+      const timeout = window.setTimeout(() => {
+        abortController.abort();
+      }, HEARTBEAT_TIMEOUT_MS);
 
       try {
         const {
@@ -54,13 +71,19 @@ export function useUserActivityHeartbeat({
           error: sessionError,
         } = await supabase.auth.getSession();
 
-        if (cancelled || sessionError || !session?.access_token) return;
+        if (
+          cancelled ||
+          sessionError ||
+          !session?.access_token
+        ) {
+          return;
+        }
 
         const response = await fetch("/api/user-activity", {
           method: "POST",
           headers: {
-            authorization: `Bearer ${session.access_token}`,
-            "content-type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             currentPage,
@@ -68,12 +91,18 @@ export function useUserActivityHeartbeat({
             appVersion: process.env.NEXT_PUBLIC_APP_VERSION ?? null,
             deviceLocale: getDeviceLocale(deviceLocale),
           }),
+          cache: "no-store",
+          signal: abortController.signal,
         });
 
         if (!response.ok) {
           if (process.env.NODE_ENV === "development") {
-            console.error("KISHIB activity heartbeat failed", response.status);
+            console.warn(
+              "[KISHIB heartbeat] Request failed:",
+              response.status,
+            );
           }
+
           return;
         }
 
@@ -81,22 +110,46 @@ export function useUserActivityHeartbeat({
           | { ok?: boolean; error?: string }
           | null;
 
-        if (!data?.ok) return;
+        if (!data?.ok) {
+          if (process.env.NODE_ENV === "development") {
+            console.warn(
+              "[KISHIB heartbeat] Server did not confirm update.",
+              data?.error,
+            );
+          }
+
+          return;
+        }
 
         if (process.env.NODE_ENV === "development") {
-          console.log("KISHIB activity heartbeat updated");
+          console.info("[KISHIB heartbeat] Activity updated.");
         }
       } catch (error) {
+        if (
+          error instanceof Error &&
+          error.name === "AbortError"
+        ) {
+          if (process.env.NODE_ENV === "development") {
+            console.warn("[KISHIB heartbeat] Request timed out.");
+          }
+
+          return;
+        }
+
         if (process.env.NODE_ENV === "development") {
-          console.error("KISHIB activity heartbeat failed", error);
+          console.warn("[KISHIB heartbeat] Request skipped.", error);
         }
       } finally {
+        window.clearTimeout(timeout);
         inFlight = false;
       }
     }
 
     void sendHeartbeat();
-    const interval = window.setInterval(() => void sendHeartbeat(), HEARTBEAT_INTERVAL_MS);
+
+    const interval = window.setInterval(() => {
+      void sendHeartbeat();
+    }, HEARTBEAT_INTERVAL_MS);
 
     function handleVisibilityChange() {
       if (document.visibilityState === "visible") {
@@ -104,12 +157,28 @@ export function useUserActivityHeartbeat({
       }
     }
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    function handleOnline() {
+      void sendHeartbeat();
+    }
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange,
+    );
+
+    window.addEventListener("online", handleOnline);
 
     return () => {
       cancelled = true;
+
       window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange,
+      );
+
+      window.removeEventListener("online", handleOnline);
     };
   }, [currentPage, deviceLocale, enabled]);
 }

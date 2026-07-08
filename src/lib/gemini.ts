@@ -136,7 +136,9 @@ export async function getGeminiSecondOpinion({
         ? "English"
         : locale === "ar"
           ? "Arabic"
-          : "the same language used in the OpenAI result";
+          : locale === "es"
+            ? "Spanish"
+            : "the same language used in the OpenAI result";
     const prompt = `
 You are a cautious antique appraisal reviewer for KISHIB.
 Return JSON only. Do not write a separate user report.

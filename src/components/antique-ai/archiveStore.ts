@@ -1,3 +1,9 @@
+import type {
+  AnalysisResult,
+  HouseOfAntiquesConfidence,
+  SimilarImageResult,
+} from "./types";
+
 export type ArchiveItem = {
   id: string;
   title: string;
@@ -12,17 +18,18 @@ export type ArchiveItem = {
   originalImageRef?: string;
   originalImageRefs?: string[];
   createdAt: string;
-  result: any;
-  similarImages?: any[];
+  result: Partial<AnalysisResult> & Record<string, unknown>;
+  similarImages?: ArchiveSimilarImage[];
   cloudinaryPublicId?: string;
 };
+
+type ArchiveSimilarImage = SimilarImageResult;
 
 export const ARCHIVE_STORAGE_KEY = "antiques-lens:history-v2";
 export const USER_ARCHIVE_STORAGE_PREFIX = "kishib_archive_";
 export const ARCHIVE_MIGRATION_STORAGE_PREFIX = "kishib_archive_migrated_";
 export const LEGACY_ARCHIVE_MIGRATED_KEY = "kishib_archive_legacy_migrated";
 export const ARCHIVE_STORAGE_EVENT = "kishib:archive-updated";
-const QUOTA_SAVE_LIMITS = [Number.MAX_SAFE_INTEGER];
 const MAX_SIMILAR_IMAGES_IN_ARCHIVE = 8;
 const ARCHIVE_IMAGE_DB_NAME = "kishib-archive-images";
 const ARCHIVE_IMAGE_STORE_NAME = "images";
@@ -50,11 +57,15 @@ export function getUserArchiveMigrationKey(userId?: string | null) {
 }
 
 function isPersistentImage(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+
+  const normalized = value.trim().toLowerCase();
+
   return (
-    typeof value === "string" &&
-    value.length > 0 &&
-    !value.startsWith("blob:") &&
-    !value.startsWith("filesystem:")
+    normalized.length > 0 &&
+    !normalized.startsWith("data:") &&
+    !normalized.startsWith("blob:") &&
+    !normalized.startsWith("filesystem:")
   );
 }
 
@@ -197,11 +208,23 @@ function sanitizeStringArray(value: unknown, limit = 12): string[] {
     .slice(0, limit);
 }
 
-function sanitizeSimilarImages(value: unknown): any[] {
+function isHouseOfAntiquesConfidence(
+  value: unknown,
+): value is HouseOfAntiquesConfidence {
+  return (
+    value === "exact" ||
+    value === "strong" ||
+    value === "partial" ||
+    value === "weak" ||
+    value === "none"
+  );
+}
+
+function sanitizeSimilarImages(value: unknown): ArchiveSimilarImage[] {
   if (!Array.isArray(value)) return [];
 
   return value
-    .map((item) => {
+    .map((item): ArchiveSimilarImage | null => {
       if (!item || typeof item !== "object") return null;
 
       const record = item as Record<string, unknown>;
@@ -241,7 +264,9 @@ function sanitizeSimilarImages(value: unknown): any[] {
           typeof record.description === "string"
             ? repairMojibakeText(record.description)
             : undefined,
-        confidence: record.confidence,
+        confidence: isHouseOfAntiquesConfidence(record.confidence)
+          ? record.confidence
+          : undefined,
         matchReason:
           typeof record.matchReason === "string"
             ? repairMojibakeText(record.matchReason)
@@ -252,11 +277,16 @@ function sanitizeSimilarImages(value: unknown): any[] {
             : undefined,
       };
     })
-    .filter(Boolean)
+    .filter((item): item is ArchiveSimilarImage => Boolean(item))
     .slice(0, MAX_SIMILAR_IMAGES_IN_ARCHIVE);
 }
 
-function getSimilarItemsFromResult(result: any) {
+function getSimilarItemsFromResult(result: Record<string, unknown> | null | undefined) {
+  const houseOfAntiques =
+    result?.houseOfAntiques && typeof result.houseOfAntiques === "object"
+      ? (result.houseOfAntiques as Record<string, unknown>)
+      : null;
+
   return (
     (Array.isArray(result?.similarImages) && result.similarImages) ||
     (Array.isArray(result?.similarItems) && result.similarItems) ||
@@ -267,12 +297,12 @@ function getSimilarItemsFromResult(result: any) {
     (Array.isArray(result?.similar) && result.similar) ||
     (Array.isArray(result?.similarPieces) && result.similarPieces) ||
     (Array.isArray(result?.houseOfAntiquesMatches) && result.houseOfAntiquesMatches) ||
-    (Array.isArray(result?.houseOfAntiques?.matches) && result.houseOfAntiques.matches) ||
+    (Array.isArray(houseOfAntiques?.matches) && houseOfAntiques.matches) ||
     []
   );
 }
 
-function sanitizeResultForArchive(result: any, images: {
+function sanitizeResultForArchive(result: Record<string, unknown>, images: {
   imagePreview?: string;
   imagePreviews: string[];
   imagePreviewRef?: string;
@@ -281,12 +311,16 @@ function sanitizeResultForArchive(result: any, images: {
   originalImages: string[];
   originalImageRef?: string;
   originalImageRefs: string[];
-  similarImages: any[];
+  similarImages: ArchiveSimilarImage[];
 }) {
-  const repaired = repairTextValue(result || {}) as Record<string, any>;
-  const houseMatches = sanitizeSimilarImages(repaired.houseOfAntiques?.matches);
+  const repaired = repairTextValue(result || {}) as Record<string, unknown>;
+  const houseOfAntiques =
+    repaired.houseOfAntiques && typeof repaired.houseOfAntiques === "object"
+      ? (repaired.houseOfAntiques as Record<string, unknown>)
+      : null;
+  const houseMatches = sanitizeSimilarImages(houseOfAntiques?.matches);
 
-  return {
+  const sanitizedResult = {
     title: repaired.title,
     lookup: repaired.lookup,
     timePeriod: repaired.timePeriod,
@@ -334,12 +368,14 @@ function sanitizeResultForArchive(result: any, images: {
     metalValue: repaired.metalValue,
     houseOfAntiques: repaired.houseOfAntiques
       ? {
-          found: Boolean(repaired.houseOfAntiques.found),
-          confidence: repaired.houseOfAntiques.confidence,
+          found: Boolean(houseOfAntiques?.found),
+          confidence: isHouseOfAntiquesConfidence(houseOfAntiques?.confidence)
+            ? houseOfAntiques.confidence
+            : "none",
           matches: houseMatches,
           contextText:
-            typeof repaired.houseOfAntiques.contextText === "string"
-              ? repairMojibakeText(repaired.houseOfAntiques.contextText).slice(
+            typeof houseOfAntiques?.contextText === "string"
+              ? repairMojibakeText(houseOfAntiques.contextText).slice(
                   0,
                   2000,
                 )
@@ -358,6 +394,8 @@ function sanitizeResultForArchive(result: any, images: {
     similarItems: images.similarImages,
     visualMatches: images.similarImages,
   };
+
+  return sanitizedResult as Partial<AnalysisResult> & Record<string, unknown>;
 }
 
 function cleanArchiveItem(item: ArchiveItem): ArchiveItem {
@@ -455,7 +493,11 @@ function cleanArchiveItem(item: ArchiveItem): ArchiveItem {
     createdAt: item.createdAt || new Date().toISOString(),
     result: archiveResult,
     similarImages,
-    cloudinaryPublicId: item.cloudinaryPublicId || item.result?.cloudinaryPublicId,
+    cloudinaryPublicId:
+      item.cloudinaryPublicId ||
+      (typeof item.result?.cloudinaryPublicId === "string"
+        ? item.result.cloudinaryPublicId
+        : undefined),
   };
 }
 
@@ -465,25 +507,6 @@ function createArchiveId() {
   }
 
   return String(Date.now());
-}
-
-function withoutStoredImages(item: ArchiveItem): ArchiveItem {
-  const result = item.result || {};
-
-  return {
-    ...item,
-    imagePreview: undefined,
-    imagePreviews: [],
-    originalImage: undefined,
-    originalImages: [],
-    result: {
-      ...result,
-      imagePreview: undefined,
-      imagePreviews: [],
-      originalImage: undefined,
-      originalImages: [],
-    },
-  };
 }
 
 async function moveArchiveImagesToIndexedDb(item: ArchiveItem): Promise<ArchiveItem> {
@@ -771,67 +794,164 @@ export async function loadArchiveItemsWithImages(userId?: string | null): Promis
 
   return Promise.all(items.map((item) => hydrateArchiveItemImages(item)));
 }
+const MAX_LOCAL_ARCHIVE_CACHE_ITEMS = 20;
 
-export function saveArchiveItems(items: ArchiveItem[], userId?: string | null): boolean {
+const HEAVY_ARCHIVE_FIELDS = new Set([
+  "images",
+  "imageData",
+  "image_data",
+  "base64",
+  "base64Image",
+  "imageBase64",
+  "rawImage",
+  "historyImagePreviews",
+  "thumbnails",
+  "screenshots",
+  "reportSnapshot",
+  "reportHtml",
+  "pdfData",
+]);
+
+
+function isLocalOrEmbeddedImage(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+
+  const normalized = value.trim().toLowerCase();
+
+  return (
+    normalized.startsWith("data:image/") ||
+    normalized.startsWith("blob:") ||
+    normalized.length > 500_000
+  );
+}
+
+function sanitizeArchiveValue(value: unknown, key?: string): unknown {
+  if (key && HEAVY_ARCHIVE_FIELDS.has(key)) {
+    return undefined;
+  }
+
+  if (isLocalOrEmbeddedImage(value)) {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => sanitizeArchiveValue(item))
+      .filter((item) => item !== undefined);
+  }
+
+  if (value && typeof value === "object") {
+    const cleaned: Record<string, unknown> = {};
+
+    for (const [childKey, childValue] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
+      const sanitized = sanitizeArchiveValue(childValue, childKey);
+
+      if (sanitized !== undefined) {
+        cleaned[childKey] = sanitized;
+      }
+    }
+
+    return cleaned;
+  }
+
+  return value;
+}
+
+function sanitizeArchiveItemsForCache<T>(items: T[]): T[] {
+  return items
+    .slice(0, MAX_LOCAL_ARCHIVE_CACHE_ITEMS)
+    .map((item) => sanitizeArchiveValue(item) as T);
+}
+
+function isStorageQuotaError(error: unknown): boolean {
+  if (!(error instanceof DOMException)) return false;
+
+  return (
+    error.name === "QuotaExceededError" ||
+    error.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+    error.code === 22 ||
+    error.code === 1014
+  );
+}
+export function saveArchiveItems(
+  items: ArchiveItem[],
+  userId?: string | null,
+  options: { notify?: boolean } = {},
+): boolean {
   if (!isClientSide()) return false;
 
   const key = getUserArchiveStorageKey(userId);
   if (!key) return false;
+  const shouldNotify = options.notify !== false;
 
   const cleaned = items.map((item) => cleanArchiveItem(item));
 
-  for (const limit of QUOTA_SAVE_LIMITS) {
-    const trimmed = cleaned.slice(0, limit);
+  // الكاش المحلي يحتفظ فقط بآخر 20 عنصراً خفيفاً.
+  // Supabase يبقى مصدر الأرشيف الكامل.
+  const cacheItems = sanitizeArchiveItemsForCache(cleaned);
 
-    try {
-      window.localStorage.setItem(key, JSON.stringify(trimmed));
-      console.info("[KISHIB archive] Saved archive items", {
-        key,
-        count: trimmed.length,
-      });
-      notifyArchiveUpdated(trimmed.length, key, userId);
-      return true;
-    } catch (error) {
-      console.error("[KISHIB archive] Unable to save archive with images:", {
-        key,
-        attemptedCount: trimmed.length,
-        error,
-      });
-    }
-  }
+  try {
+    window.localStorage.setItem(key, JSON.stringify(cacheItems));
 
-  const textOnlyArchive = cleaned.map((item) => withoutStoredImages(item));
+   console.info("[KISHIB archive] Saved lightweight archive cache", {
+  key,
+  count: cacheItems.length,
+});
 
-  for (const limit of QUOTA_SAVE_LIMITS) {
-    const trimmed = textOnlyArchive.slice(0, limit);
+if (shouldNotify) {
+  notifyArchiveUpdated(cacheItems.length, key, userId);
+}
 
-    try {
-      window.localStorage.setItem(
-        key,
-        JSON.stringify(trimmed),
-      );
+return true;
+  } catch (error) {
+    if (isStorageQuotaError(error)) {
       console.warn(
-        "[KISHIB archive] Saved text-only archive after image storage failed",
-        {
-          key,
-          count: trimmed.length,
-        },
+        "[KISHIB archive] Local cache quota exceeded. Clearing user cache.",
+        { key },
       );
-      notifyArchiveUpdated(trimmed.length, key, userId);
-      return true;
-    } catch (fallbackError) {
-      console.error(
-        "[KISHIB archive] Unable to save text-only archive fallback:",
-        {
-          key,
-          attemptedCount: trimmed.length,
-          error: fallbackError,
-        },
-      );
-    }
-  }
 
-  return false;
+      try {
+        // حذف الكاش المحلي فقط، وليس Supabase.
+        window.localStorage.removeItem(key);
+
+        // محاولة أخيرة بكاش نصي أصغر.
+        const minimalItems = cacheItems.map((item) => ({
+          id: item.id,
+          title: item.title,
+          prompt: item.prompt,
+          locale: item.locale,
+          createdAt: item.createdAt,
+          cloudinaryPublicId: item.cloudinaryPublicId,
+          result: sanitizeArchiveValue(item.result) as ArchiveItem["result"],
+          similarImages: item.similarImages,
+        })) as ArchiveItem[];
+
+        window.localStorage.setItem(key, JSON.stringify(minimalItems));
+
+if (shouldNotify) {
+  notifyArchiveUpdated(minimalItems.length, key, userId);
+}
+        return true;
+      } catch (retryError) {
+        console.warn(
+          "[KISHIB archive] Unable to recreate lightweight archive cache.",
+          retryError,
+        );
+
+        window.localStorage.removeItem(key);
+        return false;
+      }
+    }
+
+    console.warn("[KISHIB archive] Unable to save local archive cache.", {
+      key,
+      error,
+    });
+
+    return false;
+  }
 }
 
 export async function addArchiveItem(item: ArchiveItem, userId?: string | null): Promise<ArchiveItem[]> {

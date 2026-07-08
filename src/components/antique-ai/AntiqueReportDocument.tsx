@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-type Locale = "ar" | "en" | "ku" | "fr" | "hi" | "fa" | "tr" | "ru";
+type Locale = "ar" | "en" | "ku" | "fr" | "hi" | "fa" | "tr" | "ru" | "es";
 
 type ReportResult = {
   title?: string;
@@ -346,7 +346,34 @@ const REPORT_LABELS: Record<
     noImage: "Изображение недоступно",
     page: "Страница",
   },
-};
+  es: {
+    report: "Informe de evaluación de antigüedad",
+    subtitle: "Evaluación visual preliminar para antigüedades, objetos patrimoniales y joyería",
+    preliminary: "Evaluación preliminar",
+    objectImage: "Imagen del objeto",
+    identification: "Identificación",
+    period: "Período / edad",
+    origin: "Origen posible",
+    material: "Material",
+    style: "Estilo",
+    value: "Valor estimado",
+    condition: "Estado",
+    authenticity: "Autenticidad",
+    priceReasoning: "Razón del precio",
+    historicalReading: "Lectura histórica posible",
+    historicalContext: "Descripción y análisis",
+    valueDrivers: "Factores que aumentan el valor",
+    valueReducers: "Factores que reducen el valor",
+    neededPhotos: "Fotos necesarias para verificación",
+    confidence: "",
+    nextQuestion: "Siguiente pregunta",
+    disclaimerTitle: "Aviso importante",
+    generatedBy: "Generado por KISHIB",
+    reportId: "ID del informe",
+    generatedAt: "Generado el",
+    noImage: "No hay imagen disponible",
+    page: "Página",
+  },};
 
 function getDirection(locale: Locale) {
   return locale === "ar" || locale === "ku" || locale === "fa" ? "rtl" : "ltr";
@@ -1170,3 +1197,4 @@ export default function AntiqueReportDocument({
     </article>
   );
 }
+

@@ -63,13 +63,13 @@ function safeText(value: unknown) {
 function normalizeArabic(text: string) {
   return text
     .toLowerCase()
-    .replace(/[Ø£Ø¥Ø¢Ø§]/g, "Ø§")
-    .replace(/[Ù‰]/g, "ÙŠ")
-    .replace(/[Ø©]/g, "Ù‡")
-    .replace(/[Ø¤]/g, "Ùˆ")
-    .replace(/[Ø¦]/g, "ÙŠ")
-    .replace(/[Ú¯]/g, "Ùƒ")
-    .replace(/[Ù‚]/g, "Ù‚")
+    .replace(/[أإآا]/g, "ا")
+    .replace(/[ى]/g, "ي")
+    .replace(/[ة]/g, "ه")
+    .replace(/[ؤ]/g, "و")
+    .replace(/[ئ]/g, "ي")
+    .replace(/[گ]/g, "ك")
+    .replace(/[ق]/g, "ق")
     .replace(/[\u064B-\u065F\u0670]/g, "")
     .replace(/[^\p{L}\p{N}\s\-]/gu, " ")
     .replace(/\s+/g, " ")
@@ -126,28 +126,28 @@ function addMany(set: Set<string>, values: string[]) {
 }
 
 const ITEM_FAMILY_TERMS: Record<string, string[]> = {
-  samovar: ["samovar", "semaver", "Ø³Ù…Ø§ÙˆØ±"],
+  samovar: ["samovar", "semaver", "سماور"],
   statue: [
     "statue",
     "figurine",
     "sculpture",
     "idol",
     "heykel",
-    "figÃ¼r",
-    "figÃ¼rin",
-    "ØªÙ…Ø«Ø§Ù„",
+    "figür",
+    "figürin",
+    "تمثال",
   ],
-  painting: ["painting", "artwork", "canvas", "watercolor", "Ù„ÙˆØ­Ø©", "resim", "tablo"],
-  table: ["table", "stand", "Ø·Ø§ÙˆÙ„Ø©", "masa"],
-  lamp: ["lamp", "Ù…ØµØ¨Ø§Ø­", "lamba"],
-  candlestick: ["candlestick", "candle", "Ø´Ù…Ø¹Ø¯Ø§Ù†", "ÅŸamdan"],
-  ewer: ["ewer", "pitcher", "jug", "Ø¥Ø¨Ø±ÙŠÙ‚", "ibrik", "sÃ¼rahi"],
-  vase: ["vase", "jar", "vessel", "Ù…Ø²Ù‡Ø±ÙŠØ©", "ÙØ§Ø²Ø©", "vazo"],
-  box: ["box", "chest", "case", "Ø¹Ù„Ø¨Ø©", "ØµÙ†Ø¯ÙˆÙ‚", "kutu"],
-  cabinet: ["cabinet", "showcase", "display", "Ø®Ø²Ø§Ù†Ø©", "dolap", "vitrin"],
-  tray: ["tray", "ØµÙŠÙ†ÙŠØ©", "tepsi"],
-  bowl: ["bowl", "dish", "ÙˆØ¹Ø§Ø¡", "Ø·Ø¨Ù‚", "kase"],
-  bucket: ["bucket", "pail", "coal bucket", "coal scuttle", "bin", "Ã˜Â¯Ã™â€žÃ™Ë†", "Ã˜Â³Ã˜Â·Ã™â€ž"],
+  painting: ["painting", "artwork", "canvas", "watercolor", "لوحة", "resim", "tablo"],
+  table: ["table", "stand", "طاولة", "masa"],
+  lamp: ["lamp", "مصباح", "lamba"],
+  candlestick: ["candlestick", "candle", "شمعدان", "şamdan"],
+  ewer: ["ewer", "pitcher", "jug", "إبريق", "ibrik", "sürahi"],
+  vase: ["vase", "jar", "vessel", "مزهرية", "فازة", "vazo"],
+  box: ["box", "chest", "case", "علبة", "صندوق", "kutu"],
+  cabinet: ["cabinet", "showcase", "display", "خزانة", "dolap", "vitrin"],
+  tray: ["tray", "صينية", "tepsi"],
+  bowl: ["bowl", "dish", "وعاء", "طبق", "kase"],
+  bucket: ["bucket", "pail", "coal bucket", "coal scuttle", "bin", "دلو", "سطل"],
 };
 
 function detectItemFamilies(text: string) {
@@ -191,13 +191,13 @@ function hasMaterialOrFinishCompatible(terms: string[], product: ProductRow) {
   const queryText = terms.join(" ");
   const productText = productAttributeText(product);
   const materialGroups = [
-    ["brass", "copper", "bronze", "metal", "Ã™â€ Ã˜Â­Ã˜Â§Ã˜Â³", "Ã˜Â¨Ã˜Â±Ã™Ë†Ã™â€ Ã˜Â²", "Ã˜ÂµÃ™ÂÃ˜Â±"],
-    ["silver", "sterling", "925", "Ã™ÂÃ˜Â¶Ã˜Â©"],
-    ["gold", "gilded", "Ã™â€¦Ã˜Â°Ã™â€¡Ã˜Â¨", "Ã˜Â°Ã™â€¡Ã˜Â¨"],
-    ["wood", "wooden", "Ã˜Â®Ã˜Â´Ã˜Â¨"],
-    ["ceramic", "pottery", "porcelain", "Ã˜Â®Ã˜Â²Ã™Â", "Ã™ÂÃ˜Â®Ã˜Â§Ã˜Â±"],
-    ["glass", "crystal", "Ã˜Â²Ã˜Â¬Ã˜Â§Ã˜Â¬", "Ã™Æ’Ã˜Â±Ã™Å Ã˜Â³Ã˜ÂªÃ˜Â§Ã™â€ž"],
-    ["textile", "rug", "carpet", "Ã˜Â³Ã˜Â¬Ã˜Â§Ã˜Â¯", "Ã™â€šÃ™â€¦Ã˜Â§Ã˜Â´"],
+    ["brass", "copper", "bronze", "metal", "نحاس", "برونز", "صفر"],
+    ["silver", "sterling", "925", "فضة"],
+    ["gold", "gilded", "مذهب", "ذهب"],
+    ["wood", "wooden", "خشب"],
+    ["ceramic", "pottery", "porcelain", "خزف", "فخار"],
+    ["glass", "crystal", "زجاج", "كريستال"],
+    ["textile", "rug", "carpet", "سجاد", "قماش"],
   ];
   const queryGroups = materialGroups.filter((group) => hasAnyTerm(queryText, group));
 
@@ -219,12 +219,12 @@ function hasDecorativeMotifOrStructuralMatch(terms: string[], product: ProductRo
     "calligraphy",
     "quranic",
     "handmade",
-    "Ã™â€¦Ã˜Â²Ã˜Â®Ã˜Â±Ã™Â",
-    "Ã˜Â²Ã˜Â®Ã˜Â±Ã™ÂÃ˜Â©",
-    "Ã˜Â­Ã™ÂÃ˜Â±",
-    "Ã™â€¦Ã˜Â­Ã™ÂÃ™Ë†Ã˜Â±",
-    "Ã˜Â¹Ã˜Â«Ã™â€¦Ã˜Â§Ã™â€ Ã™Å ",
-    "Ã˜Â§Ã˜Â³Ã™â€žÃ˜Â§Ã™â€¦Ã™Å ",
+    "مزخرف",
+    "زخرفة",
+    "حفر",
+    "محفور",
+    "عثماني",
+    "اسلامي",
   ];
 
   return hasAnyTerm(queryText, motifTerms) && hasAnyTerm(productText, motifTerms);
@@ -241,29 +241,29 @@ function expandTerms(rawTerms: string[]) {
 
     if (
       [
-        "ÙØ§Ø²Ù‡",
-        "ÙØ§Ø²Ø©",
-        "Ù…Ø²Ù‡Ø±ÙŠØ©",
-        "Ù…Ø²Ù‡Ø±Ù‡",
-        "Ø¬Ø±Ù‡",
-        "Ø¬Ø±Ø©",
-        "Ø§Ù†Ø§Ø¡",
-        "Ø§Ù†ÙŠÙ‡",
+        "فازه",
+        "فازة",
+        "مزهرية",
+        "مزهره",
+        "جره",
+        "جرة",
+        "اناء",
+        "انيه",
         "vase",
         "jar",
       ].includes(normalizedTerm)
     ) {
       addMany(expanded, [
-        "ÙØ§Ø²Ø©",
-        "ÙØ§Ø²Ù‡",
-        "Ù…Ø²Ù‡Ø±ÙŠØ©",
-        "Ù…Ø²Ù‡Ø±Ù‡",
-        "Ø¬Ø±Ø©",
-        "Ø¬Ø±Ù‡",
-        "Ø¥Ù†Ø§Ø¡",
-        "Ø§Ù†Ø§Ø¡",
-        "Ø¢Ù†ÙŠØ©",
-        "Ø§Ù†ÙŠÙ‡",
+        "فازة",
+        "فازه",
+        "مزهرية",
+        "مزهره",
+        "جرة",
+        "جره",
+        "إناء",
+        "اناء",
+        "آنية",
+        "انيه",
         "vase",
         "jar",
         "vessel",
@@ -273,23 +273,23 @@ function expandTerms(rawTerms: string[]) {
 
     if (
       [
-        "Ø®Ø²Ù",
-        "Ø®Ø²ÙÙŠ",
-        "Ø®Ø²ÙÙŠÙ‡",
-        "Ø®Ø²ÙÙŠØ©",
-        "Ø³ÙŠØ±Ø§Ù…ÙŠÙƒ",
-        "ÙØ®Ø§Ø±",
+        "خزف",
+        "خزفي",
+        "خزفيه",
+        "خزفية",
+        "سيراميك",
+        "فخار",
         "ceramic",
         "pottery",
       ].includes(normalizedTerm)
     ) {
       addMany(expanded, [
-        "Ø®Ø²Ù",
-        "Ø®Ø²ÙÙŠ",
-        "Ø®Ø²ÙÙŠØ©",
-        "Ø®Ø²ÙÙŠÙ‡",
-        "Ø³ÙŠØ±Ø§Ù…ÙŠÙƒ",
-        "ÙØ®Ø§Ø±",
+        "خزف",
+        "خزفي",
+        "خزفية",
+        "خزفيه",
+        "سيراميك",
+        "فخار",
         "ceramic",
         "pottery",
         "porcelain",
@@ -298,41 +298,41 @@ function expandTerms(rawTerms: string[]) {
 
     if (
       [
-        "Ù‚Ø±Ø§Ù†",
-        "Ù‚Ø±Ø¢Ù†",
-        "Ù‚Ø±Ø§Ù†ÙŠÙ‡",
-        "Ù‚Ø±Ø¢Ù†ÙŠØ©",
-        "Ø§ÙŠØ§Øª",
-        "Ø¢ÙŠØ§Øª",
-        "Ø§ÙŠÙ‡",
-        "Ø¢ÙŠØ©",
-        "ÙƒØªØ§Ø¨Ù‡",
-        "ÙƒØªØ§Ø¨Ø©",
-        "ÙƒØªØ§Ø¨ÙŠÙ‡",
-        "ÙƒØªØ§Ø¨ÙŠØ©",
-        "Ø®Ø·",
+        "قران",
+        "قرآن",
+        "قرانيه",
+        "قرآنية",
+        "ايات",
+        "آيات",
+        "ايه",
+        "آية",
+        "كتابه",
+        "كتابة",
+        "كتابيه",
+        "كتابية",
+        "خط",
         "calligraphy",
         "quranic",
         "islamic",
       ].includes(normalizedTerm)
     ) {
       addMany(expanded, [
-        "Ù‚Ø±Ø¢Ù†",
-        "Ù‚Ø±Ø§Ù†",
-        "Ù‚Ø±Ø¢Ù†ÙŠØ©",
-        "Ù‚Ø±Ø§Ù†ÙŠÙ‡",
-        "Ø¢ÙŠØ§Øª",
-        "Ø§ÙŠØ§Øª",
-        "Ø¢ÙŠØ©",
-        "Ø§ÙŠÙ‡",
-        "ÙƒØªØ§Ø¨Ø©",
-        "ÙƒØªØ§Ø¨Ù‡",
-        "ÙƒØªØ§Ø¨ÙŠØ©",
-        "ÙƒØªØ§Ø¨ÙŠÙ‡",
-        "Ø®Ø·",
-        "Ø¹Ø±Ø¨ÙŠ",
-        "Ø§Ø³Ù„Ø§Ù…ÙŠ",
-        "Ø¥Ø³Ù„Ø§Ù…ÙŠ",
+        "قرآن",
+        "قران",
+        "قرآنية",
+        "قرانيه",
+        "آيات",
+        "ايات",
+        "آية",
+        "ايه",
+        "كتابة",
+        "كتابه",
+        "كتابية",
+        "كتابيه",
+        "خط",
+        "عربي",
+        "اسلامي",
+        "إسلامي",
         "calligraphy",
         "quranic",
         "islamic",
@@ -342,58 +342,58 @@ function expandTerms(rawTerms: string[]) {
 
     if (
       [
-        "Ø´ÙŠØ´Ù‡",
-        "Ø´ÙŠØ´Ø©",
-        "Ù†Ø±ÙƒÙŠÙ„Ù‡",
-        "Ù†Ø±ÙƒÙŠÙ„Ø©",
-        "Ø§Ø±ÙƒÙŠÙ„Ù‡",
-        "Ø£Ø±ÙƒÙŠÙ„Ø©",
+        "شيشه",
+        "شيشة",
+        "نركيله",
+        "نركيلة",
+        "اركيله",
+        "أركيلة",
         "hookah",
         "shisha",
       ].includes(normalizedTerm)
     ) {
       addMany(expanded, [
-        "Ø´ÙŠØ´Ø©",
-        "Ø´ÙŠØ´Ù‡",
-        "Ù†Ø±ÙƒÙŠÙ„Ø©",
-        "Ù†Ø±ÙƒÙŠÙ„Ù‡",
-        "Ø£Ø±ÙƒÙŠÙ„Ø©",
-        "Ø§Ø±ÙƒÙŠÙ„Ù‡",
+        "شيشة",
+        "شيشه",
+        "نركيلة",
+        "نركيله",
+        "أركيلة",
+        "اركيله",
         "hookah",
         "shisha",
         "water pipe",
       ]);
     }
 
-    if (["Ø³Ù…Ø§ÙˆØ±", "samovar"].includes(normalizedTerm)) {
+    if (["سماور", "samovar"].includes(normalizedTerm)) {
       addMany(expanded, [
-        "Ø³Ù…Ø§ÙˆØ±",
+        "سماور",
         "samovar",
         "tea",
         "brass",
         "copper",
-        "Ù†Ø­Ø§Ø³",
+        "نحاس",
       ]);
     }
 
-    if (["Ù†Ø­Ø§Ø³", "Ù†Ø­Ø§Ø³ÙŠ", "Ù†Ø­Ø§Ø³ÙŠÙ‡", "brass", "copper"].includes(normalizedTerm)) {
+    if (["نحاس", "نحاسي", "نحاسيه", "brass", "copper"].includes(normalizedTerm)) {
       addMany(expanded, [
-        "Ù†Ø­Ø§Ø³",
-        "Ù†Ø­Ø§Ø³ÙŠ",
-        "Ù†Ø­Ø§Ø³ÙŠØ©",
-        "Ù†Ø­Ø§Ø³ÙŠÙ‡",
+        "نحاس",
+        "نحاسي",
+        "نحاسية",
+        "نحاسيه",
         "brass",
         "copper",
         "metal",
       ]);
     }
 
-    if (["Ù„ÙˆØ­Ù‡", "Ù„ÙˆØ­Ø©", "Ø±Ø³Ù…", "ÙÙ†Ø§Ù†", "painting", "art"].includes(normalizedTerm)) {
+    if (["لوحه", "لوحة", "رسم", "فنان", "painting", "art"].includes(normalizedTerm)) {
       addMany(expanded, [
-        "Ù„ÙˆØ­Ø©",
-        "Ù„ÙˆØ­Ù‡",
-        "Ø±Ø³Ù…",
-        "ÙÙ†Ø§Ù†",
+        "لوحة",
+        "لوحه",
+        "رسم",
+        "فنان",
         "painting",
         "art",
         "artist",
@@ -402,19 +402,19 @@ function expandTerms(rawTerms: string[]) {
     }
 
     if (
-      ["Ø®Ø²Ø§Ù†Ù‡", "Ø®Ø²Ø§Ù†Ø©", "Ø¹Ø±Ø¶", "ÙØ§ØªØ±ÙŠÙ†Ø§", "ÙƒØ§Ø¨ÙŠÙ†Ù‡", "cabinet", "display"].includes(
+      ["خزانه", "خزانة", "عرض", "فاترينا", "كابينه", "cabinet", "display"].includes(
         normalizedTerm,
       )
     ) {
       addMany(expanded, [
-        "Ø®Ø²Ø§Ù†Ø©",
-        "Ø®Ø²Ø§Ù†Ù‡",
-        "Ø¹Ø±Ø¶",
-        "ÙØ§ØªØ±ÙŠÙ†Ø§",
-        "ÙƒØ§Ø¨ÙŠÙ†Ø©",
-        "ÙƒØ§Ø¨ÙŠÙ†Ù‡",
-        "Ø®Ø´Ø¨",
-        "Ø²Ø¬Ø§Ø¬",
+        "خزانة",
+        "خزانه",
+        "عرض",
+        "فاترينا",
+        "كابينة",
+        "كابينه",
+        "خشب",
+        "زجاج",
         "cabinet",
         "display",
         "showcase",
@@ -576,20 +576,20 @@ function scoreProduct(product: ProductRow, terms: string[]) {
   }
 
   const isVaseQuery = terms.some((term) =>
-    ["ÙØ§Ø²Ù‡", "ÙØ§Ø²Ø©", "Ù…Ø²Ù‡Ø±ÙŠØ©", "Ù…Ø²Ù‡Ø±Ù‡", "Ø¬Ø±Ù‡", "Ø¬Ø±Ø©", "vase", "jar"].includes(term),
+    ["فازه", "فازة", "مزهرية", "مزهره", "جره", "جرة", "vase", "jar"].includes(term),
   );
 
   const isQuranicQuery = terms.some((term) =>
     [
-      "Ù‚Ø±Ø§Ù†",
-      "Ù‚Ø±Ø¢Ù†",
-      "Ù‚Ø±Ø§Ù†ÙŠÙ‡",
-      "Ù‚Ø±Ø¢Ù†ÙŠØ©",
-      "Ø§ÙŠØ§Øª",
-      "Ø¢ÙŠØ§Øª",
-      "ÙƒØªØ§Ø¨Ù‡",
-      "ÙƒØªØ§Ø¨ÙŠØ©",
-      "Ø®Ø·",
+      "قران",
+      "قرآن",
+      "قرانيه",
+      "قرآنية",
+      "ايات",
+      "آيات",
+      "كتابه",
+      "كتابية",
+      "خط",
       "quranic",
       "calligraphy",
       "islamic",
@@ -597,35 +597,35 @@ function scoreProduct(product: ProductRow, terms: string[]) {
   );
 
   const isCeramicQuery = terms.some((term) =>
-    ["Ø®Ø²Ù", "Ø®Ø²ÙÙŠ", "Ø®Ø²ÙÙŠÙ‡", "Ø®Ø²ÙÙŠØ©", "Ø³ÙŠØ±Ø§Ù…ÙŠÙƒ", "ÙØ®Ø§Ø±", "ceramic", "pottery"].includes(
+    ["خزف", "خزفي", "خزفيه", "خزفية", "سيراميك", "فخار", "ceramic", "pottery"].includes(
       term,
     ),
   );
 
   const isCabinetQuery = terms.some((term) =>
-    ["Ø®Ø²Ø§Ù†Ù‡", "Ø®Ø²Ø§Ù†Ø©", "ÙØ§ØªØ±ÙŠÙ†Ø§", "Ø¹Ø±Ø¶", "cabinet", "display", "showcase"].includes(
+    ["خزانه", "خزانة", "فاترينا", "عرض", "cabinet", "display", "showcase"].includes(
       term,
     ),
   );
 
-  if (isVaseQuery && titleText.includes("ÙØ§Ø²Ù‡")) score += 35;
-  if (isVaseQuery && titleText.includes("ÙØ§Ø²Ø©")) score += 35;
+  if (isVaseQuery && titleText.includes("فازه")) score += 35;
+  if (isVaseQuery && titleText.includes("فازة")) score += 35;
   if (isVaseQuery && titleText.includes("vase")) score += 35;
-  if (isVaseQuery && haystack.includes("Ù…Ø²Ù‡Ø±")) score += 18;
+  if (isVaseQuery && haystack.includes("مزهر")) score += 18;
 
-  if (isQuranicQuery && haystack.includes("Ù‚Ø±Ø§Ù†")) score += 35;
-  if (isQuranicQuery && haystack.includes("Ù‚Ø±Ø¢")) score += 35;
-  if (isQuranicQuery && haystack.includes("Ø§ÙŠØ§Øª")) score += 26;
-  if (isQuranicQuery && haystack.includes("Ø®Ø·")) score += 18;
+  if (isQuranicQuery && haystack.includes("قران")) score += 35;
+  if (isQuranicQuery && haystack.includes("قرآ")) score += 35;
+  if (isQuranicQuery && haystack.includes("ايات")) score += 26;
+  if (isQuranicQuery && haystack.includes("خط")) score += 18;
   if (isQuranicQuery && haystack.includes("calligraphy")) score += 26;
 
-  if (isCeramicQuery && haystack.includes("Ø®Ø²Ù")) score += 24;
+  if (isCeramicQuery && haystack.includes("خزف")) score += 24;
   if (isCeramicQuery && haystack.includes("ceramic")) score += 24;
   if (isCeramicQuery && haystack.includes("pottery")) score += 20;
 
-  if (isCabinetQuery && haystack.includes("Ø®Ø²Ø§Ù†Ù‡")) score += 30;
-  if (isCabinetQuery && haystack.includes("Ø®Ø²Ø§Ù†Ø©")) score += 30;
-  if (isCabinetQuery && haystack.includes("ÙØ§ØªØ±ÙŠÙ†Ø§")) score += 28;
+  if (isCabinetQuery && haystack.includes("خزانه")) score += 30;
+  if (isCabinetQuery && haystack.includes("خزانة")) score += 30;
+  if (isCabinetQuery && haystack.includes("فاترينا")) score += 28;
   if (isCabinetQuery && haystack.includes("cabinet")) score += 30;
   if (isCabinetQuery && haystack.includes("display")) score += 20;
 
@@ -739,7 +739,7 @@ function toComparable(
       .map(safeText)
       .find(Boolean) || "قطعة مرجعية مشابهة جدًا";
 
-  if (/house of antiques|Ø¨ÙŠØª Ø§Ù„ØªØ­ÙÙŠØ§Øª|Ã˜Â¨Ã™Å Ã˜Âª Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â­Ã™ÂÃ™Å Ã˜Â§Ã˜Âª/i.test(title)) {
+  if (/house of antiques|بيت التحفيات/i.test(title)) {
     title = "Very close reference item";
   }
 

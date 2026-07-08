@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 
-type Locale = "ar" | "en" | "fr" | "hi" | "fa" | "tr" | "ru" | "ku";
+type Locale = "ar" | "en" | "fr" | "hi" | "fa" | "tr" | "ru" | "ku" | "es";
 
 function normalizeLocale(value: unknown): Locale {
   const locale = String(value || "").toLowerCase();
@@ -14,7 +14,8 @@ function normalizeLocale(value: unknown): Locale {
     locale === "fa" ||
     locale === "tr" ||
     locale === "ru" ||
-    locale === "ku"
+    locale === "ku" ||
+    locale === "es"
   ) {
     return locale;
   }
@@ -30,6 +31,7 @@ function getLanguageName(locale: Locale) {
   if (locale === "tr") return "Turkish";
   if (locale === "ru") return "Russian";
   if (locale === "ku") return "Kurdish Sorani";
+  if (locale === "es") return "Spanish";
   return "Arabic";
 }
 

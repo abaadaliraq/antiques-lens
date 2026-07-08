@@ -24,6 +24,7 @@ import {
 } from "@/lib/usageLimitsSupabase";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { compressImageForUpload } from "@/lib/compressImageForUpload";
+import { SUPPORTED_LOCALES } from "@/i18n/common";
 
 import {
   addArchiveItemWithStatus,
@@ -54,16 +55,6 @@ import type {
   HouseOfAntiquesMatch,
 } from "./types";
 const MAX_IMAGES = 6;
-const SUPPORTED_LOCALES: Locale[] = [
-  "ar",
-  "en",
-  "fr",
-  "hi",
-  "fa",
-  "tr",
-  "ru",
-  "ku",
-];
 const USER_LOCALE_STORAGE_KEY = "antiques-lens:locale";
 
 function logDevelopmentTiming(
@@ -130,19 +121,98 @@ async function cameraPhotoToFile(photoPath: string) {
 }
 
 function getUsageMessage(locale: Locale, key: "auth" | "limit" | "checkFailed") {
-  if (locale === "en") {
-    if (key === "auth") return "Please sign in first to start an evaluation.";
-    if (key === "checkFailed") {
-      return "We could not verify your free usage limit. Please try again.";
-    }
-    return "Your free evaluations are finished. Please subscribe to continue.";
-  }
+  const messages: Record<Locale, Record<"auth" | "limit" | "checkFailed", string>> = {
+    ar: {
+      auth: "يرجى تسجيل الدخول أولًا لبدء التقييم.",
+      checkFailed: "تعذر التحقق من محاولاتك المجانية. حاول مرة أخرى.",
+      limit: "انتهت محاولاتك المجانية. يرجى الاشتراك لمتابعة التحليل.",
+    },
+    en: {
+      auth: "Please sign in first to start an evaluation.",
+      checkFailed: "We could not verify your free usage limit. Please try again.",
+      limit: "Your free evaluations are finished. Please subscribe to continue.",
+    },
+    ku: {
+      auth: "تکایە سەرەتا بچۆ ژوورەوە بۆ دەستپێکردنی هەڵسەنگاندن.",
+      checkFailed: "نەتوانرا سنووری بەکارهێنانی خۆڕایی پشتڕاست بکرێتەوە. دووبارە هەوڵبدە.",
+      limit: "هەڵسەنگاندنە خۆڕاییەکانت تەواو بوون. بۆ بەردەوامبوون بەشداربە.",
+    },
+    fr: {
+      auth: "Connectez-vous d’abord pour lancer une évaluation.",
+      checkFailed: "Impossible de vérifier votre limite gratuite. Réessayez.",
+      limit: "Vos évaluations gratuites sont terminées. Abonnez-vous pour continuer.",
+    },
+    hi: {
+      auth: "मूल्यांकन शुरू करने के लिए पहले साइन इन करें.",
+      checkFailed: "हम आपकी निःशुल्क सीमा सत्यापित नहीं कर सके. फिर प्रयास करें.",
+      limit: "आपके निःशुल्क मूल्यांकन समाप्त हो गए हैं. जारी रखने के लिए सदस्यता लें.",
+    },
+    fa: {
+      auth: "برای شروع ارزیابی ابتدا وارد شوید.",
+      checkFailed: "امکان بررسی محدودیت رایگان شما نبود. دوباره تلاش کنید.",
+      limit: "ارزیابی‌های رایگان شما تمام شده است. برای ادامه اشتراک تهیه کنید.",
+    },
+    tr: {
+      auth: "Değerlendirmeye başlamak için önce giriş yapın.",
+      checkFailed: "Ücretsiz kullanım sınırınız doğrulanamadı. Tekrar deneyin.",
+      limit: "Ücretsiz değerlendirmeleriniz bitti. Devam etmek için abone olun.",
+    },
+    ru: {
+      auth: "Сначала войдите, чтобы начать оценку.",
+      checkFailed: "Не удалось проверить ваш бесплатный лимит. Попробуйте ещё раз.",
+      limit: "Ваши бесплатные оценки закончились. Оформите подписку, чтобы продолжить.",
+    },
+    es: {
+      auth: "Inicia sesión primero para comenzar una evaluación.",
+      checkFailed: "No pudimos verificar tu límite gratuito. Inténtalo de nuevo.",
+      limit: "Tus evaluaciones gratuitas se han terminado. Suscríbete para continuar.",
+    },
+  };
 
-  if (key === "auth") return "يرجى تسجيل الدخول أولًا لبدء التقييم.";
-  if (key === "checkFailed") {
-    return "تعذر التحقق من محاولاتك المجانية. حاول مرة أخرى.";
-  }
-  return "انتهت محاولاتك المجانية. يرجى الاشتراك لمتابعة التحليل.";
+  return (messages[locale] || messages.en)[key];
+}
+
+function getArchiveErrorMessage(locale: Locale, key: "load" | "loadMore") {
+  const messages: Record<Locale, Record<"load" | "loadMore", string>> = {
+    ar: {
+      load: "تعذر تحميل أرشيفك. حاول التحديث مرة أخرى.",
+      loadMore: "تعذر تحميل المزيد من عناصر الأرشيف.",
+    },
+    en: {
+      load: "Could not load your archive. Pull to refresh or try again.",
+      loadMore: "Could not load more archive items.",
+    },
+    ku: {
+      load: "نەتوانرا ئەرشیفەکەت بار بکرێت. دووبارە هەوڵبدە.",
+      loadMore: "نەتوانرا بڕگەی زیاتر لە ئەرشیف بار بکرێت.",
+    },
+    fr: {
+      load: "Impossible de charger votre archive. Réessayez.",
+      loadMore: "Impossible de charger plus d’éléments d’archive.",
+    },
+    hi: {
+      load: "आपका संग्रह लोड नहीं हो सका. फिर प्रयास करें.",
+      loadMore: "संग्रह के और आइटम लोड नहीं हो सके.",
+    },
+    fa: {
+      load: "آرشیو شما بارگذاری نشد. دوباره تلاش کنید.",
+      loadMore: "بارگذاری موارد بیشتر آرشیو ممکن نشد.",
+    },
+    tr: {
+      load: "Arşiviniz yüklenemedi. Tekrar deneyin.",
+      loadMore: "Daha fazla arşiv öğesi yüklenemedi.",
+    },
+    ru: {
+      load: "Не удалось загрузить ваш архив. Попробуйте ещё раз.",
+      loadMore: "Не удалось загрузить больше элементов архива.",
+    },
+    es: {
+      load: "No se pudo cargar tu archivo. Inténtalo de nuevo.",
+      loadMore: "No se pudieron cargar más elementos del archivo.",
+    },
+  };
+
+  return (messages[locale] || messages.en)[key];
 }
 
 function buildPinterestSearchQuery(result: AnalysisResult) {
@@ -161,9 +231,9 @@ function buildPinterestSearchQuery(result: AnalysisResult) {
     .toLowerCase();
 
   /*
-    Ø£Ù‡Ù… Ù‚Ø§Ø¹Ø¯Ø©:
-    Ù†ÙˆØ¹ Ø§Ù„Ù‚Ø·Ø¹Ø© Ù„Ø§Ø²Ù… ÙŠÙƒÙˆÙ† Ø£ÙˆÙ„ Ø§Ù„Ø¨Ø­Ø«.
-    Ø¥Ø°Ø§ Ù†ÙˆØ¹ Ø§Ù„Ù‚Ø·Ø¹Ø© ØºÙ„Ø· Ø£Ùˆ Ø¹Ø§Ù…ØŒ Pinterest ÙŠØ¬ÙŠØ¨ Ù†ØªØ§Ø¦Ø¬ Ø¨Ø¹ÙŠØ¯Ø©.
+    أهم قاعدة:
+    نوع القطعة لازم يكون أول البحث.
+    إذا نوع القطعة غلط أو عام، Pinterest يجيب نتائج بعيدة.
   */
 
   const itemTerms: string[] = [];
@@ -171,9 +241,9 @@ function buildPinterestSearchQuery(result: AnalysisResult) {
   const colorTerms: string[] = [];
   const styleTerms: string[] = [];
 
-  // Ø´ÙŠØ´Ø© / Ø£Ø±ÙƒÙŠÙ„Ø© / Ù†Ø±ÙƒÙŠÙ„Ø©
+  // شيشة / أركيلة / نركيلة
   if (
-    /Ø´ÙŠØ´Ø©|Ø£Ø±ÙƒÙŠÙ„Ø©|Ø§Ø±ÙƒÙŠÙ„Ø©|Ù†Ø±ÙƒÙŠÙ„Ø©|Ù†Ø±Ø¬ÙŠÙ„Ø©|Ù†Ø§Ø±Ø¬ÙŠÙ„Ø©|hookah|shisha|narghile|nargile|water pipe|waterpipe/.test(
+    /شيشة|أركيلة|اركيلة|نركيلة|نرجيلة|نارجيلة|hookah|shisha|narghile|nargile|water pipe|waterpipe/.test(
       rawText,
     )
   ) {
@@ -186,8 +256,8 @@ function buildPinterestSearchQuery(result: AnalysisResult) {
     );
   }
 
-  // Ø¥Ø¨Ø±ÙŠÙ‚ / Ø¯Ù„Ø© / Ø¬Ùƒ
-  else if (/Ø¥Ø¨Ø±ÙŠÙ‚|Ø§Ø¨Ø±ÙŠÙ‚|Ø¯Ù„Ø©|Ø¯Ù„Ù‡|ewer|pitcher|jug|decanter|coffee pot/.test(rawText)) {
+  // إبريق / دلة / جك
+  else if (/إبريق|ابريق|دلة|دله|ewer|pitcher|jug|decanter|coffee pot/.test(rawText)) {
     itemTerms.push(
       "antique ewer",
       "decorative pitcher",
@@ -195,27 +265,27 @@ function buildPinterestSearchQuery(result: AnalysisResult) {
     );
   }
 
-  // Ù…Ø²Ù‡Ø±ÙŠØ©
-  else if (/Ù…Ø²Ù‡Ø±ÙŠØ©|ÙØ§Ø²Ø©|vase/.test(rawText)) {
+  // مزهرية
+  else if (/مزهرية|فازة|vase/.test(rawText)) {
     itemTerms.push("antique vase", "decorative vase");
   }
 
-  // ÙƒØ£Ø³ / Ù‚Ø¯Ø­
-  else if (/ÙƒØ£Ø³|ÙƒØ§Ø³|Ù‚Ø¯Ø­|goblet|cup|chalice/.test(rawText)) {
+  // كأس / قدح
+  else if (/كأس|كاس|قدح|goblet|cup|chalice/.test(rawText)) {
     itemTerms.push("antique goblet", "decorative chalice");
   }
 
-  // ØµØ­Ù† / Ø·Ø¨Ù‚
-  else if (/ØµØ­Ù†|Ø·Ø¨Ù‚|plate|dish/.test(rawText)) {
+  // صحن / طبق
+  else if (/صحن|طبق|plate|dish/.test(rawText)) {
     itemTerms.push("antique decorative plate");
   }
 
-  // ØªÙ…Ø«Ø§Ù„
-  else if (/ØªÙ…Ø«Ø§Ù„|figure|statue|figurine/.test(rawText)) {
+  // تمثال
+  else if (/تمثال|figure|statue|figurine/.test(rawText)) {
     itemTerms.push("antique figurine");
   }
 
-  // fallback Ø¥Ø°Ø§ Ù…Ø§ Ø¹Ø±Ù Ù†ÙˆØ¹ Ø§Ù„Ù‚Ø·Ø¹Ø©
+  // fallback إذا ما عرف نوع القطعة
   else {
     itemTerms.push(
       result.title || "",
@@ -224,58 +294,58 @@ function buildPinterestSearchQuery(result: AnalysisResult) {
     );
   }
 
-  // Ø§Ù„Ù…ÙˆØ§Ø¯
-  if (/Ù†Ø­Ø§Ø³|brass|copper|Ø¨Ø±ÙˆÙ†Ø²|bronze/.test(rawText)) {
+  // المواد
+  if (/نحاس|brass|copper|برونز|bronze/.test(rawText)) {
     materialTerms.push("brass", "copper", "bronze");
   }
 
-  if (/ÙØ¶Ø©|silver|Ù…Ø·Ù„ÙŠ ÙØ¶Ø©|silver plated/.test(rawText)) {
+  if (/فضة|silver|مطلي فضة|silver plated/.test(rawText)) {
     materialTerms.push("silver plated", "silver");
   }
 
-  if (/ÙƒØ±ÙŠØ³ØªØ§Ù„|crystal|glass|Ø²Ø¬Ø§Ø¬/.test(rawText)) {
+  if (/كريستال|crystal|glass|زجاج/.test(rawText)) {
     materialTerms.push("crystal glass");
   }
 
-  if (/Ø®Ø´Ø¨|wood|wooden/.test(rawText)) {
+  if (/خشب|wood|wooden/.test(rawText)) {
     materialTerms.push("wooden");
   }
 
-  if (/Ø¨ÙˆØ±Ø³Ù„ÙŠÙ†|porcelain|ceramic|Ø®Ø²Ù/.test(rawText)) {
+  if (/بورسلين|porcelain|ceramic|خزف/.test(rawText)) {
     materialTerms.push("porcelain ceramic");
   }
 
-  // Ø§Ù„Ø£Ù„ÙˆØ§Ù†
-  if (/Ø£Ø²Ø±Ù‚|Ø§Ø²Ø±Ù‚|blue|ÙƒØ­Ù„ÙŠ/.test(rawText)) {
+  // الألوان
+  if (/أزرق|ازرق|blue|كحلي/.test(rawText)) {
     colorTerms.push("blue");
   }
 
-  if (/Ø°Ù‡Ø¨ÙŠ|gold|gilded/.test(rawText)) {
+  if (/ذهبي|gold|gilded/.test(rawText)) {
     colorTerms.push("gold");
   }
 
-  if (/Ø£Ø³ÙˆØ¯|Ø§Ø³ÙˆØ¯|black/.test(rawText)) {
+  if (/أسود|اسود|black/.test(rawText)) {
     colorTerms.push("black");
   }
 
-  if (/Ø¨Ù†ÙŠ|brown/.test(rawText)) {
+  if (/بني|brown/.test(rawText)) {
     colorTerms.push("brown");
   }
 
-  // Ø§Ù„Ø£Ø³Ù„ÙˆØ¨ / Ø§Ù„Ù…Ù†Ø´Ø£
-  if (/Ø¹Ø«Ù…Ø§Ù†ÙŠ|ottoman/.test(rawText)) {
+  // الأسلوب / المنشأ
+  if (/عثماني|ottoman/.test(rawText)) {
     styleTerms.push("ottoman");
   }
 
-  if (/Ø´Ø±Ù‚ÙŠ|middle eastern|islamic|arabic/.test(rawText)) {
+  if (/شرقي|middle eastern|islamic|arabic/.test(rawText)) {
     styleTerms.push("middle eastern", "islamic");
   }
 
-  if (/Ù…Ø²Ø®Ø±Ù|Ø²Ø®Ø±ÙØ©|engraved|etched|ornate|decorated/.test(rawText)) {
+  if (/مزخرف|زخرفة|engraved|etched|ornate|decorated/.test(rawText)) {
     styleTerms.push("engraved", "ornate");
   }
 
-  if (/Ù‚Ø¯ÙŠÙ…|antique|vintage/.test(rawText)) {
+  if (/قديم|antique|vintage/.test(rawText)) {
     styleTerms.push("antique", "vintage");
   }
 
@@ -544,17 +614,7 @@ function getSimilarItems(result: Partial<AnalysisResult> | null | undefined): Si
 }
 
 export function useAntiqueLens() {
-  const [locale, setLocale] = useState<Locale>(() => {
-    if (typeof window === "undefined") return "ar";
-
-    const savedLocale = window.localStorage.getItem(
-      USER_LOCALE_STORAGE_KEY,
-    ) as Locale | null;
-
-    return savedLocale && SUPPORTED_LOCALES.includes(savedLocale)
-      ? savedLocale
-      : "ar";
-  });
+  const [locale, setLocale] = useState<Locale>("ar");
   const theme: ThemeMode = "light";
 const [similarImages, setSimilarImages] = useState<SimilarImageResult[]>([]);
 const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
@@ -722,7 +782,9 @@ setIsLoadingSimilar(false);
     return false;
   }
 
-  goBackInsideAppRef.current = goBackInsideApp;
+  useEffect(() => {
+    goBackInsideAppRef.current = goBackInsideApp;
+  });
 
   async function migrateLegacyArchiveForUser(userId: string) {
     if (hasMigratedLegacyArchive(userId)) return [];
@@ -772,264 +834,169 @@ setIsLoadingSimilar(false);
     return legacyItems;
   }
 
-  async function refreshArchiveForCurrentUser({
-    reset = true,
-    silent = false,
-  }: { reset?: boolean; silent?: boolean } = {}) {
-    const requestId = crypto.randomUUID();
-    activeArchiveRequestIdRef.current = requestId;
+ async function refreshArchiveForCurrentUser({
+  reset = true,
+  silent = false,
+}: { reset?: boolean; silent?: boolean } = {}) {
+  const requestId = crypto.randomUUID();
+  activeArchiveRequestIdRef.current = requestId;
 
-    if (reset) {
-      setHistory([]);
-      setArchivePage(0);
-      setArchiveHasMore(false);
-    }
-
-    setArchiveError("");
-    if (!silent) setIsArchiveLoading(true);
-    if (silent) setIsArchiveRefreshing(true);
-
-    try {
-      const userId = await getCurrentEvaluationUserId();
-      if (activeArchiveRequestIdRef.current !== requestId) return;
-
-      setArchiveUserId(userId);
-
-      if (!userId) {
-        setHistory([]);
-        setArchivePage(0);
-        setArchiveHasMore(false);
-        return;
-      }
-
-      await migrateLegacyArchiveForUser(userId);
-      if (activeArchiveRequestIdRef.current !== requestId) return;
-
-      const firstPage = await loadEvaluationArchivePageFromSupabase({
-        page: 0,
-        pageSize: EVALUATION_ARCHIVE_PAGE_SIZE,
-      });
-      if (activeArchiveRequestIdRef.current !== requestId) return;
-
-      const cachedItems = await loadArchiveItemsWithImages(userId);
-      const archiveItems = mergeEvaluationArchiveItems(
-        firstPage.items,
-        cachedItems.filter((item) =>
-          firstPage.items.some((supabaseItem) => supabaseItem.id === item.id),
-        ),
-      );
-
-      setHistory(archiveItems);
-      setArchivePage(1);
-      setArchiveHasMore(firstPage.hasMore);
-      saveArchiveItems(archiveItems, userId);
-
-      console.info("[KISHIB archive] Loaded user archive from Supabase", {
-        userId,
-        count: archiveItems.length,
-        hasMore: firstPage.hasMore,
-      });
-    } catch (error) {
-      if (activeArchiveRequestIdRef.current === requestId) {
-        setArchiveError(
-          locale === "en"
-            ? "Could not load your archive. Pull to refresh or try again."
-            : "تعذر تحميل أرشيفك. حاول التحديث مرة أخرى.",
-        );
-        console.error("[KISHIB archive] User archive load failed", error);
-      }
-    } finally {
-      if (activeArchiveRequestIdRef.current === requestId) {
-        setIsArchiveLoading(false);
-        setIsArchiveRefreshing(false);
-      }
-    }
+  if (reset) {
+    setHistory([]);
+    setArchivePage(0);
+    setArchiveHasMore(false);
   }
 
-  async function loadMoreArchiveItems() {
-    if (!archiveUserId || isArchiveLoadingMore || !archiveHasMore) return;
+  setArchiveError("");
 
-    setIsArchiveLoadingMore(true);
-    setArchiveError("");
-
-    try {
-      const page = archivePage;
-      const nextPage = await loadEvaluationArchivePageFromSupabase({
-        page,
-        pageSize: EVALUATION_ARCHIVE_PAGE_SIZE,
-      });
-
-      if (nextPage.userId !== archiveUserId) return;
-
-      setHistory((current) => {
-        const merged = mergeEvaluationArchiveItems(current, nextPage.items);
-        saveArchiveItems(merged, archiveUserId);
-        return merged;
-      });
-      setArchivePage(page + 1);
-      setArchiveHasMore(nextPage.hasMore);
-    } catch (error) {
-      setArchiveError(
-        locale === "en"
-          ? "Could not load more archive items."
-          : "تعذر تحميل المزيد من عناصر الأرشيف.",
-      );
-      console.error("[KISHIB archive] Load more failed", error);
-    } finally {
-      setIsArchiveLoadingMore(false);
-    }
+  if (!silent) {
+    setIsArchiveLoading(true);
+  } else {
+    setIsArchiveRefreshing(true);
   }
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const savedLocale = window.localStorage.getItem(
-        USER_LOCALE_STORAGE_KEY,
-      ) as Locale | null;
-
-      if (savedLocale && SUPPORTED_LOCALES.includes(savedLocale)) {
-        setLocale(savedLocale);
-      }
-
-      void refreshArchiveForCurrentUser();
-      void refreshUsageStatus();
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
-    const { data } = supabase.auth.onAuthStateChange(() => {
-      activeArchiveRequestIdRef.current = crypto.randomUUID();
-      setArchiveUserId(null);
-      setHistory([]);
-      setArchivePage(0);
-      setArchiveHasMore(false);
-      setArchiveError("");
-      void refreshArchiveForCurrentUser();
-    });
-
-    return () => data.subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    function refreshArchiveFromScopedCache(event?: Event) {
-      const customEvent = event as CustomEvent<{ userId?: string | null }>;
-      const eventUserId = customEvent.detail?.userId;
-      if (!archiveUserId || eventUserId !== archiveUserId) return;
-      void refreshArchiveForCurrentUser({ reset: false, silent: true });
-    }
-
-    function handleStorage(event: StorageEvent) {
-      if (!archiveUserId || !event.key?.startsWith("kishib_archive_")) return;
-      if (event.key !== "kishib_archive_" + archiveUserId) return;
-      void refreshArchiveForCurrentUser({ reset: false, silent: true });
-    }
-
-    window.addEventListener("storage", handleStorage);
-    window.addEventListener(ARCHIVE_STORAGE_EVENT, refreshArchiveFromScopedCache);
-
-    return () => {
-      window.removeEventListener("storage", handleStorage);
-      window.removeEventListener(
-        ARCHIVE_STORAGE_EVENT,
-        refreshArchiveFromScopedCache,
-      );
-    };
-  }, [archiveUserId]);
-
-  useEffect(() => {
-    if (historyReadyRef.current) return;
-
-    replaceAppHistoryState("home");
-    pushAppHistoryState("home");
-    historyReadyRef.current = true;
-
-    function handlePopState() {
-      if (goBackInsideAppRef.current()) {
-        replaceAppHistoryState(currentScreenRef.current);
-        if (currentScreenRef.current === "home") {
-          pushAppHistoryState("home");
-        }
-        return;
-      }
-
-      const now = Date.now();
-
-      if (now - lastBackPressRef.current > 2000) {
-        lastBackPressRef.current = now;
-        pushAppHistoryState("home");
-        return;
-      }
-
-      window.history.back();
-    }
-
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      revokePreviewUrls(imagePreviews);
-    };
-  }, [imagePreviews]);
-
-  useEffect(() => {
-    if (currentScreen !== "follow-up" || followUp.followUpOpen) return;
-
-    setAppScreen("result");
-    replaceAppHistoryState("result");
-  }, [currentScreen, followUp.followUpOpen]);
-
-async function translateCurrentResult(
-  currentResult: AnalysisResult,
-  nextLocale: Locale,
-) {
   try {
-    setIsTranslatingResult(true);
-    setError("");
+    console.log("[ARCHIVE] 1 - Getting user");
 
-    const response = await fetch("/api/translate-result", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        locale: nextLocale,
-        result: currentResult,
-      }),
-    });
+    const userId = await getCurrentEvaluationUserId();
 
-    const data = await response.json();
+    console.log("[ARCHIVE] 2 - User loaded", userId);
 
-    if (!response.ok) {
-      throw new Error(data?.error || "Failed to translate result.");
+    if (activeArchiveRequestIdRef.current !== requestId) return;
+
+    setArchiveUserId(userId);
+
+    if (!userId) {
+      setHistory([]);
+      setArchivePage(0);
+      setArchiveHasMore(false);
+      return;
     }
 
-    const translated = normalizeResult(data.result || data);
+    console.log("[ARCHIVE] 3 - Starting migration");
 
-    setTranslatedResults((current) => ({
-      ...current,
-      [nextLocale]: translated,
-    }));
+    await migrateLegacyArchiveForUser(userId);
 
-    setResult(translated);
-  } catch (error) {
-    console.error("translateCurrentResult error:", error);
-    setError(
-      error instanceof Error
-        ? error.message
-        : "Failed to translate result.",
+    console.log("[ARCHIVE] 4 - Migration completed");
+
+    if (activeArchiveRequestIdRef.current !== requestId) return;
+
+    console.log("[ARCHIVE] 5 - Loading Supabase archive");
+
+    const firstPage = await loadEvaluationArchivePageFromSupabase({
+      page: 0,
+      pageSize: EVALUATION_ARCHIVE_PAGE_SIZE,
+    });
+
+    console.log("[ARCHIVE] 6 - Supabase loaded", firstPage);
+
+    if (activeArchiveRequestIdRef.current !== requestId) return;
+
+    console.log("[ARCHIVE] 7 - Loading local cache");
+
+    const cachedItems = await loadArchiveItemsWithImages(userId);
+
+    console.log("[ARCHIVE] 8 - Cache loaded", cachedItems.length);
+
+    const archiveItems = mergeEvaluationArchiveItems(
+      firstPage.items,
+      cachedItems.filter((item) =>
+        firstPage.items.some(
+          (supabaseItem) => supabaseItem.id === item.id,
+        ),
+      ),
     );
+
+    setHistory(archiveItems);
+    setArchivePage(1);
+    setArchiveHasMore(firstPage.hasMore);
+
+    saveArchiveItems(archiveItems, userId, {
+      notify: false,
+    });
+
+    console.log("[ARCHIVE] 9 - Archive completed", archiveItems.length);
+  } catch (error) {
+    if (activeArchiveRequestIdRef.current === requestId) {
+      setArchiveError(getArchiveErrorMessage(locale, "load"));
+      console.error("[ARCHIVE] FAILED", error);
+    }
   } finally {
-    setIsTranslatingResult(false);
+    if (activeArchiveRequestIdRef.current === requestId) {
+      console.log("[ARCHIVE] 10 - Stopping loader");
+setIsArchiveLoading(false);
+      setIsArchiveRefreshing(false);
+    }
   }
 }
+useEffect(() => {
+  const timer = window.setTimeout(() => {
+    const savedLocale = window.localStorage.getItem(
+      USER_LOCALE_STORAGE_KEY,
+    ) as Locale | null;
 
+    if (savedLocale && SUPPORTED_LOCALES.includes(savedLocale)) {
+      setLocale(savedLocale);
+    }
+
+    void refreshArchiveForCurrentUser();
+    void refreshUsageStatus();
+  }, 0);
+
+  return () => window.clearTimeout(timer);
+}, []);
+useEffect(() => {
+  const supabase = getSupabaseBrowserClient();
+
+  const { data } = supabase.auth.onAuthStateChange(() => {
+    activeArchiveRequestIdRef.current = crypto.randomUUID();
+    setArchiveUserId(null);
+    setHistory([]);
+    setArchivePage(0);
+    setArchiveHasMore(false);
+    setArchiveError("");
+
+    void refreshArchiveForCurrentUser();
+  });
+
+  return () => data.subscription.unsubscribe();
+}, []);
+
+async function loadMoreArchiveItems() {
+  if (!archiveUserId || isArchiveLoadingMore || !archiveHasMore) return;
+
+  setIsArchiveLoadingMore(true);
+  setArchiveError("");
+
+  try {
+    const page = archivePage;
+
+    const nextPage = await loadEvaluationArchivePageFromSupabase({
+      page,
+      pageSize: EVALUATION_ARCHIVE_PAGE_SIZE,
+    });
+
+    if (nextPage.userId !== archiveUserId) return;
+
+    setHistory((current) => {
+      const merged = mergeEvaluationArchiveItems(current, nextPage.items);
+
+      saveArchiveItems(merged, archiveUserId, {
+        notify: false,
+      });
+
+      return merged;
+    });
+
+    setArchivePage(page + 1);
+    setArchiveHasMore(nextPage.hasMore);
+  } catch (error) {
+    setArchiveError(getArchiveErrorMessage(locale, "loadMore"));
+    console.error("[KISHIB archive] Load more failed", error);
+  } finally {
+    setIsArchiveLoadingMore(false);
+  }
+}
 async function changeLocale(nextLocale: Locale) {
   window.localStorage.setItem(USER_LOCALE_STORAGE_KEY, nextLocale);
 
@@ -1048,8 +1015,7 @@ async function changeLocale(nextLocale: Locale) {
     return;
   }
 
-  await translateCurrentResult(result, nextLocale);
-}
+return;}
 
   function resetEvaluation() {
     goHome({ replaceHistory: true });
@@ -1089,7 +1055,7 @@ async function changeLocale(nextLocale: Locale) {
     );
 
     if (!imageFiles.length) {
-      setError("Ø§Ù„Ù…Ù„ÙØ§Øª Ù„Ø§Ø²Ù… ØªÙƒÙˆÙ† ØµÙˆØ±.");
+      setError("الملفات لازم تكون صور.");
       return;
     }
 
@@ -1106,7 +1072,7 @@ async function changeLocale(nextLocale: Locale) {
     const mergedFiles = [...selectedFiles, ...compressedFiles].slice(0, MAX_IMAGES);
 
     if (selectedFiles.length + imageFiles.length > MAX_IMAGES) {
-      setError(`Ù…Ø³Ù…ÙˆØ­ Ø±ÙØ¹ ${MAX_IMAGES} ØµÙˆØ± ÙƒØ­Ø¯ Ø£Ù‚ØµÙ‰ Ù„Ù„ØªÙ‚ÙŠÙŠÙ… Ø§Ù„ÙˆØ§Ø­Ø¯.`);
+      setError(`مسموح رفع ${MAX_IMAGES} صور كحد أقصى للتقييم الواحد.`);
     } else {
       setError("");
     }

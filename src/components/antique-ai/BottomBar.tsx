@@ -51,7 +51,7 @@ export default function BottomBar({
         <button
           type="button"
           onClick={onShare}
-          disabled={isSharing || isPdfLoading}
+          disabled={isSharing}
           title={labels.share}
           aria-label={labels.share}
           className="flex min-w-[64px] flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-1 text-[#3B1712] transition hover:bg-[#C79A45]/12 active:scale-[0.98] disabled:cursor-wait disabled:opacity-60"
@@ -68,7 +68,7 @@ export default function BottomBar({
           <button
             type="button"
             onClick={onPdf}
-            disabled={isSharing || isPdfLoading}
+            disabled={isPdfLoading}
             title={labels.pdf}
             aria-label={labels.pdf}
             className="flex min-w-[64px] flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-1 text-[#3B1712] transition hover:bg-[#C79A45]/12 active:scale-[0.98] disabled:cursor-wait disabled:opacity-60"

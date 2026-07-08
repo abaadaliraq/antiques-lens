@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /* eslint-disable @next/next/no-img-element */
 
@@ -20,95 +20,16 @@ type ThinkingCopy = {
 };
 
 const THINKING_COPY: Record<Locale, ThinkingCopy> = {
-  ar: {
-    eyebrow: "KISHIB",
-    fallbackTitle: "جاري تكوين الصورة",
-    steps: [
-      { title: "تجميع ملامح الصورة" },
-      { title: "قراءة العلامات" },
-      { title: "مطابقة المؤشرات" },
-      { title: "إعداد التقييم" },
-    ],
-  },
-
-  en: {
-    eyebrow: "KISHIB",
-    fallbackTitle: "Revealing image",
-    steps: [
-      { title: "Revealing image" },
-      { title: "Reading details" },
-      { title: "Matching signals" },
-      { title: "Preparing value" },
-    ],
-  },
-
-  fr: {
-    eyebrow: "KISHIB",
-    fallbackTitle: "Révélation",
-    steps: [
-      { title: "Révélation" },
-      { title: "Lecture des détails" },
-      { title: "Correspondances" },
-      { title: "Estimation" },
-    ],
-  },
-
-  hi: {
-    eyebrow: "KISHIB",
-    fallbackTitle: "छवि बन रही है",
-    steps: [
-      { title: "छवि बन रही है" },
-      { title: "विवरण पढ़ना" },
-      { title: "संकेत मिलाना" },
-      { title: "मूल्यांकन" },
-    ],
-  },
-
-  fa: {
-    eyebrow: "KISHIB",
-    fallbackTitle: "نمایان‌سازی تصویر",
-    steps: [
-      { title: "نمایان‌سازی تصویر" },
-      { title: "خواندن جزئیات" },
-      { title: "تطبیق نشانه‌ها" },
-      { title: "آماده‌سازی ارزیابی" },
-    ],
-  },
-
-  tr: {
-    eyebrow: "KISHIB",
-    fallbackTitle: "Görsel oluşuyor",
-    steps: [
-      { title: "Görsel oluşuyor" },
-      { title: "Detaylar okunuyor" },
-      { title: "İşaretler eşleşiyor" },
-      { title: "Değerleme" },
-    ],
-  },
-
-  ru: {
-    eyebrow: "KISHIB",
-    fallbackTitle: "Проявление",
-    steps: [
-      { title: "Проявление" },
-      { title: "Детали" },
-      { title: "Сопоставление" },
-      { title: "Оценка" },
-    ],
-  },
-
-  ku: {
-    eyebrow: "KISHIB",
-    fallbackTitle: "وێنەکە دەردەکەوێت",
-    steps: [
-      { title: "دەرخستنی وێنە" },
-      { title: "خوێندنەوەی وردەکاری" },
-      { title: "بەراوردکردنی نیشانەکان" },
-      { title: "ئامادەکردنی نرخاندن" },
-    ],
-  },
+  ar: { eyebrow: "KISHIB", fallbackTitle: "جاري تكوين الصورة", steps: [{ title: "تجميع ملامح الصورة" }, { title: "قراءة العلامات" }, { title: "مطابقة المؤشرات" }, { title: "إعداد التقييم" }] },
+  en: { eyebrow: "KISHIB", fallbackTitle: "Revealing image", steps: [{ title: "Revealing image" }, { title: "Reading details" }, { title: "Matching signals" }, { title: "Preparing value" }] },
+  fr: { eyebrow: "KISHIB", fallbackTitle: "Révélation", steps: [{ title: "Révélation" }, { title: "Lecture des détails" }, { title: "Correspondances" }, { title: "Estimation" }] },
+  hi: { eyebrow: "KISHIB", fallbackTitle: "छवि बन रही है", steps: [{ title: "छवि बन रही है" }, { title: "विवरण पढ़ना" }, { title: "संकेत मिलाना" }, { title: "मूल्यांकन तैयार करना" }] },
+  fa: { eyebrow: "KISHIB", fallbackTitle: "نمایان‌سازی تصویر", steps: [{ title: "نمایان‌سازی تصویر" }, { title: "خواندن جزئیات" }, { title: "تطبیق نشانه‌ها" }, { title: "آماده‌سازی ارزیابی" }] },
+  tr: { eyebrow: "KISHIB", fallbackTitle: "Görsel oluşuyor", steps: [{ title: "Görsel oluşuyor" }, { title: "Detaylar okunuyor" }, { title: "İşaretler eşleşiyor" }, { title: "Değerleme hazırlanıyor" }] },
+  ru: { eyebrow: "KISHIB", fallbackTitle: "Проявление", steps: [{ title: "Проявление изображения" }, { title: "Чтение деталей" }, { title: "Сопоставление признаков" }, { title: "Подготовка оценки" }] },
+  ku: { eyebrow: "KISHIB", fallbackTitle: "وێنەکە دەردەکەوێت", steps: [{ title: "دەرخستنی وێنە" }, { title: "خوێندنەوەی وردەکاری" }, { title: "بەراوردکردنی نیشانەکان" }, { title: "ئامادەکردنی نرخاندن" }] },
+  es: { eyebrow: "KISHIB", fallbackTitle: "Revelando imagen", steps: [{ title: "Revelando imagen" }, { title: "Leyendo detalles" }, { title: "Comparando señales" }, { title: "Preparando valoración" }] },
 };
-
 type ThinkingMotionProps = {
   locale?: Locale;
   imagePreview?: string | null;
@@ -417,3 +338,4 @@ function ProfessionalDissolveImage({ imagePreview }: { imagePreview: string }) {
     </div>
   );
 }
+

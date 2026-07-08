@@ -43,6 +43,22 @@ type SaveEvaluationInput = {
   cloudinaryPublicId?: string;
 };
 
+type EvaluationsInsertClient = {
+  from(table: "evaluations"): {
+    insert(payload: unknown): Promise<{ error: unknown }>;
+  };
+};
+
+type EvaluationsDeleteClient = {
+  from(table: "evaluations"): {
+    delete(): {
+      eq(column: string, value: string): {
+        eq(column: string, value: string): Promise<{ error: unknown }>;
+      };
+    };
+  };
+};
+
 export type EvaluationArchivePage = {
   items: ArchiveItem[];
   hasMore: boolean;
@@ -261,7 +277,9 @@ export async function saveEvaluationToSupabase({
       updated_at: new Date().toISOString(),
     };
 
-    const { error } = await (supabase as any).from("evaluations").insert(payload);
+    const { error } = await (supabase as unknown as EvaluationsInsertClient)
+      .from("evaluations")
+      .insert(payload);
 
     if (error) throw error;
     return true;
@@ -285,7 +303,7 @@ export async function deleteEvaluationFromSupabase(id: string) {
 
     if (userError || !userData.user) return false;
 
-    const { error } = await (supabase as any)
+    const { error } = await (supabase as unknown as EvaluationsDeleteClient)
       .from("evaluations")
       .delete()
       .eq("id", id)

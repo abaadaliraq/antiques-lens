@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
-type Locale = "ar" | "en" | "fr" | "hi" | "fa" | "tr" | "ru" | "ku";
+type Locale = "ar" | "en" | "fr" | "hi" | "fa" | "tr" | "ru" | "ku" | "es";
 
 function normalizeLocale(locale: string): Locale {
   if (
@@ -14,7 +14,8 @@ function normalizeLocale(locale: string): Locale {
     locale === "fa" ||
     locale === "tr" ||
     locale === "ru" ||
-    locale === "ku"
+    locale === "ku" ||
+    locale === "es"
   ) {
     return locale;
   }
@@ -38,6 +39,8 @@ function getLanguageName(locale: Locale) {
       return "Russian";
     case "ku":
       return "Sorani Kurdish";
+    case "es":
+      return "Spanish";
     case "ar":
     default:
       return "Arabic";
@@ -52,6 +55,7 @@ function getLanguageInstruction(locale: Locale) {
   if (locale === "tr") return "Write all user-facing values in Turkish.";
   if (locale === "ru") return "Write all user-facing values in Russian.";
   if (locale === "ku") return "Write all user-facing values in Sorani Kurdish.";
+  if (locale === "es") return "Write all user-facing values in natural, professional Spanish.";
   return "Write all user-facing values in clear, natural Arabic.";
 }
 

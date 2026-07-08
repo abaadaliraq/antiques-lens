@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useCallback } from "react";
 import type { ReactNode } from "react";
 import CompleteProfileModal from "@/components/antique-ai/CompleteProfileModal";
 import {
@@ -22,7 +23,7 @@ export default function ProfileCompletionGate({
   const [complete, setComplete] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
-  async function refreshProfile() {
+  const refreshProfile = useCallback(async () => {
     try {
       setReady(false);
       const result = await ensureCurrentUserProfile();
@@ -37,19 +38,21 @@ export default function ProfileCompletionGate({
     } finally {
       setReady(true);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    void refreshProfile();
+    const initialTimer = window.setTimeout(() => void refreshProfile(), 0);
 
     function handleProfileUpdated() {
       void refreshProfile();
     }
 
     window.addEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdated);
-    return () =>
+    return () => {
+      window.clearTimeout(initialTimer);
       window.removeEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdated);
-  }, []);
+    };
+  }, [refreshProfile]);
 
   if (!ready) {
     return <main className="min-h-dvh bg-[#130d0a]" />;

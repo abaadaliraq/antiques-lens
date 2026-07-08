@@ -53,7 +53,9 @@ type Props = {
   followUpPanel?: React.ReactNode;
   onBack?: () => void;
   onSavePdf?: () => void;
+  onPrintReport?: () => void;
   isSavingPdf?: boolean;
+  isPreparingPrint?: boolean;
 };
 
 type ResultSectionLink = {
@@ -82,22 +84,24 @@ function getResultExperienceLabels(locale: Locale) {
 function getFallbackText(locale: Locale) {
   if (locale === "en") return "Not clear";
   if (locale === "fr") return "Non clair";
-  if (locale === "ku") return "Ú•ÙˆÙˆÙ† Ù†ÛŒÛŒÛ•";
-  if (locale === "hi") return "à¤¸à¥à¤ªà¤·à¥à¤Ÿ à¤¨à¤¹à¥€à¤‚";
-  if (locale === "fa") return "Ù†Ø§Ù…Ø´Ø®Øµ";
-  if (locale === "tr") return "Net deÄŸil";
-  if (locale === "ru") return "ÐÐµ ÑÑÐ½Ð¾";
+  if (locale === "ku") return "ڕوون نییە";
+  if (locale === "hi") return "स्पष्ट नहीं";
+  if (locale === "fa") return "نامشخص";
+  if (locale === "tr") return "Net değil";
+  if (locale === "ru") return "Не ясно";
+  if (locale === "es") return "No está claro";
   return "غير واضح";
 }
 
 function getUserNoteLabel(locale: Locale) {
   if (locale === "en") return "Your note about the item";
   if (locale === "fr") return "Votre note sur l'objet";
-  if (locale === "tr") return "Parca hakkindaki notunuz";
-  if (locale === "ru") return "Your note about the item";
-  if (locale === "fa") return "ÛŒØ§Ø¯Ø¯Ø§Ø´Øª Ø´Ù…Ø§ Ø¯Ø±Ø¨Ø§Ø±Ù‡ Ø´ÛŒØ¡";
-  if (locale === "ku") return "ØªÛŽØ¨ÛŒÙ†ÛŒÛŒÛ•Ú©Û•Øª Ø¯Û•Ø±Ø¨Ø§Ø±Û•ÛŒ Ù¾Ø§Ø±Ú†Û•Ú©Û•";
-  if (locale === "hi") return "Your note about the item";
+  if (locale === "tr") return "Parça hakkındaki notunuz";
+  if (locale === "ru") return "Ваша заметка о предмете";
+  if (locale === "fa") return "یادداشت شما درباره شیء";
+  if (locale === "ku") return "تێبینییەکەت دەربارەی پارچەکە";
+  if (locale === "hi") return "वस्तु के बारे में आपका नोट";
+  if (locale === "es") return "Tu nota sobre la pieza";
   return "ملاحظتك عن القطعة";
 }
 
@@ -208,12 +212,12 @@ function getReportLabels(locale: Locale) {
 
   if (locale === "ku") {
     return {
-      eyebrow: "Ú•Ø§Ù¾Û†Ø±Øª",
-      title: "Ù‡Û•ÚµØ³Û•Ù†Ú¯Ø§Ù†Ø¯Ù†ÛŒ Ú†Ø§Ù¾Ú©Ø±Ø§Ùˆ",
-      hint: "Ú•Ø§Ù¾Û†Ø±ØªÛŒ A4 ØªÛ•Ù†Ù‡Ø§ Ø¨Û† PDF ÛŒØ§Ù† Ú†Ø§Ù¾ Ø¨Ú©Û•Ø±Û•ÙˆÛ•.",
-      open: "Ú©Ø±Ø¯Ù†Û•ÙˆÛ•",
-      print: "PDF / Ú†Ø§Ù¾",
-      close: "Ø¯Ø§Ø®Ø³ØªÙ†",
+      eyebrow: "ڕاپۆرت",
+      title: "هەڵسەنگاندنی چاپکراو",
+      hint: "ڕاپۆرتی A4 تەنها بۆ PDF یان چاپ بکەرەوە.",
+      open: "کردنەوە",
+      print: "PDF / چاپ",
+      close: "داخستن",
       back: "گەڕانەوە",
       printable: "ڕاپۆرتی چاپکراو",
     };
@@ -234,11 +238,12 @@ function getReportLabels(locale: Locale) {
 function getSimilarSourceLabel(locale: Locale) {
   if (locale === "en") return "Comparable sources";
   if (locale === "fr") return "Sources comparables";
-  if (locale === "hi") return "à¤¤à¥à¤²à¤¨à¥€à¤¯ à¤¸à¥à¤°à¥‹à¤¤";
-  if (locale === "fa") return "Ù…Ù†Ø§Ø¨Ø¹ Ù…Ø´Ø§Ø¨Ù‡";
+  if (locale === "hi") return "तुलनीय स्रोत";
+  if (locale === "fa") return "منابع مشابه";
   if (locale === "tr") return "Benzer kaynaklar";
-  if (locale === "ru") return "ÐŸÐ¾Ñ…Ð¾Ð¶Ð¸Ðµ Ð¸ÑÑ‚Ð¾Ñ‡Ð½Ð¸ÐºÐ¸";
-  if (locale === "ku") return "Ø³Û•Ø±Ú†Ø§ÙˆÛ• Ù‡Ø§ÙˆØ´ÛŽÙˆÛ•Ú©Ø§Ù†";
+  if (locale === "ru") return "Похожие источники";
+  if (locale === "ku") return "سەرچاوە هاوشێوەکان";
+  if (locale === "es") return "Fuentes comparables";
   return "مصادر مشابهة";
 }
 
@@ -486,7 +491,19 @@ function getSilverScenarioLabels(locale: Locale) {
       weightUsed: "Использованный вес",
       rawEstimate: "Оценка сырого металла",
     },
-  };
+    es: {
+      title: "Escenarios de valor de la plata según el peso",
+      note:
+        "Estos escenarios son condicionales según el precio de mercado de hoy. La valoración final requiere peso exacto y una marca clara de pureza o contraste.",
+      weight: "Peso supuesto",
+      melt: "Valor bruto de la plata",
+      antique: "Con valor de antigüedad",
+      indicator: "Indicador del precio del metal",
+      possibleMetal: "Metal posible",
+      marketPrice: "Precio de mercado",
+      weightUsed: "Peso utilizado",
+      rawEstimate: "Estimación del metal bruto",
+    },  };
 
   return labels[locale] || labels.en;
 }
@@ -619,7 +636,9 @@ export default function ResultView({
   followUpPanel,
   onBack,
   onSavePdf,
+  onPrintReport,
   isSavingPdf = false,
+  isPreparingPrint = false,
 }: Props) {
   const [openImageIndex, setOpenImageIndex] = useState<number | null>(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
@@ -1690,14 +1709,15 @@ useEffect(() => {
                 <button
                   type="button"
                   onClick={() => {
-                    if (onSavePdf) onSavePdf();
+                    if (onPrintReport) onPrintReport();
+                    else if (onSavePdf) onSavePdf();
                     else window.print();
                   }}
-                  disabled={isSavingPdf}
+                  disabled={isPreparingPrint || isSavingPdf}
                   className="grid h-10 w-10 place-items-center rounded-[12px] border border-[#d2b98f] bg-[#fff4e2]/80 text-[#735f4b] disabled:cursor-wait disabled:opacity-60"
                   aria-label={reportLabels.print}
                 >
-                  {isSavingPdf ? (
+                  {isPreparingPrint || isSavingPdf ? (
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#735f4b]/30 border-t-[#735f4b]" />
                   ) : (
                     <Printer className="h-4 w-4" />
@@ -2129,4 +2149,5 @@ function SoftList({ title, items }: { title: string; items?: string[] }) {
     </section>
   );
 }
+
 
