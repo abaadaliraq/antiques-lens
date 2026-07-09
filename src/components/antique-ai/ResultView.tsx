@@ -1838,12 +1838,11 @@ useEffect(() => {
 
         .report-print-area {
           position: fixed;
-          left: -99999px;
+          left: -10000px;
           top: 0;
-          width: 794px;
+          width: 1080px;
           height: auto;
-          overflow: hidden;
-          opacity: 0;
+          overflow: visible;
           pointer-events: none;
         }
 

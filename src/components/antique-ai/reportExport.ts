@@ -3,7 +3,8 @@
 import { Capacitor } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
-import { toBlob } from "html-to-image";
+import { toBlob, toJpeg } from "html-to-image";
+import { jsPDF } from "jspdf";
 
 const A4_WIDTH_PT = 595.28;
 const A4_HEIGHT_PT = 841.89;
@@ -19,20 +20,94 @@ type ShareFileInput = {
   action?: "share" | "pdf" | "print";
 };
 
-type ReportExportStage =
-  | "DOM"
-  | "Fonts"
-  | "Images"
-  | "Canvas"
-  | "PDF"
-  | "Blob"
-  | "Filesystem"
-  | "Native Share"
-  | "Web Share"
-  | "Download";
+type ReportExportStageName =
+  | "export_started"
+  | "platform_detected"
+  | "report_dom_not_found"
+  | "export_dom_found"
+  | "fonts_ready"
+  | "fonts_failed"
+  | "images_ready"
+  | "images_failed"
+  | "canvas_failed"
+  | "canvas_created"
+  | "image_data_created"
+  | "pdf_generation_failed"
+  | "pdf_data_created"
+  | "blob_read_failed"
+  | "file_write_failed"
+  | "file_written"
+  | "file_uri_failed"
+  | "native_uri_resolved"
+  | "native_share_failed"
+  | "share_sheet_opened"
+  | "web_share_failed"
+  | "download_failed";
 
-function logReportExportError(stage: ReportExportStage, error: unknown) {
-  console.error(`[Report Export][${stage}]`, error);
+type ReportExportPlatform = {
+  platform: string;
+  isNative: boolean;
+};
+
+type PdfJpegPage = {
+  imageData: string;
+  width: number;
+  height: number;
+};
+
+const REPORT_STAGE_LABELS: Partial<Record<ReportExportStageName, string>> = {
+  export_started: "[REPORT][1] export started",
+  platform_detected: "[REPORT][2] platform detected",
+  export_dom_found: "[REPORT][3] export DOM found",
+  fonts_ready: "[REPORT][4] fonts ready",
+  images_ready: "[REPORT][5] images ready",
+  canvas_created: "[REPORT][6] canvas created",
+  image_data_created: "[REPORT][7] image/pdf data created",
+  pdf_data_created: "[REPORT][7] image/pdf data created",
+  file_written: "[REPORT][8] file written",
+  native_uri_resolved: "[REPORT][9] native URI resolved",
+  share_sheet_opened: "[REPORT][10] share sheet opened",
+};
+
+function getReportPlatform(): ReportExportPlatform {
+  return {
+    platform: Capacitor.getPlatform(),
+    isNative: Capacitor.isNativePlatform(),
+  };
+}
+
+function getErrorDetails(error: unknown) {
+  return {
+    error,
+    message:
+      error && typeof error === "object" && "message" in error
+        ? String((error as { message?: unknown }).message || "")
+        : String(error || ""),
+    stack:
+      error && typeof error === "object" && "stack" in error
+        ? String((error as { stack?: unknown }).stack || "")
+        : "",
+  };
+}
+
+function logReportStage(stage: ReportExportStageName, details?: Record<string, unknown>) {
+  const label = REPORT_STAGE_LABELS[stage] || `[REPORT][${stage}]`;
+  console.info(label, {
+    ...getReportPlatform(),
+    ...(details || {}),
+  });
+}
+
+function logReportExportError(
+  stage: ReportExportStageName,
+  error: unknown,
+  details?: Record<string, unknown>,
+) {
+  console.error(`[REPORT][FAILED][${stage}]`, {
+    ...getReportPlatform(),
+    ...getErrorDetails(error),
+    ...(details || {}),
+  });
 }
 
 function sanitizeFileName(value: string) {
@@ -43,7 +118,7 @@ function sanitizeFileName(value: string) {
     .slice(0, 90);
 }
 
-export function buildReportFileName(extension: "png" | "pdf") {
+export function buildReportFileName(extension: "jpg" | "png" | "pdf") {
   const date = new Date().toISOString().slice(0, 10);
   return sanitizeFileName(`kishib-report-${date}.${extension}`);
 }
@@ -116,9 +191,15 @@ async function resolveImageForCanvas(src: string) {
 
     return await blobToDataUrl(await response.blob());
   } catch (error) {
-    logReportExportError("Images", { src, error });
+    logReportExportError("images_failed", error, { src: redactImageSource(src) });
     return makeReportImagePlaceholder("KISHIB");
   }
+}
+
+function redactImageSource(src: string) {
+  if (src.startsWith("data:")) return src.slice(0, 42);
+  if (src.startsWith("blob:")) return "blob:";
+  return src;
 }
 
 async function decodeImage(image: HTMLImageElement) {
@@ -139,7 +220,7 @@ export async function waitForImages(container: HTMLElement) {
   const images = Array.from(container.querySelectorAll("img"));
 
   await Promise.all(
-    images.map(async (image) => {
+    images.map(async (image, index) => {
       const originalSrc = image.currentSrc || image.src || image.getAttribute("src") || "";
 
       try {
@@ -157,13 +238,25 @@ export async function waitForImages(container: HTMLElement) {
           await decodeImage(image);
         }
       } catch (error) {
-        logReportExportError("Images", { src: originalSrc, error });
+        logReportExportError("images_failed", error, {
+          index,
+          src: redactImageSource(originalSrc),
+          kind: originalSrc.startsWith("data:")
+            ? "data"
+            : originalSrc.startsWith("blob:")
+              ? "blob"
+              : isRemoteHttpUrl(originalSrc)
+                ? "remote"
+                : isLocalAssetUrl(originalSrc)
+                  ? "local"
+                  : "unknown",
+        });
         image.src = makeReportImagePlaceholder("KISHIB");
 
         try {
           await decodeImage(image);
         } catch (placeholderError) {
-          logReportExportError("Images", placeholderError);
+          logReportExportError("images_failed", placeholderError, { index, placeholder: true });
         }
       }
     }),
@@ -172,131 +265,97 @@ export async function waitForImages(container: HTMLElement) {
 
 async function waitForReportAssets(report: HTMLElement) {
   if (!report) {
+    logReportExportError("report_dom_not_found", new Error("Report export DOM is missing"));
     throw new Error("Report export DOM is missing");
   }
 
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+  const rect = report.getBoundingClientRect();
+  const textLength = report.innerText.trim().length;
+  const domDetails = {
+    width: rect.width,
+    height: rect.height,
+    scrollWidth: report.scrollWidth,
+    scrollHeight: report.scrollHeight,
+    textLength,
+  };
+
+  if (!rect.width || !rect.height || !report.scrollWidth || !report.scrollHeight || !textLength) {
+    logReportExportError("report_dom_not_found", new Error("Report export DOM has zero size"), domDetails);
+    throw new Error("pdf_content_empty");
+  }
+
+  logReportStage("export_dom_found", domDetails);
+
   try {
     await document.fonts?.ready;
+    logReportStage("fonts_ready");
   } catch (error) {
-    logReportExportError("Fonts", error);
+    logReportExportError("fonts_failed", error);
   }
 
   await waitForImages(report);
+  logReportStage("images_ready");
 }
 
-export async function createReportPngBlob(report: HTMLElement) {
+function getReportRasterSize(report: HTMLElement) {
+  const width = Math.max(794, report.scrollWidth || 794);
+  const height = Math.max(report.scrollHeight, report.offsetHeight, 1123);
+  const isNative = Capacitor.isNativePlatform();
+  const pixelRatio = isNative ? Math.min(1.5, Math.max(1, 1080 / width)) : Math.max(2, 1080 / width);
+
+  return { width, height, pixelRatio };
+}
+
+async function createReportImageBlob(report: HTMLElement, imageType: "jpeg" | "png") {
+  logReportStage("export_started", { output: imageType });
+  logReportStage("platform_detected");
+
   try {
     await waitForReportAssets(report);
   } catch (error) {
-    logReportExportError("DOM", error);
     throw error;
   }
 
-  const width = Math.max(794, report.scrollWidth || 794);
-  const height = Math.max(report.scrollHeight, report.offsetHeight, 1123);
+  const { width, height, pixelRatio } = getReportRasterSize(report);
 
   let blob: Blob | null = null;
 
   try {
-    blob = await toBlob(report, {
+    const options = {
       backgroundColor: "#f7f0e6",
       cacheBust: true,
-      pixelRatio: Math.max(2, 1080 / width),
+      pixelRatio,
       width,
       height,
       style: {
         transform: "none",
         opacity: "1",
       },
-    });
+    };
+
+    if (imageType === "jpeg") {
+      const dataUrl = await toJpeg(report, { ...options, quality: 0.9 });
+      blob = new Blob([dataUrlToBytes(dataUrl)], { type: "image/jpeg" });
+    } else {
+      blob = await toBlob(report, options);
+    }
+
+    logReportStage("canvas_created", { width, height, pixelRatio, type: blob?.type });
   } catch (error) {
-    logReportExportError("Canvas", error);
+    logReportExportError("canvas_failed", error, { width, height, pixelRatio });
     throw error;
   }
 
   if (!blob) throw new Error("Unable to create report image");
+  logReportStage("image_data_created", { size: blob.size, type: blob.type });
   return blob;
 }
 
-function escapePdfText(value: string) {
-  return value.replace(/[\\()]/g, "\\$&");
-}
-
-function makePdfFromJpegPages(pages: Uint8Array[]) {
-  const encoder = new TextEncoder();
-  const chunks: Uint8Array[] = [];
-  const offsets: number[] = [];
-  let length = 0;
-
-  function write(value: string | Uint8Array) {
-    const bytes = typeof value === "string" ? encoder.encode(value) : value;
-    chunks.push(bytes);
-    length += bytes.length;
-  }
-
-  function startObject(id: number) {
-    offsets[id] = length;
-    write(`${id} 0 obj\n`);
-  }
-
-  write("%PDF-1.4\n%KISHIB\n");
-
-  startObject(1);
-  write("<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
-
-  startObject(2);
-  write(
-    `<< /Type /Pages /Kids ${pages
-      .map((_, index) => `${3 + index * 3} 0 R`)
-      .join(" ")} /Count ${pages.length} >>\nendobj\n`,
-  );
-
-  pages.forEach((jpegBytes, index) => {
-    const pageObject = 3 + index * 3;
-    const imageObject = pageObject + 1;
-    const contentObject = pageObject + 2;
-    const imageName = `Im${index + 1}`;
-    const content = `q\n${A4_WIDTH_PT} 0 0 ${A4_HEIGHT_PT} 0 0 cm\n/${imageName} Do\nQ\n`;
-
-    startObject(pageObject);
-    write(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${A4_WIDTH_PT} ${A4_HEIGHT_PT}] /Resources << /XObject << /${imageName} ${imageObject} 0 R >> >> /Contents ${contentObject} 0 R >>\nendobj\n`,
-    );
-
-    startObject(imageObject);
-    write(
-      `<< /Type /XObject /Subtype /Image /Width 1240 /Height ${Math.round(
-        1240 * A4_RATIO,
-      )} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegBytes.length} >>\nstream\n`,
-    );
-    write(jpegBytes);
-    write("\nendstream\nendobj\n");
-
-    startObject(contentObject);
-    const contentBytes = encoder.encode(content);
-    write(`<< /Length ${contentBytes.length} >>\nstream\n`);
-    write(contentBytes);
-    write("endstream\nendobj\n");
-  });
-
-  const infoObject = 3 + pages.length * 3;
-  startObject(infoObject);
-  write(
-    `<< /Title (${escapePdfText("KISHIB Report")}) /Creator (${escapePdfText(
-      "KISHIB",
-    )}) >>\nendobj\n`,
-  );
-
-  const xrefOffset = length;
-  write(`xref\n0 ${infoObject + 1}\n0000000000 65535 f \n`);
-  for (let objectId = 1; objectId <= infoObject; objectId += 1) {
-    write(`${String(offsets[objectId] || 0).padStart(10, "0")} 00000 n \n`);
-  }
-  write(
-    `trailer\n<< /Size ${infoObject + 1} /Root 1 0 R /Info ${infoObject} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`,
-  );
-
-  return new Blob(chunks as BlobPart[], { type: "application/pdf" });
+export async function createReportPngBlob(report: HTMLElement) {
+  return createReportImageBlob(report, Capacitor.isNativePlatform() ? "jpeg" : "png");
 }
 
 async function createA4JpegPagesFromPngBlob(blob: Blob) {
@@ -322,11 +381,22 @@ async function createA4JpegPagesFromPngBlob(blob: Blob) {
     canvas.width = pageWidth;
     canvas.height = pageHeight;
 
-    const pages: Uint8Array[] = [];
+    const pages: PdfJpegPage[] = [];
     let sourceY = 0;
+    const sliceCount = Math.ceil(image.naturalHeight / sourcePageHeight);
+
+    console.info("[PDF][1] source canvas dimensions", {
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+    });
+    console.info("[PDF][2] slice count", { count: sliceCount });
 
     while (sourceY < image.naturalHeight) {
+      const pageIndex = pages.length;
       const sliceHeight = Math.min(sourcePageHeight, image.naturalHeight - sourceY);
+      const renderedHeight = Math.max(1, Math.round(sliceHeight * scale));
+      if (!canvas.width || !canvas.height || !sliceHeight) throw new Error("pdf_content_empty");
+
       context.fillStyle = "#f7f0e6";
       context.fillRect(0, 0, pageWidth, pageHeight);
       context.drawImage(
@@ -338,13 +408,33 @@ async function createA4JpegPagesFromPngBlob(blob: Blob) {
         0,
         0,
         pageWidth,
-        Math.round(sliceHeight * scale),
+        renderedHeight,
       );
-      pages.push(dataUrlToBytes(canvas.toDataURL("image/jpeg", 0.92)));
+      const imageData = canvas.toDataURL("image/jpeg", 0.92);
+      console.info("[PDF][3] slice dimensions", {
+        pageIndex,
+        sourceWidth: image.naturalWidth,
+        sourceHeight: sliceHeight,
+        canvasWidth: canvas.width,
+        canvasHeight: canvas.height,
+      });
+      console.info("[PDF][4] jpeg data length", { pageIndex, length: imageData.length });
+      if (imageData.length <= 1_000) throw new Error("pdf_content_empty");
+
+      pages.push({
+        imageData,
+        width: pageWidth,
+        height: pageHeight,
+      });
       sourceY += sliceHeight;
     }
 
-    return pages.length ? pages : [dataUrlToBytes(canvas.toDataURL("image/jpeg", 0.92))];
+    if (!pages.length) throw new Error("pdf_content_empty");
+    return {
+      pages,
+      sourceWidth: image.naturalWidth,
+      sourceHeight: image.naturalHeight,
+    };
   } finally {
     URL.revokeObjectURL(objectUrl);
   }
@@ -352,27 +442,101 @@ async function createA4JpegPagesFromPngBlob(blob: Blob) {
 
 export async function createReportPdfBlob(report: HTMLElement) {
   try {
-    const pngBlob = await createReportPngBlob(report);
-    const jpegPages = await createA4JpegPagesFromPngBlob(pngBlob);
-    return makePdfFromJpegPages(jpegPages);
+    logReportStage("export_started", { output: "pdf" });
+    logReportStage("platform_detected");
+    const rasterBlob = await createReportPngBlob(report);
+    const raster = await createA4JpegPagesFromPngBlob(rasterBlob);
+    if (!raster.sourceWidth || !raster.sourceHeight || !raster.pages.length) {
+      throw new Error("pdf_content_empty");
+    }
+
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+      compress: true,
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    raster.pages.forEach((page, pageIndex) => {
+      if (!page.width || !page.height || page.imageData.length <= 1_000) {
+        throw new Error("pdf_content_empty");
+      }
+      if (pageIndex > 0) pdf.addPage();
+      pdf.addImage(page.imageData, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
+      console.info("[PDF][5] page added", { pageIndex, pageWidth, pageHeight });
+    });
+
+    const pagesCount = pdf.getNumberOfPages();
+    console.info("[PDF][6] pdf pages count", { pages: pagesCount });
+    if (!pagesCount) throw new Error("pdf_content_empty");
+
+    const pdfArrayBuffer = pdf.output("arraybuffer");
+    const pdfBytes = new Uint8Array(pdfArrayBuffer);
+    const headerBytes = new TextDecoder("ascii").decode(pdfBytes.slice(0, 8));
+    const pdfBlob = new Blob([pdfArrayBuffer], { type: "application/pdf" });
+    console.info("[PDF][7] pdf blob size", { size: pdfBlob.size });
+    console.info("[PDF][8] pdf header bytes", { headerBytes });
+
+    if (
+      !headerBytes.startsWith("%PDF-") ||
+      pdfBlob.type !== "application/pdf" ||
+      pdfBlob.size <= 10 * 1024
+    ) {
+      throw new Error("pdf_content_empty");
+    }
+
+    logReportStage("pdf_data_created", { pages: raster.pages.length, size: pdfBlob.size });
+    return pdfBlob;
   } catch (error) {
-    logReportExportError("PDF", error);
+    logReportExportError("pdf_generation_failed", error);
     throw error;
   }
 }
 
 async function shareNativeFile(input: ShareFileInput) {
-  let writtenFile: { uri: string };
+  let nativeUri: string;
 
   try {
     const base64 = await blobToBase64(input.blob);
-    writtenFile = await Filesystem.writeFile({
+    await Filesystem.writeFile({
       path: input.fileName,
       data: base64,
       directory: Directory.Cache,
+      recursive: true,
+    });
+    logReportStage("file_written", {
+      path: input.fileName,
+      directory: Directory.Cache,
+      size: input.blob.size,
+      mimeType: input.mimeType,
     });
   } catch (error) {
-    logReportExportError("Filesystem", error);
+    logReportExportError("file_write_failed", error, {
+      path: input.fileName,
+      directory: Directory.Cache,
+    });
+    throw error;
+  }
+
+  try {
+    const uriResult = await Filesystem.getUri({
+      path: input.fileName,
+      directory: Directory.Cache,
+    });
+    nativeUri = uriResult.uri;
+    logReportStage("native_uri_resolved", {
+      path: input.fileName,
+      directory: Directory.Cache,
+      uri: nativeUri,
+    });
+  } catch (error) {
+    logReportExportError("file_uri_failed", error, {
+      path: input.fileName,
+      directory: Directory.Cache,
+    });
     throw error;
   }
 
@@ -380,11 +544,20 @@ async function shareNativeFile(input: ShareFileInput) {
     await Share.share({
       title: input.title,
       text: input.text,
-      files: [writtenFile.uri],
+      files: [nativeUri],
       dialogTitle: input.dialogTitle,
     });
+    logReportStage("share_sheet_opened", {
+      path: input.fileName,
+      uri: nativeUri,
+      action: input.action,
+    });
   } catch (error) {
-    logReportExportError("Native Share", error);
+    logReportExportError("native_share_failed", error, {
+      path: input.fileName,
+      uri: nativeUri,
+      action: input.action,
+    });
     throw error;
   }
 }
@@ -412,7 +585,7 @@ export async function shareOrDownloadFile(input: ShareFileInput) {
       await navigator.share(shareData);
       return;
     } catch (error) {
-      logReportExportError("Web Share", error);
+      logReportExportError("web_share_failed", error);
       throw error;
     }
   }
@@ -420,7 +593,7 @@ export async function shareOrDownloadFile(input: ShareFileInput) {
   try {
     downloadBlob(input.blob, input.fileName);
   } catch (error) {
-    logReportExportError("Download", error);
+    logReportExportError("download_failed", error);
     throw error;
   }
 }
