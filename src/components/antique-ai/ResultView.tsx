@@ -1840,10 +1840,64 @@ useEffect(() => {
           position: fixed;
           left: -10000px;
           top: 0;
-          width: 1080px;
+          width: 794px;
+          min-width: 794px;
+          max-width: 794px;
           height: auto;
+          box-sizing: border-box;
+          background: #ffffff;
           overflow: visible;
+          opacity: 1;
+          visibility: visible;
           pointer-events: none;
+        }
+
+        .report-print-area .antique-report-document,
+        .report-print-area .report-page {
+          width: 794px !important;
+          min-width: 794px !important;
+          max-width: 794px !important;
+          margin: 0 !important;
+          overflow: visible !important;
+          transform: none !important;
+        }
+
+        .report-print-area .report-page {
+          height: auto !important;
+          min-height: 0 !important;
+        }
+
+        .report-print-area .report-page > .relative {
+          height: auto !important;
+          min-height: 0 !important;
+          padding-bottom: 0 !important;
+        }
+
+        .report-print-area .report-page footer,
+        .report-print-area .report-page > .relative > div:last-child {
+          position: static !important;
+          margin-top: 18px !important;
+        }
+
+        .report-print-area .antique-report-document *,
+        .report-print-area .report-page * {
+          box-sizing: border-box;
+          min-width: 0;
+        }
+
+        .report-print-area img {
+          max-width: 100% !important;
+          height: auto;
+        }
+
+        .report-print-area h1,
+        .report-print-area h2,
+        .report-print-area h3,
+        .report-print-area p,
+        .report-print-area span {
+          max-width: 100%;
+          overflow-wrap: anywhere;
+          word-break: break-word;
         }
 
         @media print {

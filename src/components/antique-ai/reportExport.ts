@@ -273,6 +273,7 @@ async function waitForReportAssets(report: HTMLElement) {
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
   const rect = report.getBoundingClientRect();
+  const computedStyle = getComputedStyle(report);
   const textLength = report.innerText.trim().length;
   const domDetails = {
     width: rect.width,
@@ -281,6 +282,17 @@ async function waitForReportAssets(report: HTMLElement) {
     scrollHeight: report.scrollHeight,
     textLength,
   };
+
+  console.info("[REPORT_LAYOUT]", {
+    rectWidth: rect.width,
+    rectHeight: rect.height,
+    scrollWidth: report.scrollWidth,
+    scrollHeight: report.scrollHeight,
+    direction: computedStyle.direction,
+    fontFamily: computedStyle.fontFamily,
+    devicePixelRatio: window.devicePixelRatio,
+  });
+  console.info("[REPORT_FONT]", computedStyle.fontFamily);
 
   if (!rect.width || !rect.height || !report.scrollWidth || !report.scrollHeight || !textLength) {
     logReportExportError("report_dom_not_found", new Error("Report export DOM has zero size"), domDetails);
@@ -301,10 +313,10 @@ async function waitForReportAssets(report: HTMLElement) {
 }
 
 function getReportRasterSize(report: HTMLElement) {
-  const width = Math.max(794, report.scrollWidth || 794);
-  const height = Math.max(report.scrollHeight, report.offsetHeight, 1123);
+  const width = report.scrollWidth || report.offsetWidth;
+  const height = report.scrollHeight || report.offsetHeight;
   const isNative = Capacitor.isNativePlatform();
-  const pixelRatio = isNative ? Math.min(1.5, Math.max(1, 1080 / width)) : Math.max(2, 1080 / width);
+  const pixelRatio = isNative ? 1.5 : 2;
 
   return { width, height, pixelRatio };
 }
@@ -337,13 +349,20 @@ async function createReportImageBlob(report: HTMLElement, imageType: "jpeg" | "p
     };
 
     if (imageType === "jpeg") {
-      const dataUrl = await toJpeg(report, { ...options, quality: 0.9 });
+      const dataUrl = await toJpeg(report, { ...options, quality: 0.97 });
       blob = new Blob([dataUrlToBytes(dataUrl)], { type: "image/jpeg" });
     } else {
       blob = await toBlob(report, options);
     }
 
     logReportStage("canvas_created", { width, height, pixelRatio, type: blob?.type });
+    console.info("[REPORT_QUALITY]", {
+      scale: pixelRatio,
+      canvasWidth: Math.round(width * pixelRatio),
+      canvasHeight: Math.round(height * pixelRatio),
+      imageMime: blob?.type,
+      imageDataLength: blob?.size,
+    });
   } catch (error) {
     logReportExportError("canvas_failed", error, { width, height, pixelRatio });
     throw error;
@@ -374,13 +393,6 @@ async function createA4JpegPagesFromPngBlob(blob: Blob) {
     const pageHeight = Math.round(pageWidth * A4_RATIO);
     const scale = image.naturalWidth ? pageWidth / image.naturalWidth : 1;
     const sourcePageHeight = Math.floor(pageHeight / scale);
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("Unable to create PDF canvas");
-
-    canvas.width = pageWidth;
-    canvas.height = pageHeight;
-
     const pages: PdfJpegPage[] = [];
     let sourceY = 0;
     const sliceCount = Math.ceil(image.naturalHeight / sourcePageHeight);
@@ -395,10 +407,16 @@ async function createA4JpegPagesFromPngBlob(blob: Blob) {
       const pageIndex = pages.length;
       const sliceHeight = Math.min(sourcePageHeight, image.naturalHeight - sourceY);
       const renderedHeight = Math.max(1, Math.round(sliceHeight * scale));
-      if (!canvas.width || !canvas.height || !sliceHeight) throw new Error("pdf_content_empty");
+      const pageCanvas = document.createElement("canvas");
+      pageCanvas.width = pageWidth;
+      pageCanvas.height = renderedHeight;
+      const context = pageCanvas.getContext("2d");
+      if (!context || !pageCanvas.width || !pageCanvas.height || !sliceHeight) {
+        throw new Error("pdf_content_empty");
+      }
 
       context.fillStyle = "#f7f0e6";
-      context.fillRect(0, 0, pageWidth, pageHeight);
+      context.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
       context.drawImage(
         image,
         0,
@@ -410,21 +428,21 @@ async function createA4JpegPagesFromPngBlob(blob: Blob) {
         pageWidth,
         renderedHeight,
       );
-      const imageData = canvas.toDataURL("image/jpeg", 0.92);
+      const imageData = pageCanvas.toDataURL("image/jpeg", 0.95);
       console.info("[PDF][3] slice dimensions", {
         pageIndex,
         sourceWidth: image.naturalWidth,
         sourceHeight: sliceHeight,
-        canvasWidth: canvas.width,
-        canvasHeight: canvas.height,
+        canvasWidth: pageCanvas.width,
+        canvasHeight: pageCanvas.height,
       });
       console.info("[PDF][4] jpeg data length", { pageIndex, length: imageData.length });
       if (imageData.length <= 1_000) throw new Error("pdf_content_empty");
 
       pages.push({
         imageData,
-        width: pageWidth,
-        height: pageHeight,
+        width: pageCanvas.width,
+        height: pageCanvas.height,
       });
       sourceY += sliceHeight;
     }
@@ -465,8 +483,9 @@ export async function createReportPdfBlob(report: HTMLElement) {
         throw new Error("pdf_content_empty");
       }
       if (pageIndex > 0) pdf.addPage();
-      pdf.addImage(page.imageData, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST");
-      console.info("[PDF][5] page added", { pageIndex, pageWidth, pageHeight });
+      const imageHeight = Math.min(pageHeight, (page.height * pageWidth) / page.width);
+      pdf.addImage(page.imageData, "JPEG", 0, 0, pageWidth, imageHeight, undefined, "FAST");
+      console.info("[PDF][5] page added", { pageIndex, pageWidth, imageHeight });
     });
 
     const pagesCount = pdf.getNumberOfPages();
