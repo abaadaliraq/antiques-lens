@@ -3,6 +3,7 @@
 import {
   BadgeCheck,
   AlertTriangle,
+  BellRing,
   Check,
   ChevronDown,
   Cookie,
@@ -11,6 +12,7 @@ import {
   FileText,
   Globe2,
   LifeBuoy,
+  Loader2,
   LogOut,
   Mail,
   MapPin,
@@ -344,6 +346,11 @@ export default function UserMenu({
   const [supportOpen, setSupportOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [adminPushOpen, setAdminPushOpen] = useState(false);
+  const [adminPushReady, setAdminPushReady] = useState(false);
+  const [adminPushChecking, setAdminPushChecking] = useState(false);
+  const [adminPushSending, setAdminPushSending] = useState(false);
+  const [adminPushMessage, setAdminPushMessage] = useState("");
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -426,6 +433,41 @@ const panelRef = useRef<HTMLDivElement | null>(null);
       unsubscribe?.();
     };
   }, []);
+
+  useEffect(() => {
+    if (!isOpen || adminPushReady || adminPushChecking) return;
+
+    let cancelled = false;
+
+    async function checkAdminPushAccess() {
+      setAdminPushChecking(true);
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const { data } = await supabase.auth.getSession();
+        const accessToken = data.session?.access_token;
+
+        if (!accessToken) return;
+
+        const response = await fetch("/api/admin/push/send", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        if (!cancelled && response.ok) {
+          setAdminPushReady(true);
+        }
+      } catch {
+        if (!cancelled) setAdminPushReady(false);
+      } finally {
+        if (!cancelled) setAdminPushChecking(false);
+      }
+    }
+
+    void checkAdminPushAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [adminPushChecking, adminPushReady, isOpen]);
 
   useEffect(() => {
     let mounted = true;
@@ -660,13 +702,72 @@ const panelRef = useRef<HTMLDivElement | null>(null);
 
 
 
-  function openPanel(panel: "support" | "plans" | "delete") {
+  async function handleSendReminderPush({ dryRun }: { dryRun: boolean }) {
+    if (adminPushSending) return;
+
+    setAdminPushSending(true);
+    setAdminPushMessage("");
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { data, error } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+
+      if (error || !accessToken) {
+        throw new Error("No active admin session.");
+      }
+
+      const response = await fetch("/api/admin/push/send", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          audience: "all",
+          kind: "reminder",
+          route: "/",
+          dryRun,
+          title: {
+            ar: "تذكير من KISHIB",
+            en: "KISHIB reminder",
+          },
+          body: {
+            ar: "افتح KISHIB وقيّم قطعة جديدة من مجموعتك.",
+            en: "Open KISHIB and evaluate a new piece from your collection.",
+          },
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(typeof payload?.error === "string" ? payload.error : "Push send failed.");
+      }
+
+      if (dryRun) {
+        setAdminPushMessage(`Ready to send to ${payload.targetCount ?? 0} active device tokens.`);
+      } else {
+        setAdminPushMessage(
+          `Sent: ${payload.successCount ?? 0}. Failed: ${payload.failureCount ?? 0}. Invalidated: ${payload.invalidated ?? 0}.`,
+        );
+      }
+    } catch (error) {
+      console.error("admin push error:", error);
+      setAdminPushMessage("Push reminder failed. Check server credentials and Vercel logs.");
+    } finally {
+      setAdminPushSending(false);
+    }
+  }
+
+  function openPanel(panel: "support" | "plans" | "delete" | "adminPush") {
     setLanguageOpen(false);
     setSupportOpen(panel === "support");
     setPlansOpen(panel === "plans");
     setDeleteOpen(panel === "delete");
+    setAdminPushOpen(panel === "adminPush");
     setDeleteConfirmation("");
     setDeleteError("");
+    if (panel !== "adminPush") setAdminPushMessage("");
   }
 
   function openKishibWebsite() {
@@ -957,6 +1058,17 @@ const panelRef = useRef<HTMLDivElement | null>(null);
 
               <PushNotificationSettings locale={locale} />
 
+              {adminPushReady ? (
+                <div className="mt-2 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/55 p-1.5">
+                  <MenuButton
+                    icon={<BellRing className="h-4 w-4" />}
+                    label="Admin reminders"
+                    value="Push"
+                    onClick={() => openPanel("adminPush")}
+                  />
+                </div>
+              ) : null}
+
               <div className="mt-2 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/55 p-1.5">
                 <MenuButton
                   icon={<Crown className="h-4 w-4" />}
@@ -1085,6 +1197,50 @@ const panelRef = useRef<HTMLDivElement | null>(null);
                     copy={copy}
                     features={planFeatures.reports}
                   />
+                </div>
+              </MenuModal>
+            ) : null}
+
+            {adminPushOpen ? (
+              <MenuModal title="Admin reminders" closeLabel={copy.close} onClose={() => setAdminPushOpen(false)}>
+                <div className="rounded-[14px] border border-[#d2b98f] bg-[#fffaf0] p-3">
+                  <div className="flex items-start gap-2">
+                    <BellRing className="mt-0.5 h-4 w-4 shrink-0 text-[#986f2e]" />
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-bold text-[#241913]">
+                        Send KISHIB usage reminder
+                      </p>
+                      <p className="mt-1 text-[11.5px] leading-5 text-[#735f4b]">
+                        Sends to active saved Android FCM tokens. Use preview first before sending.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {adminPushMessage ? (
+                  <p className="mt-2 rounded-[10px] bg-[#efe3cf]/75 px-3 py-2 text-[11px] font-semibold text-[#735f4b]">
+                    {adminPushMessage}
+                  </p>
+                ) : null}
+
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleSendReminderPush({ dryRun: true })}
+                    disabled={adminPushSending}
+                    className="h-10 flex-1 rounded-[11px] border border-[#d2b98f] px-3 text-[11.5px] font-semibold text-[#735f4b] transition hover:bg-[#efe3cf] disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {adminPushSending ? "Checking..." : "Preview"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleSendReminderPush({ dryRun: false })}
+                    disabled={adminPushSending}
+                    className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-[11px] bg-[#6d241d] px-3 text-[11.5px] font-semibold text-[#fff4e2] transition hover:bg-[#7d2d23] disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {adminPushSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                    <span>{adminPushSending ? "Sending..." : "Send"}</span>
+                  </button>
                 </div>
               </MenuModal>
             ) : null}

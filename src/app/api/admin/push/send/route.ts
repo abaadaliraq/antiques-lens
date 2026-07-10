@@ -3,17 +3,36 @@ import { getMessaging } from "firebase-admin/messaging";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+
 type Localized = string | Record<string, string>;
 type SendBody = {
   title?: Localized; body?: Localized; route?: string; link?: string;
   audience?: "all" | "locale" | "country" | "user" | "paid" | "free";
   locale?: string; country?: string; userId?: string; kind?: string;
+  dryRun?: boolean;
 };
+type PushTokenRow = {
+  id: string;
+  token: string;
+  user_id: string;
+  locale: string | null;
+};
+
 const SAFE_ROUTE = /^\/(?:archive|notifications|subscription|result\/[A-Za-z0-9_-]+)\/?$/;
+const ADMIN_PUSH_SECRET_HEADER = "x-kishib-admin-push-secret";
 const INVALID_CODES = new Set([
   "messaging/invalid-registration-token",
   "messaging/registration-token-not-registered",
 ]);
+const DEFAULT_REMINDER_TITLE: Localized = {
+  ar: "تذكير من KISHIB",
+  en: "KISHIB reminder",
+};
+const DEFAULT_REMINDER_BODY: Localized = {
+  ar: "افتح KISHIB وقيّم قطعة جديدة من مجموعتك.",
+  en: "Open KISHIB and evaluate a new piece from your collection.",
+};
 
 function localized(value: Localized | undefined, locale?: string) {
   if (typeof value === "string") return value.trim();
@@ -37,20 +56,73 @@ function messaging() {
   return getMessaging();
 }
 
+async function requireAdmin(request: Request) {
+  const configuredSecret = process.env.KISHIB_ADMIN_PUSH_SECRET?.trim();
+  const providedSecret = request.headers.get(ADMIN_PUSH_SECRET_HEADER)?.trim();
+  if (configuredSecret && providedSecret && providedSecret === configuredSecret) {
+    return { supabase: adminClient(), user: null };
+  }
+
+  const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  if (!bearer) return { error: "auth_required" as const, status: 401 as const };
+
+  const supabase = adminClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser(bearer);
+
+  if (error || !user) return { error: "auth_required" as const, status: 401 as const };
+
+  const adminEmails = (process.env.KISHIB_ADMIN_EMAILS || "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  const isAdmin =
+    user.app_metadata?.role === "admin" ||
+    user.app_metadata?.kishib_admin === true ||
+    user.user_metadata?.kishib_admin === true ||
+    Boolean(user.email && adminEmails.includes(user.email.toLowerCase()));
+
+  if (!isAdmin) return { error: "forbidden" as const, status: 403 as const };
+
+  return { supabase, user };
+}
+
+export async function GET(request: Request) {
+  try {
+    const auth = await requireAdmin(request);
+    if ("error" in auth) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("[PUSH][FAILED] admin check", error);
+    return NextResponse.json({ ok: false, error: "admin_check_failed" }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
-    const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-    if (!bearer) return NextResponse.json({ error: "auth_required" }, { status: 401 });
-    const supabase = adminClient();
-    const { data: { user } } = await supabase.auth.getUser(bearer);
-    const adminEmails = (process.env.KISHIB_ADMIN_EMAILS || "").split(",")
-      .map((item) => item.trim().toLowerCase()).filter(Boolean);
-    const isAdmin = user?.app_metadata?.role === "admin" ||
-      Boolean(user?.email && adminEmails.includes(user.email.toLowerCase()));
-    if (!user || !isAdmin) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    const auth = await requireAdmin(request);
+    if ("error" in auth) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
+    }
+    const { supabase } = auth;
 
     const input = (await request.json()) as SendBody;
     const audience = input.audience || "all";
+    if (audience === "locale" && !input.locale) {
+      return NextResponse.json({ error: "locale_required" }, { status: 400 });
+    }
+    if (audience === "country" && !input.country) {
+      return NextResponse.json({ error: "country_required" }, { status: 400 });
+    }
+    if (audience === "user" && !input.userId) {
+      return NextResponse.json({ error: "user_required" }, { status: 400 });
+    }
+
     let query = supabase.from("push_tokens").select("id,token,user_id,locale").eq("active", true);
     if (audience === "locale" && input.locale) query = query.eq("locale", input.locale);
     if (audience === "country" && input.country) query = query.eq("country", input.country);
@@ -59,7 +131,7 @@ export async function POST(request: Request) {
     if (input.kind === "evaluation") query = query.eq("evaluations_enabled", true);
     const { data, error } = await query;
     if (error) throw error;
-    let rows = data || [];
+    let rows = (data || []) as PushTokenRow[];
 
     if (audience === "paid" || audience === "free") {
       const { data: usage } = await supabase.from("user_usage_limits")
@@ -74,14 +146,28 @@ export async function POST(request: Request) {
     const unique = [...new Map(rows.map((row) => [row.token, row])).values()];
     const candidate = input.route || input.link || "";
     const route = SAFE_ROUTE.test(candidate) ? candidate : "/";
+    const title = input.title || DEFAULT_REMINDER_TITLE;
+    const body = input.body || DEFAULT_REMINDER_BODY;
+    const kind = input.kind || "reminder";
+
+    if (input.dryRun) {
+      return NextResponse.json({
+        ok: true,
+        dryRun: true,
+        targetCount: unique.length,
+        route,
+        kind,
+      });
+    }
+
     let successCount = 0, failureCount = 0;
     const invalidIds: string[] = [];
     for (let offset = 0; offset < unique.length; offset += 500) {
       const batch = unique.slice(offset, offset + 500);
       const response = await messaging().sendEach(batch.map((row) => ({
         token: row.token,
-        notification: { title: localized(input.title, row.locale) || "KISHIB", body: localized(input.body, row.locale) },
-        data: { route, kind: input.kind || "info" },
+        notification: { title: localized(title, row.locale || undefined) || "KISHIB", body: localized(body, row.locale || undefined) },
+        data: { route, kind },
         android: { priority: "high", notification: { channelId: "kishib_general" } },
       })));
       successCount += response.successCount; failureCount += response.failureCount;
