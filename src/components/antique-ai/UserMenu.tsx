@@ -43,6 +43,8 @@ import {
 } from "@/lib/locationOptions";
 import { getDefaultProfileAvatar, getProfileAvatarUrl } from "./profileAvatar";
 import type { Locale } from "./types";
+import PushNotificationSettings from "./PushNotificationSettings";
+import { deactivateCurrentPushTokens } from "@/lib/pushNotifications";
 
 type UserMenuProps = {
   locale: Locale;
@@ -473,6 +475,7 @@ const panelRef = useRef<HTMLDivElement | null>(null);
   async function handleLogout() {
     const userId = profileInfo?.userId;
     const supabase = getSupabaseBrowserClient();
+    await deactivateCurrentPushTokens();
     await supabase.auth.signOut();
     clearLocalAccountData(userId);
     window.location.reload();
@@ -951,6 +954,8 @@ const panelRef = useRef<HTMLDivElement | null>(null);
                   ) : null}
                 </div>
               ) : null}
+
+              <PushNotificationSettings locale={locale} />
 
               <div className="mt-2 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/55 p-1.5">
                 <MenuButton

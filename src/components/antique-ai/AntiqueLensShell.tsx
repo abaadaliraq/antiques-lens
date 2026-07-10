@@ -28,6 +28,7 @@ import {
   type UserProfile,
 } from "@/lib/profilesSupabase";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
+import { initializePushNotifications } from "@/lib/pushNotifications";
 import {
   SUPPORTED_LOCALES as SUPPORTED_AUTH_LOCALES,
   isRtlLocale,
@@ -528,6 +529,11 @@ export default function AntiqueLensShell() {
     currentPage,
     deviceLocale: String(lens.locale),
   });
+
+  useEffect(() => {
+    if (!hasSession) return;
+    void initializePushNotifications(String(lens.locale));
+  }, [hasSession, lens.locale]);
 
   if (!authReady) {
     return (

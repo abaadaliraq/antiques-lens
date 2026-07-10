@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "465831746824",
+    "project_id": "kishib",
+    "storage_bucket": "kishib.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:465831746824:android:4ed1c4bdb55a0f859160bd",
+        "android_client_info": {
+          "package_name": "com.kishib.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAHbP_pvsa76s7bWrPER713fX25_udXhDY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
