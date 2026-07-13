@@ -4,6 +4,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { getCurrentUserProfile } from "@/lib/profilesSupabase";
 import type { ArchiveItem } from "@/components/antique-ai/archiveStore";
 import type { AnalysisResult, Locale } from "@/components/antique-ai/types";
+import { normalizeEvaluationImages } from "@/components/antique-ai/evaluationImages";
 
 export const EVALUATION_ARCHIVE_PAGE_SIZE = 20;
 
@@ -87,25 +88,8 @@ function getResultImageUrl(result: Partial<AnalysisResult>, fallback?: string) {
   );
 }
 
-function uniqueImageUrls(values: Array<string | undefined | null>) {
-  return values.filter((value, index, list): value is string =>
-    typeof value === "string" &&
-    value.trim().length > 0 &&
-    list.indexOf(value) === index,
-  );
-}
-
 function getResultImageUrls(result: Partial<AnalysisResult>, fallback?: string) {
-  return uniqueImageUrls([
-    fallback,
-    ...(Array.isArray(result.originalImages) ? result.originalImages : []),
-    ...(Array.isArray(result.imagePreviews) ? result.imagePreviews : []),
-    result.originalImage,
-    result.uploadedImageUrl,
-    result.sourceImageUrl,
-    result.imageUrl,
-    result.imagePreview,
-  ]);
+  return normalizeEvaluationImages(result, [fallback]);
 }
 
 function mapEvaluationRowToArchiveItem(row: EvaluationRow): ArchiveItem {

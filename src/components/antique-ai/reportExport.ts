@@ -6,9 +6,8 @@ import { Share } from "@capacitor/share";
 import { toBlob, toJpeg } from "html-to-image";
 import { jsPDF } from "jspdf";
 
-const A4_WIDTH_PT = 595.28;
-const A4_HEIGHT_PT = 841.89;
-const A4_RATIO = A4_HEIGHT_PT / A4_WIDTH_PT;
+const STORY_REPORT_WIDTH = 1080;
+const STORY_REPORT_HEIGHT = 1920;
 
 type ShareFileInput = {
   blob: Blob;
@@ -389,7 +388,7 @@ export async function createShareImageBlob(report: HTMLElement) {
   );
 }
 
-async function createA4JpegPagesFromPngBlob(blob: Blob) {
+async function createStoryJpegPagesFromBlob(blob: Blob) {
   const image = new Image();
   image.decoding = "async";
   const objectUrl = URL.createObjectURL(blob);
@@ -401,8 +400,8 @@ async function createA4JpegPagesFromPngBlob(blob: Blob) {
       image.src = objectUrl;
     });
 
-    const pageWidth = 1240;
-    const pageHeight = Math.round(pageWidth * A4_RATIO);
+    const pageWidth = STORY_REPORT_WIDTH;
+    const pageHeight = STORY_REPORT_HEIGHT;
     const scale = image.naturalWidth ? pageWidth / image.naturalWidth : 1;
     const sourcePageHeight = Math.floor(pageHeight / scale);
     const pages: PdfJpegPage[] = [];
@@ -475,15 +474,15 @@ export async function createReportPdfBlob(report: HTMLElement) {
     logReportStage("export_started", { output: "pdf" });
     logReportStage("platform_detected");
     const rasterBlob = await createReportPngBlob(report);
-    const raster = await createA4JpegPagesFromPngBlob(rasterBlob);
+    const raster = await createStoryJpegPagesFromBlob(rasterBlob);
     if (!raster.sourceWidth || !raster.sourceHeight || !raster.pages.length) {
       throw new Error("pdf_content_empty");
     }
 
     const pdf = new jsPDF({
       orientation: "portrait",
-      unit: "mm",
-      format: "a4",
+      unit: "px",
+      format: [STORY_REPORT_WIDTH, STORY_REPORT_HEIGHT],
       compress: true,
     });
 

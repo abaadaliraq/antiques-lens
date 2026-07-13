@@ -12,10 +12,8 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { AnalysisResult, Locale, SimilarImageResult } from "./types";
-import AntiqueReportDocument, {
-  PostShareTemplate,
-  StoryShareTemplate,
-} from "./AntiqueReportDocument";
+import AntiqueReportDocument from "./AntiqueReportDocument";
+import { normalizeEvaluationImages } from "./evaluationImages";
 import ValuationRangeCard from "./ValuationRangeCard";
 type ResultLabels = {
   result: string;
@@ -191,7 +189,7 @@ function getReportLabels(locale: Locale) {
     return {
       eyebrow: "Report",
       title: "Printable evaluation",
-      hint: "Open the A4 report only when you need PDF export or printing.",
+      hint: "Open the report only when you need PDF export or printing.",
       open: "Open report",
       print: "PDF / Print",
       close: "Close",
@@ -204,7 +202,7 @@ function getReportLabels(locale: Locale) {
     return {
       eyebrow: "Rapport",
       title: "Évaluation imprimable",
-      hint: "Ouvrez le rapport A4 uniquement pour l'export PDF ou l'impression.",
+      hint: "Ouvrez le rapport uniquement pour l'export PDF ou l'impression.",
       open: "Ouvrir",
       print: "PDF / Imprimer",
       close: "Fermer",
@@ -217,7 +215,7 @@ function getReportLabels(locale: Locale) {
     return {
       eyebrow: "ڕاپۆرت",
       title: "هەڵسەنگاندنی چاپکراو",
-      hint: "ڕاپۆرتی A4 تەنها بۆ PDF یان چاپ بکەرەوە.",
+      hint: "ڕاپۆرت تەنها بۆ PDF یان چاپ بکەرەوە.",
       open: "کردنەوە",
       print: "PDF / چاپ",
       close: "داخستن",
@@ -229,7 +227,7 @@ function getReportLabels(locale: Locale) {
   return {
     eyebrow: "التقرير",
     title: "تقرير تقييم قابل للطباعة",
-    hint: "افتح تقرير A4 فقط عند الحاجة للطباعة أو التصدير.",
+    hint: "افتح التقرير فقط عند الحاجة للطباعة أو التصدير.",
     open: "فتح التقرير",
     print: "PDF / طباعة",
     close: "إغلاق",
@@ -677,53 +675,19 @@ useEffect(() => {
   const sectionFallbackLabels = getResultSectionFallbackLabels(locale);
 
   const resultWithArchiveImages = result as AnalysisResult & {
+    imageUrl?: string;
+    imageUrls?: string[];
     imagePreview?: string;
     imagePreviews?: string[];
     originalImage?: string;
     originalImages?: string[];
     uploadedImageUrl?: string;
     sourceImageUrl?: string;
-    imageUrl?: string;
   };
-  const resultImagePreviews = Array.isArray(resultWithArchiveImages.imagePreviews)
-    ? resultWithArchiveImages.imagePreviews.filter(
-        (preview) => typeof preview === "string",
-      )
-    : [];
-  const resultImagePreview =
-    typeof resultWithArchiveImages.imagePreview === "string"
-      ? resultWithArchiveImages.imagePreview
-      : null;
-  const resultOriginalImages = Array.isArray(resultWithArchiveImages.originalImages)
-    ? resultWithArchiveImages.originalImages.filter(
-        (preview) => typeof preview === "string",
-      )
-    : [];
-  const resultStableImage =
-    typeof resultWithArchiveImages.originalImage === "string"
-      ? resultWithArchiveImages.originalImage
-      : typeof resultWithArchiveImages.uploadedImageUrl === "string"
-        ? resultWithArchiveImages.uploadedImageUrl
-        : typeof resultWithArchiveImages.sourceImageUrl === "string"
-          ? resultWithArchiveImages.sourceImageUrl
-          : typeof resultWithArchiveImages.imageUrl === "string"
-            ? resultWithArchiveImages.imageUrl
-            : null;
-
-  const rawGalleryImages = imagePreviews.length
-    ? imagePreviews
-    : imagePreview
-      ? [imagePreview]
-      : resultOriginalImages.length
-        ? resultOriginalImages
-        : resultStableImage
-          ? [resultStableImage]
-          : resultImagePreviews.length
-            ? resultImagePreviews
-            : resultImagePreview
-              ? [resultImagePreview]
-              : [];
-  const galleryImages = rawGalleryImages.filter(
+  const galleryImages = normalizeEvaluationImages(resultWithArchiveImages, [
+    ...(imagePreviews.length ? imagePreviews : []),
+    imagePreview,
+  ]).filter(
     (src) => !failedImageSources.has(src),
   );
 
@@ -1757,15 +1721,7 @@ useEffect(() => {
       </div>
 
       <div className="report-share-export-area">
-        <StoryShareTemplate
-          locale={locale}
-          result={result}
-          imageUrl={mainImage || undefined}
-          imageUrls={galleryImages}
-          reportId={reportId}
-          variant="print"
-        />
-        <PostShareTemplate
+        <AntiqueReportDocument
           locale={locale}
           result={result}
           imageUrl={mainImage || undefined}
@@ -2035,7 +1991,7 @@ body.kishib-report-open .kishib-app-chrome {
           }
 
           @page {
-            size: A4;
+            size: 1080px 1920px;
             margin: 0;
           }
         }

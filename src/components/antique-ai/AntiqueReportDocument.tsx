@@ -1,5 +1,7 @@
 ﻿"use client";
 
+import { normalizeEvaluationImages } from "./evaluationImages";
+
 type Locale = "ar" | "en" | "ku" | "fr" | "hi" | "fa" | "tr" | "ru" | "es";
 
 type ReportResult = {
@@ -473,6 +475,7 @@ function formatDate(locale: Locale, generatedAt?: string) {
   }).format(new Date());
 }
 
+/*
 function InfoBlock({
   label,
   value,
@@ -828,6 +831,7 @@ function ReportTextSection({ title, body }: { title: string; body?: string }) {
     </section>
   );
 }
+*/
 
 type ReportData = {
   labels: (typeof REPORT_LABELS)[Locale];
@@ -852,22 +856,17 @@ type ReportData = {
 };
 
 function normalizeReportImages(result: ReportResult, imageUrl?: string, imageUrls: string[] = []) {
-  return [
-    imageUrl,
-    ...imageUrls,
-    ...(Array.isArray((result as { originalImages?: string[] }).originalImages)
-      ? (result as { originalImages?: string[] }).originalImages || []
-      : []),
-    ...(Array.isArray((result as { imagePreviews?: string[] }).imagePreviews)
-      ? (result as { imagePreviews?: string[] }).imagePreviews || []
-      : []),
-    (result as { originalImage?: string }).originalImage,
-    (result as { imagePreview?: string }).imagePreview,
-    (result as { uploadedImageUrl?: string }).uploadedImageUrl,
-    (result as { sourceImageUrl?: string }).sourceImageUrl,
-    (result as { imageUrl?: string }).imageUrl,
-  ].filter((src, index, list): src is string =>
-    typeof src === "string" && src.trim().length > 0 && list.indexOf(src) === index,
+  return normalizeEvaluationImages(
+    result as ReportResult & {
+      imageUrl?: string;
+      imagePreview?: string;
+      imagePreviews?: string[];
+      originalImage?: string;
+      originalImages?: string[];
+      uploadedImageUrl?: string;
+      sourceImageUrl?: string;
+    },
+    [imageUrl, ...imageUrls],
   );
 }
 
@@ -907,6 +906,7 @@ function buildReportData({
   };
 }
 
+/*
 function ReportImageGallery({
   images,
   title,
@@ -954,6 +954,7 @@ function ReportImageGallery({
     </section>
   );
 }
+*/
 
 function ShareMetaPill({ label, value }: { label: string; value: string }) {
   if (!value) return null;
@@ -995,33 +996,31 @@ function ShareReportTemplate({
   imageUrls = [],
   reportId,
   generatedAt,
-  format,
-}: AntiqueReportDocumentProps & { format: "story" | "post" }) {
+}: AntiqueReportDocumentProps) {
   const data = buildReportData({ locale, result, imageUrl, imageUrls, reportId, generatedAt });
-  const isStory = format === "story";
   const summary = compactReportText(
     data.lookup || data.description || data.priceReasoning,
-    isStory ? 145 : 120,
+    180,
   );
+  const details = [
+    { title: data.labels.identification, body: data.lookup },
+    { title: data.labels.historicalContext, body: data.description },
+    { title: data.labels.authenticity, body: data.authenticity },
+    { title: data.labels.priceReasoning, body: data.priceReasoning },
+  ].filter((item) => item.body);
   const meta = [
     { label: data.labels.value, value: data.value },
     { label: data.labels.period, value: data.period },
     { label: data.labels.origin, value: data.origin },
     { label: data.labels.material, value: data.material },
-  ].filter((item) => item.value).slice(0, isStory ? 3 : 5);
+  ].filter((item) => item.value).slice(0, 4);
 
   return (
     <article
       dir={data.dir}
-      className={[
-        "kishib-share-template overflow-hidden bg-[#f4eadc] text-[#241913]",
-        isStory ? "report-share-story h-[1920px] w-[1080px]" : "report-share-post h-[1350px] w-[1080px]",
-      ].join(" ")}
+      className="antique-report-document kishib-share-template report-share-story h-[1920px] w-[1080px] overflow-hidden bg-[#f4eadc] text-[#241913]"
     >
-      <div className={[
-        "relative flex h-full w-full flex-col",
-        isStory ? "px-[72px] py-[96px]" : "px-[72px] py-[64px]",
-      ].join(" ")}>
+      <div className="relative flex h-full w-full flex-col px-[72px] py-[86px]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,#fffaf2_0%,rgba(255,255,255,0)_42%),linear-gradient(135deg,rgba(138,79,50,0.16),rgba(255,255,255,0)_38%)]" />
         <header className="relative z-10 flex items-center justify-between gap-6 border-b border-[#d2b98f]/70 pb-8">
           <div className="flex items-center gap-5">
@@ -1037,7 +1036,7 @@ function ShareReportTemplate({
         <section className="relative z-10 mt-8">
           <h2 className={[
             "line-clamp-3 break-words font-black leading-[1.08] text-[#1e1712]",
-            isStory ? "text-[66px]" : "text-[56px]",
+            "text-[64px]",
           ].join(" ")}>
             {data.title}
           </h2>
@@ -1046,7 +1045,7 @@ function ShareReportTemplate({
         <section className="relative z-10 mt-8">
           <div className={[
             "flex items-center justify-center rounded-[34px] border border-[#d2b98f] bg-[#efe3d2] p-5 shadow-[0_26px_70px_rgba(62,39,22,0.15)]",
-            isStory ? "h-[730px]" : "h-[470px]",
+            "h-[640px]",
           ].join(" ")}>
             {data.primaryImage ? (
               <img src={data.primaryImage} alt={data.title} className="max-h-full max-w-full rounded-[24px] object-contain" />
@@ -1056,29 +1055,34 @@ function ShareReportTemplate({
           </div>
         </section>
 
-        {isStory ? (
-          <div className="relative z-10 mt-5">
-            <ShareImageStrip images={data.images} alt={data.title} />
-          </div>
-        ) : null}
+        <div className="relative z-10 mt-5">
+          <ShareImageStrip images={data.images} alt={data.title} />
+        </div>
 
-        <section className={[
-          "relative z-10 grid gap-4",
-          isStory ? "mt-7 grid-cols-1" : "mt-7 grid-cols-2",
-        ].join(" ")}>
+        <section className="relative z-10 mt-7 grid grid-cols-2 gap-4">
           {meta.map((item) => (
             <ShareMetaPill key={item.label} label={item.label} value={item.value} />
           ))}
         </section>
 
         {summary ? (
-          <p className={[
-            "relative z-10 mt-7 break-words font-bold leading-[1.45] text-[#4d3d30]",
-            isStory ? "line-clamp-4 text-[34px]" : "line-clamp-3 text-[28px]",
-          ].join(" ")}>
+          <p className="relative z-10 mt-7 line-clamp-3 break-words text-[32px] font-bold leading-[1.45] text-[#4d3d30]">
             {summary}
           </p>
         ) : null}
+
+        <section className="relative z-10 mt-6 grid gap-4">
+          {details.slice(0, 3).map((item) => (
+            <div key={item.title} className="rounded-[20px] border border-[#d2b98f]/62 bg-[#fff8ec]/70 px-5 py-4">
+              <h3 className="text-[20px] font-black uppercase tracking-[0.12em] text-[#9a7441]">
+                {item.title}
+              </h3>
+              <p className="mt-2 line-clamp-3 break-words text-[25px] font-bold leading-[1.48] text-[#2a2119]">
+                {item.body}
+              </p>
+            </div>
+          ))}
+        </section>
 
         <footer className="relative z-10 mt-auto flex items-center justify-between border-t border-[#d2b98f]/70 pt-7">
           <span className="text-[24px] font-black uppercase tracking-[0.16em] text-[#8A4F32]">
@@ -1093,14 +1097,6 @@ function ShareReportTemplate({
   );
 }
 
-export function StoryShareTemplate(props: AntiqueReportDocumentProps) {
-  return <ShareReportTemplate {...props} format="story" />;
-}
-
-export function PostShareTemplate(props: AntiqueReportDocumentProps) {
-  return <ShareReportTemplate {...props} format="post" />;
-}
-
 export default function AntiqueReportDocument({
   locale,
   result,
@@ -1110,6 +1106,19 @@ export default function AntiqueReportDocument({
   generatedAt,
   variant = "preview",
 }: AntiqueReportDocumentProps) {
+  return (
+    <ShareReportTemplate
+      locale={locale}
+      result={result}
+      imageUrl={imageUrl}
+      imageUrls={imageUrls}
+      reportId={reportId}
+      generatedAt={generatedAt}
+      variant={variant}
+    />
+  );
+
+  /*
   const labels = repairLabels(REPORT_LABELS[locale] || REPORT_LABELS.ar);
   const safeInitialChecksCopy = getSafeInitialChecksReportCopy(locale);
   const dir = getDirection(locale);
@@ -1120,8 +1129,9 @@ export default function AntiqueReportDocument({
   const reportImages = normalizeReportImages(result, imageUrl, imageUrls);
   const primaryImage = reportImages[0];
   const cleanTitle = cleanReportText(result.title) || "KISHIB Evaluation";
+  const metalValue = result.metalValue;
   const showPreciousMetalEstimate =
-    result.metalValue?.metal === "gold" || result.metalValue?.metal === "silver";
+    metalValue?.metal === "gold" || metalValue?.metal === "silver";
   const reportText = {
     name: locale === "ar" ? "الاسم" : "Name",
     itemType: locale === "ar" ? "نوع القطعة" : "Object type",
@@ -1257,14 +1267,14 @@ export default function AntiqueReportDocument({
               body={result.disclaimer || getDefaultDisclaimer(locale)}
             />
 
-            {showPreciousMetalEstimate && result.metalValue ? (
+            {showPreciousMetalEstimate && metalValue ? (
               <section className="border-t border-[#dfcfb7] pt-5">
                 <h3 className="mb-3 text-[11px] font-black text-[#9a7441]">
                   {reportText.metalEstimate}
                 </h3>
-                {result.metalValue.scenarios?.length ? (
+                {metalValue!.scenarios?.length ? (
                   <div className="divide-y divide-[#dfcfb7] border-y border-[#dfcfb7]">
-                    {result.metalValue.scenarios.map((scenario) => (
+                    {metalValue!.scenarios!.map((scenario) => (
                       <div key={scenario.label} className="grid grid-cols-3 gap-4 py-3">
                         <ReportLine
                           label={reportText.weight}
@@ -1280,22 +1290,22 @@ export default function AntiqueReportDocument({
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-x-8 gap-y-4 border-y border-[#dfcfb7] py-3">
-                    <ReportLine label={reportText.itemType} value={result.metalValue.metal} />
+                    <ReportLine label={reportText.itemType} value={metalValue!.metal} />
                     <ReportLine
                       label={reportText.weight}
-                      value={result.metalValue.weightGrams ? `${result.metalValue.weightGrams}g` : undefined}
+                      value={metalValue!.weightGrams ? `${metalValue!.weightGrams}g` : undefined}
                     />
                     <ReportLine
                       label={reportText.rawValue}
-                      value={result.metalValue.meltValueUsdLow && result.metalValue.meltValueUsdHigh
-                        ? `$${result.metalValue.meltValueUsdLow} - $${result.metalValue.meltValueUsdHigh}`
+                      value={metalValue!.meltValueUsdLow && metalValue!.meltValueUsdHigh
+                        ? `$${metalValue!.meltValueUsdLow} - $${metalValue!.meltValueUsdHigh}`
                         : undefined}
                     />
                   </div>
                 )}
-                {result.metalValue.note ? (
+                {metalValue!.note ? (
                   <p className="mt-3 whitespace-pre-line break-words text-[10px] text-[#665442]">
-                    {cleanReportText(result.metalValue.note)}
+                    {cleanReportText(metalValue!.note)}
                   </p>
                 ) : null}
               </section>
@@ -1478,12 +1488,13 @@ export default function AntiqueReportDocument({
           }
 
           @page {
-            size: A4;
+            size: 1080px 1920px;
             margin: 0;
           }
         }
       `}</style>
     </article>
   );
+  */
 }
 
