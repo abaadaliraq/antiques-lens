@@ -202,7 +202,7 @@ function getHomeInteractionCopy(locale: Locale) {
     ar: {
       deleteConfirm: "هل تريد حذف هذه القطعة من الأرشيف؟",
       translating: "جاري ترجمة التقرير...",
-      archiveLoading: "جارٍ تحميل أرشيفك...",
+      archiveLoading: "تحميل المحفوظات",
       archiveRefreshing: "جارٍ تحديث الأرشيف...",
       archiveLoadMore: "تحميل المزيد",
       archiveLoadingMore: "جارٍ التحميل...",
@@ -211,7 +211,7 @@ function getHomeInteractionCopy(locale: Locale) {
     en: {
       deleteConfirm: "Delete this item from your collection?",
       translating: "Translating report...",
-      archiveLoading: "Loading your archive...",
+      archiveLoading: "Loading saved items",
       archiveRefreshing: "Refreshing archive...",
       archiveLoadMore: "Load more",
       archiveLoadingMore: "Loading...",
@@ -220,7 +220,7 @@ function getHomeInteractionCopy(locale: Locale) {
     ku: {
       deleteConfirm: "دەتەوێت ئەم پارچەیە لە کۆمەڵەکەت بسڕیتەوە؟",
       translating: "ڕاپۆرت وەردەگێڕدرێت...",
-      archiveLoading: "ئەرشیفەکەت بار دەکرێت...",
+      archiveLoading: "بارکردنی پاشەکەوتکراوەکان",
       archiveRefreshing: "ئەرشیف نوێ دەکرێتەوە...",
       archiveLoadMore: "زیاتر باربکە",
       archiveLoadingMore: "بارکردن...",
@@ -229,7 +229,7 @@ function getHomeInteractionCopy(locale: Locale) {
     fr: {
       deleteConfirm: "Supprimer cette pièce de votre collection ?",
       translating: "Traduction du rapport...",
-      archiveLoading: "Chargement de votre archive...",
+      archiveLoading: "Chargement des éléments enregistrés",
       archiveRefreshing: "Actualisation de l’archive...",
       archiveLoadMore: "Charger plus",
       archiveLoadingMore: "Chargement...",
@@ -238,7 +238,7 @@ function getHomeInteractionCopy(locale: Locale) {
     hi: {
       deleteConfirm: "क्या इस वस्तु को अपने संग्रह से हटाना चाहते हैं?",
       translating: "रिपोर्ट का अनुवाद हो रहा है...",
-      archiveLoading: "आपका संग्रह लोड हो रहा है...",
+      archiveLoading: "सहेजी गई वस्तुएँ लोड हो रही हैं",
       archiveRefreshing: "संग्रह रीफ़्रेश हो रहा है...",
       archiveLoadMore: "और लोड करें",
       archiveLoadingMore: "लोड हो रहा है...",
@@ -247,7 +247,7 @@ function getHomeInteractionCopy(locale: Locale) {
     fa: {
       deleteConfirm: "آیا می‌خواهید این قطعه را از مجموعه خود حذف کنید؟",
       translating: "در حال ترجمه گزارش...",
-      archiveLoading: "در حال بارگذاری آرشیو شما...",
+      archiveLoading: "بارگذاری موارد ذخیره‌شده",
       archiveRefreshing: "در حال به‌روزرسانی آرشیو...",
       archiveLoadMore: "بارگذاری بیشتر",
       archiveLoadingMore: "در حال بارگذاری...",
@@ -256,7 +256,7 @@ function getHomeInteractionCopy(locale: Locale) {
     tr: {
       deleteConfirm: "Bu parçayı koleksiyonunuzdan silmek istiyor musunuz?",
       translating: "Rapor çevriliyor...",
-      archiveLoading: "Arşiviniz yükleniyor...",
+      archiveLoading: "Kayıtlı öğeler yükleniyor",
       archiveRefreshing: "Arşiv yenileniyor...",
       archiveLoadMore: "Daha fazla yükle",
       archiveLoadingMore: "Yükleniyor...",
@@ -265,7 +265,7 @@ function getHomeInteractionCopy(locale: Locale) {
     ru: {
       deleteConfirm: "Удалить этот предмет из вашей коллекции?",
       translating: "Перевод отчета...",
-      archiveLoading: "Загрузка вашего архива...",
+      archiveLoading: "Загрузка сохранённых элементов",
       archiveRefreshing: "Обновление архива...",
       archiveLoadMore: "Загрузить ещё",
       archiveLoadingMore: "Загрузка...",
@@ -274,7 +274,7 @@ function getHomeInteractionCopy(locale: Locale) {
     es: {
       deleteConfirm: "¿Quieres eliminar esta pieza de tu colección?",
       translating: "Traduciendo el informe...",
-      archiveLoading: "Cargando tu archivo...",
+      archiveLoading: "Cargando elementos guardados",
       archiveRefreshing: "Actualizando el archivo...",
       archiveLoadMore: "Cargar más",
       archiveLoadingMore: "Cargando...",
@@ -1096,9 +1096,33 @@ function LatestCollection({
       </div>
 
       {isLoading ? (
-        <div className="rounded-[18px] border border-[#d2b98f] bg-[#fff4e2]/80 px-4 py-5 text-sm font-semibold text-[#735f4b] lg:max-w-md">
-          {archiveCopy.archiveLoading}
-        </div>
+        <>
+          <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-[#dcc18a]/24 bg-[#fff4e2]/28 px-3.5 py-2 text-[12px] font-medium text-[#dcc18a]/90 backdrop-blur-md lg:text-[13px]">
+            <span className="whitespace-nowrap leading-none">
+              {archiveCopy.archiveLoading}
+            </span>
+            <span
+              className="inline-flex items-center gap-1 text-[#f3d99b]/80"
+              aria-hidden="true"
+            >
+              <span className="h-1.5 w-1.5 animate-[kishibArchiveDot_1.65s_ease-in-out_infinite] rounded-full bg-current" />
+              <span className="h-1.5 w-1.5 animate-[kishibArchiveDot_1.65s_ease-in-out_infinite] rounded-full bg-current [animation-delay:0.22s]" />
+              <span className="h-1.5 w-1.5 animate-[kishibArchiveDot_1.65s_ease-in-out_infinite] rounded-full bg-current [animation-delay:0.44s]" />
+            </span>
+          </div>
+          <style>{`
+            @keyframes kishibArchiveDot {
+              0%, 70%, 100% {
+                opacity: 0.28;
+                transform: translateY(0);
+              }
+              35% {
+                opacity: 1;
+                transform: translateY(-1px);
+              }
+            }
+          `}</style>
+        </>
       ) : error ? (
         <div className="rounded-[18px] border border-[#a23b2a]/25 bg-[#fff2ed]/90 px-4 py-5 text-sm font-semibold text-[#8f2e24] lg:max-w-md">
           {error}
