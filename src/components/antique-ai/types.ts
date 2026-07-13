@@ -37,7 +37,9 @@ export type AnalysisResult = {
 
   itemType?: string;
   description?: string;
+  imageUrls?: string[];
   uploadedImageUrl?: string;
+  uploadedImageUrls?: string[];
   sourceImageUrl?: string;
   imageUrl?: string;
   imagePreview?: string;

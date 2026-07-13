@@ -8,6 +8,7 @@ import BottomBar from "@/components/antique-ai/BottomBar";
 import CompleteProfileModal from "@/components/antique-ai/CompleteProfileModal";
 import CookieBar from "@/components/antique-ai/CookieBar";
 import EvaluationComposer from "@/components/antique-ai/EvaluationComposer";
+import ExpertContactButton from "@/components/antique-ai/ExpertContactButton";
 import FollowUpEvaluationPanel from "@/components/antique-ai/FollowUpEvaluationPanel";
 import ThinkingMotion from "@/components/antique-ai/ThinkingMotion";
 import KishibLoader from "@/components/antique-ai/KishibLoader";
@@ -897,6 +898,8 @@ export default function AntiqueLensShell() {
 
           </>
         ) : null}
+
+        {!lens.result ? <ExpertContactButton locale={lens.locale} /> : null}
 
         {lens.isTranslatingResult && (
           <div className="fixed inset-x-0 top-20 z-50 mx-auto flex w-fit items-center gap-3 rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/92 px-5 py-3 text-[12px] font-medium text-[#735f4b] shadow-[0_16px_38px_rgba(62,39,22,0.12)] backdrop-blur-2xl">

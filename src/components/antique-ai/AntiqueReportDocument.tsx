@@ -86,6 +86,7 @@ type ReportResult = {
 type AntiqueReportDocumentProps = {
   locale: Locale;
   result: ReportResult;
+  reportImages?: string[];
   imageUrl?: string;
   imageUrls?: string[];
   reportId?: string;
@@ -856,32 +857,40 @@ type ReportData = {
 };
 
 function normalizeReportImages(result: ReportResult, imageUrl?: string, imageUrls: string[] = []) {
-  return normalizeEvaluationImages(
-    result as ReportResult & {
+  if (imageUrls.length > 0) return normalizeEvaluationImages({ imageUrls });
+
+  return normalizeEvaluationImages({
+    ...(result as ReportResult & {
       imageUrl?: string;
+      imageUrls?: string[];
+      uploadedImageUrls?: string[];
       imagePreview?: string;
       imagePreviews?: string[];
       originalImage?: string;
       originalImages?: string[];
       uploadedImageUrl?: string;
       sourceImageUrl?: string;
-    },
-    [imageUrl, ...imageUrls],
-  );
+    }),
+    imageUrl:
+      (result as { imageUrl?: string }).imageUrl || imageUrl,
+  });
 }
 
 function buildReportData({
   locale,
   result,
+  reportImages,
   imageUrl,
-  imageUrls,
+  imageUrls = [],
   reportId,
   generatedAt,
 }: AntiqueReportDocumentProps): ReportData {
   const labels = repairLabels(REPORT_LABELS[locale] || REPORT_LABELS.ar);
   const value = result.estimatedValue || result.priceRange || "";
   const description = result.history || result.description || "";
-  const images = normalizeReportImages(result, imageUrl, imageUrls);
+  const images = reportImages?.length
+    ? reportImages
+    : normalizeReportImages(result, imageUrl, imageUrls);
 
   return {
     labels,
@@ -992,12 +1001,13 @@ function ShareImageStrip({ images, alt }: { images: string[]; alt: string }) {
 function ShareReportTemplate({
   locale,
   result,
+  reportImages,
   imageUrl,
   imageUrls = [],
   reportId,
   generatedAt,
 }: AntiqueReportDocumentProps) {
-  const data = buildReportData({ locale, result, imageUrl, imageUrls, reportId, generatedAt });
+  const data = buildReportData({ locale, result, reportImages, imageUrl, imageUrls, reportId, generatedAt });
   const summary = compactReportText(
     data.lookup || data.description || data.priceReasoning,
     180,
@@ -1100,6 +1110,7 @@ function ShareReportTemplate({
 export default function AntiqueReportDocument({
   locale,
   result,
+  reportImages,
   imageUrl,
   imageUrls = [],
   reportId,
@@ -1110,6 +1121,7 @@ export default function AntiqueReportDocument({
     <ShareReportTemplate
       locale={locale}
       result={result}
+      reportImages={reportImages}
       imageUrl={imageUrl}
       imageUrls={imageUrls}
       reportId={reportId}

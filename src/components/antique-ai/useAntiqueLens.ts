@@ -46,6 +46,7 @@ import {
   type ArchiveItem,
 } from "./archiveStore";
 import { content, normalizeResult } from "./antiqueContent";
+import { normalizeEvaluationImages } from "./evaluationImages";
 import type {
   AnalysisResult,
   Locale,
@@ -1916,12 +1917,49 @@ if (finalSimilarImages.length > 0) {
 if (uploadedImageUrl) {
   finalResult = normalizeResult({
     ...finalResult,
+    imageUrls: uploadedImageUrls.length ? uploadedImageUrls : [uploadedImageUrl],
+    uploadedImageUrls,
     uploadedImageUrl,
     sourceImageUrl: uploadedImageUrl,
     imageUrl: uploadedImageUrl,
-    imagePreviews: uploadedImageUrls.length
-      ? uploadedImageUrls
-      : finalResult.imagePreviews,
+    imagePreview: undefined,
+    imagePreviews: undefined,
+    originalImage: undefined,
+    originalImages: undefined,
+  });
+}
+
+const finalImageUrls = normalizeEvaluationImages({
+  ...finalResult,
+  imageUrls: uploadedImageUrls.length ? uploadedImageUrls : finalResult.imageUrls,
+  uploadedImageUrls:
+    uploadedImageUrls.length ? uploadedImageUrls : finalResult.uploadedImageUrls,
+  imagePreview: uploadedImageUrls.length ? undefined : imagePreviews[0],
+  imagePreviews: uploadedImageUrls.length ? undefined : imagePreviews,
+});
+const primaryFinalImageUrl =
+  finalImageUrls[0] || uploadedImageUrl || finalResult.imageUrl || "";
+const hasRemoteResultImages = finalImageUrls.some((src) =>
+  /^https?:\/\//i.test(src),
+);
+
+if (finalImageUrls.length > 0) {
+  finalResult = normalizeResult({
+    ...finalResult,
+    imageUrls: finalImageUrls,
+    uploadedImageUrls:
+      uploadedImageUrls.length > 0 ? uploadedImageUrls : finalResult.uploadedImageUrls,
+    uploadedImageUrl: hasRemoteResultImages
+      ? primaryFinalImageUrl
+      : finalResult.uploadedImageUrl,
+    sourceImageUrl: hasRemoteResultImages
+      ? primaryFinalImageUrl
+      : finalResult.sourceImageUrl,
+    imageUrl: primaryFinalImageUrl,
+    imagePreview: hasRemoteResultImages ? undefined : finalResult.imagePreview,
+    imagePreviews: hasRemoteResultImages ? undefined : finalResult.imagePreviews,
+    originalImage: hasRemoteResultImages ? undefined : finalResult.originalImage,
+    originalImages: hasRemoteResultImages ? undefined : finalResult.originalImages,
   });
 }
 
@@ -1977,6 +2015,32 @@ const analyzedArchiveResult = finalResult as AnalysisResult & {
   itemName?: string;
   objectName?: string;
 };
+const archiveResultImageFields = hasRemoteResultImages
+  ? {
+      imageUrls: finalImageUrls,
+      uploadedImageUrls:
+        uploadedImageUrls.length > 0
+          ? uploadedImageUrls
+          : finalResult.uploadedImageUrls,
+      uploadedImageUrl: primaryFinalImageUrl,
+      sourceImageUrl: primaryFinalImageUrl,
+      imageUrl: primaryFinalImageUrl,
+      imagePreview: undefined,
+      imagePreviews: undefined,
+      originalImage: undefined,
+      originalImages: undefined,
+    }
+  : {
+      imageUrls: finalImageUrls,
+      uploadedImageUrls: finalResult.uploadedImageUrls,
+      uploadedImageUrl: finalResult.uploadedImageUrl,
+      sourceImageUrl: finalResult.sourceImageUrl,
+      imageUrl: finalResult.imageUrl,
+      imagePreview: stableImagePreview,
+      imagePreviews: stableImagePreviews,
+      originalImage,
+      originalImages: stableOriginalImages,
+    };
 const archiveItem: ArchiveItem = {
   id: crypto.randomUUID(),
   title:
@@ -1995,14 +2059,7 @@ const archiveItem: ArchiveItem = {
     ...finalResult,
     userNote: prompt || "",
     cloudinaryPublicId: cloudinaryPublicId || undefined,
-    uploadedImageUrl: uploadedImageUrl || finalResult.uploadedImageUrl,
-    uploadedImageUrls,
-    sourceImageUrl: uploadedImageUrl || finalResult.sourceImageUrl,
-    imageUrl: uploadedImageUrl || finalResult.imageUrl,
-    imagePreview: stableImagePreview,
-    imagePreviews: stableImagePreviews,
-    originalImage,
-    originalImages: stableOriginalImages,
+    ...archiveResultImageFields,
     similarImages: finalSimilarImages,
     similarItems: finalSimilarImages,
     visualMatches: finalSimilarImages,

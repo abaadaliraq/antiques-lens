@@ -1,157 +1,238 @@
-﻿"use client";
+"use client";
 
-import { BadgeCheck, LockKeyhole, X } from "lucide-react";
+import { Headset } from "lucide-react";
 import { useState } from "react";
 import type { Locale } from "./types";
 
-const EXPERT_CHAT_ENABLED = false;
-const EXPERT_WHATSAPP_URL = "https://wa.me/964777045599";
+const CONTACT_EMAIL = "contact@kishibapp.com";
+const RTL_LOCALES: Locale[] = ["ar", "ku", "fa"];
 
 type ExpertCopy = {
   button: string;
-  badge: string;
-  title: string;
-  text: string;
-  gotIt: string;
+  subject: string;
+  intro: string;
+  itemName: string;
+  reportId: string;
+  evaluatedAt: string;
+  reportLink: string;
+  attachPhotos: string;
+  emailCopied: string;
+  emailFallback: string;
 };
 
 const COPY: Record<Locale, ExpertCopy> = {
   ar: {
-    button: "خبير تقييم",
-    badge: "قريباً",
-    title: "تواصل مباشر مع خبير تقييم",
-    text: "هذه الخدمة ستكون متاحة قريباً ضمن اشتراك خاص للقطع الثمينة والتقييمات الاحترافية.",
-    gotIt: "فهمت",
+    button: "تواصل مع مختص",
+    subject: "استشارة حول تقييم قطعة في كيشيب",
+    intro: "مرحباً، أود استشارة مختص حول هذا التقييم في كيشيب.",
+    itemName: "اسم القطعة",
+    reportId: "رقم التقرير أو التقييم",
+    evaluatedAt: "تاريخ التقييم",
+    reportLink: "رابط التقرير أو التقييم",
+    attachPhotos: "يرجى إرفاق صور القطعة إذا لم تظهر تلقائياً مع هذه الرسالة.",
+    emailCopied: "تم نسخ بريد المختص.",
+    emailFallback: "يمكنك مراسلتنا على",
   },
   en: {
-    button: "Valuation Expert",
-    badge: "Soon",
-    title: "Direct Contact with a Valuation Expert",
-    text: "This service will be available soon as a special subscription for valuable items and professional evaluations.",
-    gotIt: "Got it",
+    button: "Contact a Specialist",
+    subject: "Consultation About a KISHIB Evaluation",
+    intro: "Hello, I would like to consult a specialist about this KISHIB evaluation.",
+    itemName: "Item name",
+    reportId: "Report or evaluation ID",
+    evaluatedAt: "Evaluation date",
+    reportLink: "Report or evaluation link",
+    attachPhotos: "Please attach the item photos if they are not included automatically.",
+    emailCopied: "Specialist email copied.",
+    emailFallback: "You can email us at",
   },
   ku: {
-    button: "پسپۆڕی نرخاندن",
-    badge: "بەم نزیکانە",
-    title: "پەیوەندی ڕاستەوخۆ لەگەڵ پسپۆڕی نرخاندن",
-    text: "ئەم خزمەتگوزارییە بەم نزیکانە بە شێوەی بەشداربوونی تایبەت بۆ پارچە گرانبەهاکان و نرخاندنی پیشەیی بەردەست دەبێت.",
-    gotIt: "تێگەیشتم",
+    button: "پەیوەندی بە پسپۆڕەوە",
+    subject: "ڕاوێژ دەربارەی نرخاندنێکی KISHIB",
+    intro: "سڵاو، دەمەوێت لەبارەی ئەم نرخاندنەی KISHIB ڕاوێژ بە پسپۆڕ بکەم.",
+    itemName: "ناوی پارچە",
+    reportId: "ژمارەی ڕاپۆرت یان نرخاندن",
+    evaluatedAt: "بەرواری نرخاندن",
+    reportLink: "بەستەری ڕاپۆرت یان نرخاندن",
+    attachPhotos: "تکایە وێنەکانی پارچەکە هاوپێچ بکە ئەگەر خۆکارانە لەگەڵ نامەکەدا نەچوون.",
+    emailCopied: "ئیمەیڵی پسپۆڕ کۆپی کرا.",
+    emailFallback: "دەتوانیت نامەمان بۆ بنێریت لە",
   },
   fr: {
-    button: "Expert d'évaluation",
-    badge: "Bientôt",
-    title: "Contact direct avec un expert d'évaluation",
-    text: "Ce service sera bientôt disponible avec un abonnement spécial pour les pièces précieuses et les évaluations professionnelles.",
-    gotIt: "Compris",
+    button: "Contacter un spécialiste",
+    subject: "Consultation sur une évaluation KISHIB",
+    intro: "Bonjour, je souhaite consulter un spécialiste au sujet de cette évaluation KISHIB.",
+    itemName: "Nom de l'objet",
+    reportId: "ID du rapport ou de l'évaluation",
+    evaluatedAt: "Date d'évaluation",
+    reportLink: "Lien du rapport ou de l'évaluation",
+    attachPhotos: "Veuillez joindre les photos de l'objet si elles ne sont pas incluses automatiquement.",
+    emailCopied: "E-mail du spécialiste copié.",
+    emailFallback: "Vous pouvez nous écrire à",
   },
   hi: {
-    button: "मूल्यांकन विशेषज्ञ",
-    badge: "जल्द",
-    title: "मूल्यांकन विशेषज्ञ से सीधा संपर्क",
-    text: "यह सेवा जल्द ही मूल्यवान वस्तुओं और पेशेवर मूल्यांकन के लिए विशेष सदस्यता के रूप में उपलब्ध होगी.",
-    gotIt: "समझ गया",
+    button: "विशेषज्ञ से संपर्क करें",
+    subject: "KISHIB मूल्यांकन के बारे में परामर्श",
+    intro: "नमस्ते, मैं इस KISHIB मूल्यांकन के बारे में विशेषज्ञ से परामर्श करना चाहता/चाहती हूँ.",
+    itemName: "वस्तु का नाम",
+    reportId: "रिपोर्ट या मूल्यांकन आईडी",
+    evaluatedAt: "मूल्यांकन तिथि",
+    reportLink: "रिपोर्ट या मूल्यांकन लिंक",
+    attachPhotos: "यदि तस्वीरें अपने-आप शामिल नहीं हुई हैं, तो कृपया वस्तु की तस्वीरें संलग्न करें.",
+    emailCopied: "विशेषज्ञ ईमेल कॉपी हो गया.",
+    emailFallback: "आप हमें ईमेल कर सकते हैं",
   },
   fa: {
-    button: "کارشناس ارزیابی",
-    badge: "به‌زودی",
-    title: "ارتباط مستقیم با کارشناس ارزیابی",
-    text: "این سرویس به‌زودی به‌عنوان یک اشتراک ویژه برای اشیای ارزشمند و ارزیابی‌های حرفه‌ای فعال می‌شود.",
-    gotIt: "متوجه شدم",
+    button: "ارتباط با کارشناس",
+    subject: "مشاوره درباره ارزیابی KISHIB",
+    intro: "سلام، می‌خواهم درباره این ارزیابی KISHIB با یک کارشناس مشورت کنم.",
+    itemName: "نام قطعه",
+    reportId: "شماره گزارش یا ارزیابی",
+    evaluatedAt: "تاریخ ارزیابی",
+    reportLink: "لینک گزارش یا ارزیابی",
+    attachPhotos: "اگر تصاویر به‌صورت خودکار پیوست نشدند، لطفاً تصاویر قطعه را پیوست کنید.",
+    emailCopied: "ایمیل کارشناس کپی شد.",
+    emailFallback: "می‌توانید به این ایمیل پیام بدهید",
   },
   ru: {
-    button: "Эксперт оценки",
-    badge: "Скоро",
-    title: "Прямой контакт с экспертом по оценке",
-    text: "Эта услуга скоро будет доступна по специальной подписке для ценных предметов и профессиональной оценки.",
-    gotIt: "Понятно",
+    button: "Связаться со специалистом",
+    subject: "Консультация по оценке KISHIB",
+    intro: "Здравствуйте, я хотел(а) бы проконсультироваться со специалистом по этой оценке KISHIB.",
+    itemName: "Название предмета",
+    reportId: "ID отчета или оценки",
+    evaluatedAt: "Дата оценки",
+    reportLink: "Ссылка на отчет или оценку",
+    attachPhotos: "Пожалуйста, приложите фотографии предмета, если они не добавились автоматически.",
+    emailCopied: "E-mail специалиста скопирован.",
+    emailFallback: "Вы можете написать нам на",
   },
   tr: {
-    button: "Değerleme Uzmanı",
-    badge: "Yakında",
-    title: "Değerleme Uzmanıyla Doğrudan İletişim",
-    text: "Bu hizmet yakında değerli parçalar ve profesyonel değerlendirmeler için özel abonelik kapsamında sunulacaktır.",
-    gotIt: "Anladım",
+    button: "Uzmanla İletişime Geç",
+    subject: "KISHIB Değerlendirmesi Hakkında Danışma",
+    intro: "Merhaba, bu KISHIB değerlendirmesi hakkında bir uzmana danışmak istiyorum.",
+    itemName: "Parça adı",
+    reportId: "Rapor veya değerlendirme numarası",
+    evaluatedAt: "Değerlendirme tarihi",
+    reportLink: "Rapor veya değerlendirme bağlantısı",
+    attachPhotos: "Fotoğraflar otomatik eklenmediyse lütfen parçanın fotoğraflarını ekleyin.",
+    emailCopied: "Uzman e-postası kopyalandı.",
+    emailFallback: "Bize şu adresten yazabilirsiniz",
   },
   es: {
-    button: "Experto en valoración",
-    badge: "Pronto",
-    title: "Contacto directo con un experto en valoración",
-    text: "Este servicio estará disponible pronto con una suscripción especial para piezas valiosas y evaluaciones profesionales.",
-    gotIt: "Entendido",
-  },};
+    button: "Contactar a un especialista",
+    subject: "Consulta sobre una evaluación de KISHIB",
+    intro: "Hola, me gustaría consultar a un especialista sobre esta evaluación de KISHIB.",
+    itemName: "Nombre de la pieza",
+    reportId: "ID del informe o evaluación",
+    evaluatedAt: "Fecha de evaluación",
+    reportLink: "Enlace del informe o evaluación",
+    attachPhotos: "Adjunta las fotos de la pieza si no se incluyen automáticamente.",
+    emailCopied: "Correo del especialista copiado.",
+    emailFallback: "Puedes escribirnos a",
+  },
+};
 
-const RTL_LOCALES: Locale[] = ["ar", "ku", "fa"];
+type ExpertContactButtonProps = {
+  locale: Locale;
+  itemName?: string;
+  reportId?: string;
+  evaluatedAt?: string;
+  reportUrl?: string;
+};
 
-export default function ExpertContactButton({ locale }: { locale: Locale }) {
-  const [open, setOpen] = useState(false);
+export default function ExpertContactButton({
+  locale,
+  itemName,
+  reportId,
+  evaluatedAt,
+  reportUrl,
+}: ExpertContactButtonProps) {
+  const [status, setStatus] = useState("");
   const copy = COPY[locale] || COPY.en;
   const isRtl = RTL_LOCALES.includes(locale);
 
-  function handleClick() {
-    if (EXPERT_CHAT_ENABLED) {
-      window.open(EXPERT_WHATSAPP_URL, "_blank", "noopener,noreferrer");
-      return;
+  async function copyEmailFallback() {
+    try {
+      await navigator.clipboard?.writeText(CONTACT_EMAIL);
+      setStatus(copy.emailCopied);
+    } catch {
+      setStatus(`${copy.emailFallback} ${CONTACT_EMAIL}`);
     }
 
-    setOpen(true);
+    window.setTimeout(() => setStatus(""), 2800);
+  }
+
+  function handleClick() {
+    const pageUrl =
+      reportUrl ||
+      (typeof window !== "undefined" ? window.location.href : undefined);
+    const date =
+      evaluatedAt ||
+      new Intl.DateTimeFormat(locale === "ku" ? "ar-IQ" : locale, {
+        dateStyle: "medium",
+      }).format(new Date());
+    const bodyLines = [
+      copy.intro,
+      "",
+      itemName ? `${copy.itemName}: ${itemName}` : "",
+      reportId ? `${copy.reportId}: ${reportId}` : "",
+      date ? `${copy.evaluatedAt}: ${date}` : "",
+      pageUrl ? `${copy.reportLink}: ${pageUrl}` : "",
+      "",
+      copy.attachPhotos,
+    ].filter(Boolean);
+    const mailto = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(
+      copy.subject,
+    )}&body=${encodeURIComponent(bodyLines.join("\n"))}`;
+
+    let openedExternalApp = false;
+    const handleVisibilityChange = () => {
+      if (document.hidden) openedExternalApp = true;
+    };
+
+    try {
+      document.addEventListener("visibilitychange", handleVisibilityChange, {
+        once: true,
+      });
+      window.location.href = mailto;
+      window.setTimeout(() => {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+        if (!openedExternalApp) void copyEmailFallback();
+      }, 1200);
+    } catch {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      void copyEmailFallback();
+    }
   }
 
   return (
     <>
-      <button
-        type="button"
-        onClick={handleClick}
-        title={copy.button}
-        aria-label={copy.button}
-        className="fixed bottom-4 left-3 z-40 grid h-12 w-12 place-items-center rounded-full border border-[#d2b98f]/45 bg-[#11100f]/50 text-[#fff4e2] shadow-[0_14px_34px_rgba(36,25,19,0.18)] backdrop-blur-2xl transition hover:border-[#dcc18a]/80 hover:bg-[#6d241d]/78 sm:bottom-[18px] sm:left-[18px] sm:h-[52px] sm:w-[52px]"
+      <div
+        dir={isRtl ? "rtl" : "ltr"}
+        className="fixed bottom-[calc(0.9rem+env(safe-area-inset-bottom))] left-3 z-50 flex w-[118px] flex-col items-center gap-1 sm:left-5 lg:left-7"
       >
-        <span className="relative grid h-9 w-9 place-items-center rounded-full bg-[#b88a3d]/92 text-[#fff4e2] shadow-inner shadow-white/10">
-          <BadgeCheck className="h-5 w-5" aria-hidden="true" />
-          <span className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full border border-[#fff4e2]/80 bg-[#241913]">
-            <LockKeyhole className="h-2.5 w-2.5" />
-          </span>
+        <button
+          type="button"
+          onClick={handleClick}
+          title={copy.button}
+          aria-label={copy.button}
+          className="relative grid h-12 w-12 place-items-center rounded-full border border-[#f3d99b]/70 bg-[#fff4e2] text-[#6d241d] shadow-[0_14px_30px_rgba(36,25,19,0.24)] ring-[3px] ring-[#6d241d]/16 transition hover:-translate-y-0.5 hover:bg-[#fff8eb] hover:text-[#8a4f32] active:scale-[0.97]"
+        >
+          <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#fff4e2] bg-[#b88a3d] shadow-[0_4px_12px_rgba(36,25,19,0.18)]" />
+          <Headset className="h-6 w-6" strokeWidth={2.25} aria-hidden="true" />
+        </button>
+        <span className="max-w-[118px] whitespace-nowrap rounded-full border border-[#dcc18a]/35 bg-[#241913]/34 px-2.5 py-0.5 text-center text-[9px] font-medium leading-none text-[#fff4e2]/90 shadow-[0_6px_16px_rgba(36,25,19,0.14)] backdrop-blur-md">
+          {copy.button}
         </span>
-      </button>
+      </div>
 
-      {open ? (
+      {status ? (
         <div
           dir={isRtl ? "rtl" : "ltr"}
-          className="fixed inset-0 z-[9999] grid place-items-center bg-[#241913]/28 px-4 backdrop-blur-[2px]"
+          className="fixed inset-x-4 bottom-[calc(5.2rem+env(safe-area-inset-bottom))] z-[80] mx-auto max-w-sm rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/95 px-4 py-3 text-center text-[12px] font-semibold text-[#735f4b] shadow-[0_14px_34px_rgba(62,39,22,0.16)] backdrop-blur-xl"
         >
-          <div className="w-full max-w-[360px] rounded-[18px] border border-[#d2b98f] bg-[#fff4e2] p-4 text-[#241913] shadow-[0_24px_70px_rgba(36,25,19,0.22)]">
-            <div className="mb-3 flex items-start gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] bg-[#efe3cf] text-[#986f2e]">
-                <BadgeCheck className="h-5 w-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-[15px] font-bold text-[#241913]">
-                  {copy.title}
-                </h3>
-                <p className="mt-1 text-[12px] leading-5 text-[#735f4b]">
-                  {copy.text}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label={copy.gotIt}
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#d2b98f] text-[#735f4b] transition hover:bg-[#efe3cf]"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="mt-2 h-10 w-full rounded-[13px] bg-[#6d241d] text-[12px] font-bold text-[#fff4e2] transition hover:bg-[#7d2d23]"
-            >
-              {copy.gotIt}
-            </button>
-          </div>
+          {status}
         </div>
       ) : null}
     </>
   );
 }
-

@@ -77,19 +77,20 @@ function readMetadataText(metadata: Record<string, unknown>, keys: string[]) {
 }
 
 function getResultImageUrl(result: Partial<AnalysisResult>, fallback?: string) {
-  return (
-    fallback ||
-    result.uploadedImageUrl ||
-    result.sourceImageUrl ||
-    result.imageUrl ||
-    result.originalImage ||
-    result.imagePreview ||
-    ""
-  );
+  return getResultImageUrls(result, fallback)[0] || "";
 }
 
 function getResultImageUrls(result: Partial<AnalysisResult>, fallback?: string) {
-  return normalizeEvaluationImages(result, [fallback]);
+  if (fallback) {
+    return normalizeEvaluationImages({
+      ...result,
+      imageUrls: Array.isArray(result.imageUrls) && result.imageUrls.length
+        ? result.imageUrls
+        : [fallback],
+    });
+  }
+
+  return normalizeEvaluationImages(result);
 }
 
 function mapEvaluationRowToArchiveItem(row: EvaluationRow): ArchiveItem {
@@ -118,22 +119,24 @@ function mapEvaluationRowToArchiveItem(row: EvaluationRow): ArchiveItem {
     prompt: typeof result.userNote === "string" ? result.userNote : "",
     locale: row.locale || undefined,
     imagePreview: imageUrl || undefined,
-    imagePreviews: imageUrls.length ? imageUrls : imageUrl ? [imageUrl] : [],
+    imagePreviews: imageUrls,
     originalImage: imageUrl || undefined,
-    originalImages: imageUrls.length ? imageUrls : imageUrl ? [imageUrl] : [],
+    originalImages: imageUrls,
     createdAt: row.created_at || new Date().toISOString(),
     result: {
       ...result,
       title,
       itemType: row.item_type || result.itemType,
       status: row.status || (result as { status?: string }).status || "completed",
+      imageUrls,
+      uploadedImageUrls: result.uploadedImageUrls,
       uploadedImageUrl: imageUrl || result.uploadedImageUrl,
       sourceImageUrl: imageUrl || result.sourceImageUrl,
       imageUrl: imageUrl || result.imageUrl,
-      imagePreview: imageUrl || result.imagePreview,
-      imagePreviews: imageUrls.length ? imageUrls : result.imagePreviews,
-      originalImage: imageUrl || result.originalImage,
-      originalImages: imageUrls.length ? imageUrls : result.originalImages,
+      imagePreview: imageUrl ? undefined : result.imagePreview,
+      imagePreviews: imageUrl ? undefined : result.imagePreviews,
+      originalImage: imageUrl ? undefined : result.originalImage,
+      originalImages: imageUrl ? undefined : result.originalImages,
     },
     similarImages,
     cloudinaryPublicId:
@@ -238,12 +241,23 @@ export async function saveEvaluationToSupabase({
       "display_name",
     ]);
     const result = (archiveItem.result || {}) as Partial<AnalysisResult>;
-    const finalImageUrl = getResultImageUrl(result, imageUrl);
+    const finalImageUrls = getResultImageUrls(result, imageUrl);
+    const finalImageUrl = finalImageUrls[0] || "";
+    const hasRemoteImages = finalImageUrls.some((src) => /^https?:\/\//i.test(src));
     const finalCloudinaryPublicId =
       cloudinaryPublicId || archiveItem.cloudinaryPublicId || "";
 
     const analysisResult = {
       ...archiveItem.result,
+      imageUrls: finalImageUrls,
+      uploadedImageUrls: result.uploadedImageUrls,
+      uploadedImageUrl: hasRemoteImages ? finalImageUrl : result.uploadedImageUrl,
+      sourceImageUrl: hasRemoteImages ? finalImageUrl : result.sourceImageUrl,
+      imageUrl: finalImageUrl || result.imageUrl,
+      imagePreview: hasRemoteImages ? undefined : result.imagePreview,
+      imagePreviews: hasRemoteImages ? undefined : result.imagePreviews,
+      originalImage: hasRemoteImages ? undefined : result.originalImage,
+      originalImages: hasRemoteImages ? undefined : result.originalImages,
       userNote: archiveItem.prompt || "",
       cloudinaryPublicId: finalCloudinaryPublicId || undefined,
       status: "completed",
