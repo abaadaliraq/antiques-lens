@@ -494,7 +494,7 @@ export default function MetalPricesPage() {
                   type="button"
                   onClick={() => void loadPrices(true)}
                   disabled={isLoading || isRefreshing}
-                  className="inline-flex h-11 w-fit items-center justify-center gap-2 rounded-[8px] bg-[#1f382c] px-4 text-sm font-semibold text-[#fff4e2] shadow-[0_12px_28px_rgba(31,56,44,0.18)] transition hover:bg-[#2f513f] disabled:cursor-not-allowed disabled:opacity-65"
+                  className="inline-flex h-11 w-fit items-center justify-center gap-2 rounded-[8px] bg-[#8A4F32] px-4 text-sm font-semibold text-[#F5E6CF] shadow-[0_12px_28px_rgba(138,79,50,0.22)] transition hover:bg-[#986f2e] active:bg-[#735f4b] disabled:cursor-not-allowed disabled:bg-[#8A4F32]/70 disabled:text-[#F5E6CF]/85 disabled:shadow-none"
                 >
                   <RefreshCw
                     className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}

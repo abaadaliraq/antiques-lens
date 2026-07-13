@@ -12,7 +12,10 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { AnalysisResult, Locale, SimilarImageResult } from "./types";
-import AntiqueReportDocument from "./AntiqueReportDocument";
+import AntiqueReportDocument, {
+  PostShareTemplate,
+  StoryShareTemplate,
+} from "./AntiqueReportDocument";
 import ValuationRangeCard from "./ValuationRangeCard";
 type ResultLabels = {
   result: string;
@@ -1753,6 +1756,25 @@ useEffect(() => {
         />
       </div>
 
+      <div className="report-share-export-area">
+        <StoryShareTemplate
+          locale={locale}
+          result={result}
+          imageUrl={mainImage || undefined}
+          imageUrls={galleryImages}
+          reportId={reportId}
+          variant="print"
+        />
+        <PostShareTemplate
+          locale={locale}
+          result={result}
+          imageUrl={mainImage || undefined}
+          imageUrls={galleryImages}
+          reportId={reportId}
+          variant="print"
+        />
+      </div>
+
       <style jsx global>{`
       @keyframes kishib-sheet-hint {
         0%, 100% {
@@ -1765,9 +1787,24 @@ useEffect(() => {
         }
       }
 
-      body.kishib-report-open .kishib-app-chrome {
+body.kishib-report-open .kishib-app-chrome {
   display: none !important;
 }
+
+        .report-share-export-area {
+          position: fixed;
+          left: -12000px;
+          top: 0;
+          z-index: -1;
+          width: 1080px;
+          height: auto;
+          overflow: visible;
+          pointer-events: none;
+        }
+
+        .report-share-export-area .kishib-share-template + .kishib-share-template {
+          margin-top: 40px;
+        }
         .compact-followup-panel h1,
         .compact-followup-panel h2,
         .compact-followup-panel h3 {

@@ -19,7 +19,7 @@ import UserMenu from "@/components/antique-ai/UserMenu";
 import {
   buildReportFileName,
   createReportPdfBlob,
-  createReportPngBlob,
+  createShareImageBlob,
   shareOrDownloadFile,
 } from "@/components/antique-ai/reportExport";
 import {
@@ -295,6 +295,7 @@ export default function AntiqueLensShell() {
   const [isSavingPdf, setIsSavingPdf] = useState(false);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
   const [exportMessage, setExportMessage] = useState("");
+  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
 
   async function refreshProfile({ silent = false }: { silent?: boolean } = {}) {
     try {
@@ -660,10 +661,32 @@ export default function AntiqueLensShell() {
     return copyByLocale[lens.locale] || copyByLocale.en;
   }
 
-  function getReportElement() {
+  function getReportElement(selector = ".report-print-area .antique-report-document") {
     return document.querySelector<HTMLElement>(
-      ".report-print-area .antique-report-document",
+      selector,
     );
+  }
+
+  function getShareOptionsCopy() {
+    const labels: Record<Locale, {
+      title: string;
+      story: string;
+      post: string;
+      pdf: string;
+      cancel: string;
+    }> = {
+      ar: { title: "اختيار نوع المشاركة", story: "مشاركة كـ Story", post: "مشاركة كـ Post", pdf: "مشاركة التقرير PDF", cancel: "إلغاء" },
+      en: { title: "Choose share format", story: "Share as Story", post: "Share as Post", pdf: "Share PDF report", cancel: "Cancel" },
+      ku: { title: "جۆری هاوبەشکردن هەڵبژێرە", story: "هاوبەشکردن وەک Story", post: "هاوبەشکردن وەک Post", pdf: "هاوبەشکردنی ڕاپۆرتی PDF", cancel: "داخستن" },
+      fr: { title: "Choisir le format", story: "Partager en Story", post: "Partager en Post", pdf: "Partager le PDF", cancel: "Annuler" },
+      hi: { title: "साझा करने का रूप चुनें", story: "Story के रूप में साझा करें", post: "Post के रूप में साझा करें", pdf: "PDF रिपोर्ट साझा करें", cancel: "रद्द करें" },
+      fa: { title: "انتخاب نوع اشتراک", story: "اشتراک به صورت Story", post: "اشتراک به صورت Post", pdf: "اشتراک گزارش PDF", cancel: "لغو" },
+      tr: { title: "Paylaşım biçimi seçin", story: "Story olarak paylaş", post: "Post olarak paylaş", pdf: "PDF raporu paylaş", cancel: "İptal" },
+      ru: { title: "Выберите формат", story: "Поделиться как Story", post: "Поделиться как Post", pdf: "Поделиться PDF", cancel: "Отмена" },
+      es: { title: "Elegir formato", story: "Compartir como Story", post: "Compartir como Post", pdf: "Compartir informe PDF", cancel: "Cancelar" },
+    };
+
+    return labels[lens.locale] || labels.en;
   }
 
   function isLikelyShareCancel(error: unknown) {
@@ -682,11 +705,13 @@ export default function AntiqueLensShell() {
     }, 2_400);
   }
 
-  async function handleShareReportImage() {
+  async function handleShareReportImage(format: "story" | "post") {
     if (isSharingReport) return;
 
     const copy = getReportExportCopy();
-    const report = getReportElement();
+    const report = getReportElement(
+      format === "story" ? ".report-share-story" : ".report-share-post",
+    );
 
     if (!report) {
       showExportMessage(copy.missing);
@@ -696,11 +721,15 @@ export default function AntiqueLensShell() {
     try {
       setIsSharingReport(true);
       setExportMessage(copy.preparingReport);
-      const blob = await createReportPngBlob(report);
+      const blob = await createShareImageBlob(report);
+      const extension = Capacitor.isNativePlatform() ? "jpg" : "png";
 
       await shareOrDownloadFile({
         blob,
-        fileName: buildReportFileName(Capacitor.isNativePlatform() ? "jpg" : "png"),
+        fileName: buildReportFileName(extension).replace(
+          "kishib-report-",
+          `kishib-${format}-`,
+        ),
         title: copy.title,
         text: copy.imageShareText,
         dialogTitle: lens.t.share,
@@ -1023,13 +1052,74 @@ export default function AntiqueLensShell() {
     }}
     hasResult={Boolean(lens.result)}
     onNew={lens.resetEvaluation}
-    onShare={() => void handleShareReportImage()}
+    onShare={() => setIsShareSheetOpen(true)}
     onPdf={() => void handleSaveReportPdf()}
     onAddInfo={canUseFollowUp ? lens.handleAddInfo : undefined}
     isSharing={isSharingReport}
     isPdfLoading={isSavingPdf}
   />
 </div>
+
+        {isShareSheetOpen ? (
+          <div
+            className="fixed inset-0 z-[90] flex items-end bg-[#241913]/38 px-3 pb-3 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setIsShareSheetOpen(false)}
+          >
+            <div
+              className="w-full rounded-t-[24px] border border-[#d2b98f] bg-[#fff4e2] p-4 text-[#241913] shadow-[0_-20px_60px_rgba(36,25,19,0.26)]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-[#b88a3d]/45" />
+              <h3 className="mb-3 text-center text-[16px] font-bold text-[#241913]">
+                {getShareOptionsCopy().title}
+              </h3>
+              <div className="grid gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsShareSheetOpen(false);
+                    void handleShareReportImage("story");
+                  }}
+                  disabled={isSharingReport}
+                  className="h-12 rounded-[14px] bg-[#8A4F32] px-4 text-[14px] font-bold text-[#F5E6CF] transition hover:bg-[#986f2e] disabled:cursor-wait disabled:bg-[#8A4F32]/70"
+                >
+                  {getShareOptionsCopy().story}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsShareSheetOpen(false);
+                    void handleShareReportImage("post");
+                  }}
+                  disabled={isSharingReport}
+                  className="h-12 rounded-[14px] bg-[#8A4F32] px-4 text-[14px] font-bold text-[#F5E6CF] transition hover:bg-[#986f2e] disabled:cursor-wait disabled:bg-[#8A4F32]/70"
+                >
+                  {getShareOptionsCopy().post}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsShareSheetOpen(false);
+                    void handleSaveReportPdf();
+                  }}
+                  disabled={isSavingPdf}
+                  className="h-12 rounded-[14px] border border-[#d2b98f] bg-[#fffaf0] px-4 text-[14px] font-bold text-[#735f4b] transition hover:bg-[#efe3cf] disabled:cursor-wait disabled:opacity-65"
+                >
+                  {getShareOptionsCopy().pdf}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsShareSheetOpen(false)}
+                  className="h-11 rounded-[14px] px-4 text-[13px] font-bold text-[#735f4b] transition hover:bg-[#efe3cf]"
+                >
+                  {getShareOptionsCopy().cancel}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {statusMessage ? (
           <div className="fixed inset-x-4 bottom-[calc(5.2rem+env(safe-area-inset-bottom))] z-[70] mx-auto max-w-sm rounded-[14px] border border-[#d2b98f] bg-[#fff4e2]/95 px-4 py-3 text-center text-[12px] font-semibold text-[#735f4b] shadow-[0_14px_34px_rgba(62,39,22,0.16)] backdrop-blur-xl">

@@ -312,16 +312,20 @@ async function waitForReportAssets(report: HTMLElement) {
   logReportStage("images_ready");
 }
 
-function getReportRasterSize(report: HTMLElement) {
+function getReportRasterSize(report: HTMLElement, pixelRatioOverride?: number) {
   const width = report.scrollWidth || report.offsetWidth;
   const height = report.scrollHeight || report.offsetHeight;
   const isNative = Capacitor.isNativePlatform();
-  const pixelRatio = isNative ? 1.5 : 2;
+  const pixelRatio = pixelRatioOverride ?? (isNative ? 1.5 : 2);
 
   return { width, height, pixelRatio };
 }
 
-async function createReportImageBlob(report: HTMLElement, imageType: "jpeg" | "png") {
+async function createReportImageBlob(
+  report: HTMLElement,
+  imageType: "jpeg" | "png",
+  pixelRatioOverride?: number,
+) {
   logReportStage("export_started", { output: imageType });
   logReportStage("platform_detected");
 
@@ -331,7 +335,7 @@ async function createReportImageBlob(report: HTMLElement, imageType: "jpeg" | "p
     throw error;
   }
 
-  const { width, height, pixelRatio } = getReportRasterSize(report);
+  const { width, height, pixelRatio } = getReportRasterSize(report, pixelRatioOverride);
 
   let blob: Blob | null = null;
 
@@ -375,6 +379,14 @@ async function createReportImageBlob(report: HTMLElement, imageType: "jpeg" | "p
 
 export async function createReportPngBlob(report: HTMLElement) {
   return createReportImageBlob(report, Capacitor.isNativePlatform() ? "jpeg" : "png");
+}
+
+export async function createShareImageBlob(report: HTMLElement) {
+  return createReportImageBlob(
+    report,
+    Capacitor.isNativePlatform() ? "jpeg" : "png",
+    1,
+  );
 }
 
 async function createA4JpegPagesFromPngBlob(blob: Blob) {

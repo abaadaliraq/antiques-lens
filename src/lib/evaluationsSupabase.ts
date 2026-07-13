@@ -87,12 +87,37 @@ function getResultImageUrl(result: Partial<AnalysisResult>, fallback?: string) {
   );
 }
 
+function uniqueImageUrls(values: Array<string | undefined | null>) {
+  return values.filter((value, index, list): value is string =>
+    typeof value === "string" &&
+    value.trim().length > 0 &&
+    list.indexOf(value) === index,
+  );
+}
+
+function getResultImageUrls(result: Partial<AnalysisResult>, fallback?: string) {
+  return uniqueImageUrls([
+    fallback,
+    ...(Array.isArray(result.originalImages) ? result.originalImages : []),
+    ...(Array.isArray(result.imagePreviews) ? result.imagePreviews : []),
+    result.originalImage,
+    result.uploadedImageUrl,
+    result.sourceImageUrl,
+    result.imageUrl,
+    result.imagePreview,
+  ]);
+}
+
 function mapEvaluationRowToArchiveItem(row: EvaluationRow): ArchiveItem {
   const result = (row.analysis_result || {}) as Partial<AnalysisResult> & {
     userNote?: string;
     cloudinaryPublicId?: string;
   };
   const imageUrl = getResultImageUrl(
+    result,
+    row.main_image || row.image_url || undefined,
+  );
+  const imageUrls = getResultImageUrls(
     result,
     row.main_image || row.image_url || undefined,
   );
@@ -109,9 +134,9 @@ function mapEvaluationRowToArchiveItem(row: EvaluationRow): ArchiveItem {
     prompt: typeof result.userNote === "string" ? result.userNote : "",
     locale: row.locale || undefined,
     imagePreview: imageUrl || undefined,
-    imagePreviews: imageUrl ? [imageUrl] : [],
+    imagePreviews: imageUrls.length ? imageUrls : imageUrl ? [imageUrl] : [],
     originalImage: imageUrl || undefined,
-    originalImages: imageUrl ? [imageUrl] : [],
+    originalImages: imageUrls.length ? imageUrls : imageUrl ? [imageUrl] : [],
     createdAt: row.created_at || new Date().toISOString(),
     result: {
       ...result,
@@ -122,9 +147,9 @@ function mapEvaluationRowToArchiveItem(row: EvaluationRow): ArchiveItem {
       sourceImageUrl: imageUrl || result.sourceImageUrl,
       imageUrl: imageUrl || result.imageUrl,
       imagePreview: imageUrl || result.imagePreview,
-      imagePreviews: imageUrl ? [imageUrl] : result.imagePreviews,
+      imagePreviews: imageUrls.length ? imageUrls : result.imagePreviews,
       originalImage: imageUrl || result.originalImage,
-      originalImages: imageUrl ? [imageUrl] : result.originalImages,
+      originalImages: imageUrls.length ? imageUrls : result.originalImages,
     },
     similarImages,
     cloudinaryPublicId:

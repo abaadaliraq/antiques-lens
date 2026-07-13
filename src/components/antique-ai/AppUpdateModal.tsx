@@ -165,7 +165,7 @@ export default function AppUpdateModal() {
           <button
             type="button"
             onClick={openStore}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-[#6d241d] px-4 text-[13px] font-bold text-[#fff4e2] transition hover:bg-[#7d2d23]"
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-[#8A4F32] px-4 text-[13px] font-bold text-[#F5E6CF] shadow-[0_12px_26px_rgba(138,79,50,0.2)] transition hover:bg-[#986f2e] active:bg-[#735f4b] disabled:cursor-not-allowed disabled:bg-[#8A4F32]/70 disabled:text-[#F5E6CF]/85 disabled:shadow-none"
           >
             Update now
             <ArrowUpRight className="h-4 w-4" />

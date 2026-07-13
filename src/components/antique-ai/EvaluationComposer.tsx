@@ -237,11 +237,23 @@ function copy(locale: AppLocale): Record<string, string> {
 
 const PHOTO_TIPS_STORAGE_KEY = "kishib-photo-tips-dismissed";
 
+const concisePhotoHints: Record<AppLocale, string> = {
+  ar: "صور أوضح، نتيجة أدق.",
+  en: "Clearer photos, better results.",
+  fr: "Photos plus claires, meilleurs résultats.",
+  hi: "साफ़ तस्वीरें, बेहतर परिणाम.",
+  fa: "عکس‌های واضح‌تر، نتیجه بهتر.",
+  tr: "Daha net fotoğraflar, daha iyi sonuçlar.",
+  ru: "Четче фото, лучше результат.",
+  ku: "وێنەی ڕوونتر، ئەنجامی باشتر.",
+  es: "Fotos más claras, mejores resultados.",
+};
+
 function photoGuidance(locale: AppLocale) {
   if (locale === "ar") {
     return {
       title: "قبل التصوير",
-      hint: "كلما كانت الصور أوضح ومن زوايا أكثر، كانت نتيجة التقييم أدق.",
+      hint: concisePhotoHints.ar,
       openCamera: "فتح الكاميرا",
       chooseGallery: "اختيار من المعرض",
       dontShowAgain: "لا تظهر مرة أخرى",
@@ -258,7 +270,7 @@ function photoGuidance(locale: AppLocale) {
   if (locale === "es") {
     return {
       title: "Antes de tomar la foto",
-      hint: "Cuanto más claras sean las fotos y más ángulos incluyan, más precisa será la evaluación.",
+      hint: concisePhotoHints.es,
       openCamera: "Abrir cámara",
       chooseGallery: "Elegir de la galería",
       dontShowAgain: "No volver a mostrar",
@@ -274,7 +286,7 @@ function photoGuidance(locale: AppLocale) {
 
   return {
     title: "Before taking the photo",
-    hint: "Clearer photos from multiple angles improve the evaluation accuracy.",
+    hint: concisePhotoHints[locale],
     openCamera: "Open Camera",
     chooseGallery: "Choose from Gallery",
     dontShowAgain: "Don't show again",
@@ -461,7 +473,7 @@ export default function EvaluationComposer({
       >
         <label
           onClick={handleUploadBoxClick}
-          className="group relative flex min-h-[150px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[20px] border border-dashed border-[#d2b98f] bg-[#fff4e2]/72 px-5 py-5 text-center transition hover:border-[#b88a3d] hover:bg-[#f8edda]"
+          className="group relative flex min-h-[136px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[20px] border border-dashed border-[#d2b98f] bg-[#fff4e2]/72 px-5 py-4 text-center transition hover:border-[#b88a3d] hover:bg-[#f8edda]"
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(184,138,61,0.15),transparent_52%)] opacity-80" />
           <div className="relative grid h-14 w-14 place-items-center rounded-[16px] bg-[#e8d1ad] text-[#8b3a2b] ring-1 ring-[#b88a3d]/25">
@@ -470,7 +482,7 @@ export default function EvaluationComposer({
           <p className="relative mt-3 text-base font-semibold text-[#241913]">
             {t.uploadBox}
           </p>
-          <p className="relative mt-2 max-w-xs text-xs leading-5 text-[#735f4b]">
+          <p className="relative mt-1 max-w-xs text-[11.5px] font-medium leading-5 text-[#735f4b] sm:text-xs">
             {photoTips.hint}
           </p>
           {previews.length > 0 ? (
@@ -564,7 +576,7 @@ export default function EvaluationComposer({
           type="button"
           onClick={handleSmartAnalyze}
           disabled={isAnalyzing || isUsageLoading || !canAnalyze}
-          className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-[#b88a3d] px-5 text-sm font-semibold text-[#fff4e2] shadow-[0_12px_28px_rgba(62,39,22,0.14)] transition hover:bg-[#986f2e] disabled:cursor-not-allowed disabled:opacity-45"
+          className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-[12px] bg-[#8A4F32] px-5 text-sm font-semibold text-[#F5E6CF] shadow-[0_10px_22px_rgba(138,79,50,0.18)] transition duration-200 hover:-translate-y-0.5 hover:bg-[#986f2e] hover:shadow-[0_12px_26px_rgba(138,79,50,0.22)] active:translate-y-0 active:bg-[#735f4b] disabled:cursor-not-allowed disabled:bg-[#b69a83] disabled:text-[#fff4e2] disabled:shadow-none disabled:hover:translate-y-0"
         >
           {isAnalyzing ? (
             <>

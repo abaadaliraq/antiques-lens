@@ -829,6 +829,278 @@ function ReportTextSection({ title, body }: { title: string; body?: string }) {
   );
 }
 
+type ReportData = {
+  labels: (typeof REPORT_LABELS)[Locale];
+  dir: "rtl" | "ltr";
+  dateText: string;
+  title: string;
+  images: string[];
+  primaryImage?: string;
+  itemType: string;
+  period: string;
+  origin: string;
+  material: string;
+  value: string;
+  condition: string;
+  authenticity: string;
+  lookup: string;
+  description: string;
+  historicalReading: string;
+  priceReasoning: string;
+  disclaimer: string;
+  reportId?: string;
+};
+
+function normalizeReportImages(result: ReportResult, imageUrl?: string, imageUrls: string[] = []) {
+  return [
+    imageUrl,
+    ...imageUrls,
+    ...(Array.isArray((result as { originalImages?: string[] }).originalImages)
+      ? (result as { originalImages?: string[] }).originalImages || []
+      : []),
+    ...(Array.isArray((result as { imagePreviews?: string[] }).imagePreviews)
+      ? (result as { imagePreviews?: string[] }).imagePreviews || []
+      : []),
+    (result as { originalImage?: string }).originalImage,
+    (result as { imagePreview?: string }).imagePreview,
+    (result as { uploadedImageUrl?: string }).uploadedImageUrl,
+    (result as { sourceImageUrl?: string }).sourceImageUrl,
+    (result as { imageUrl?: string }).imageUrl,
+  ].filter((src, index, list): src is string =>
+    typeof src === "string" && src.trim().length > 0 && list.indexOf(src) === index,
+  );
+}
+
+function buildReportData({
+  locale,
+  result,
+  imageUrl,
+  imageUrls,
+  reportId,
+  generatedAt,
+}: AntiqueReportDocumentProps): ReportData {
+  const labels = repairLabels(REPORT_LABELS[locale] || REPORT_LABELS.ar);
+  const value = result.estimatedValue || result.priceRange || "";
+  const description = result.history || result.description || "";
+  const images = normalizeReportImages(result, imageUrl, imageUrls);
+
+  return {
+    labels,
+    dir: getDirection(locale),
+    dateText: formatDate(locale, generatedAt),
+    title: cleanReportText(result.title || result.itemType) || "KISHIB Evaluation",
+    images,
+    primaryImage: images[0],
+    itemType: cleanReportText(result.itemType || result.lookup),
+    period: cleanReportText(result.timePeriod || result.period),
+    origin: cleanReportText(result.origin),
+    material: cleanReportText(result.material),
+    value: cleanReportText(value),
+    condition: cleanReportText(result.condition),
+    authenticity: cleanReportText(result.authenticity),
+    lookup: cleanReportText(result.lookup),
+    description: cleanReportText(description),
+    historicalReading: cleanReportText(result.historicalReading),
+    priceReasoning: cleanReportText(result.priceReasoning),
+    disclaimer: cleanReportText(result.disclaimer) || getDefaultDisclaimer(locale),
+    reportId,
+  };
+}
+
+function ReportImageGallery({
+  images,
+  title,
+  primaryAlt,
+}: {
+  images: string[];
+  title: string;
+  primaryAlt: string;
+}) {
+  const galleryImages = images.slice(1, 7);
+
+  if (images.length === 0) return null;
+
+  return (
+    <section className="border-b border-[#dfcfb7] pb-4">
+      <p className="mb-2 text-[9px] font-black uppercase tracking-[0.16em] text-[#9a7441]">
+        {title}
+      </p>
+      {images[0] ? (
+        <div className="flex h-[340px] items-center justify-center rounded-[18px] border border-[#dfcfb7] bg-[#efe3d2] p-3">
+          <img
+            src={images[0]}
+            alt={primaryAlt}
+            className="max-h-full max-w-full rounded-[12px] object-contain"
+          />
+        </div>
+      ) : null}
+
+      {galleryImages.length > 0 ? (
+        <div className="mt-3 grid grid-cols-3 gap-3">
+          {galleryImages.map((src, index) => (
+            <div
+              key={`${src}-${index}`}
+              className="flex aspect-[4/3] items-center justify-center rounded-[12px] border border-[#dfcfb7] bg-[#f8f0e5] p-2"
+            >
+              <img
+                src={src}
+                alt={`${primaryAlt} ${index + 2}`}
+                className="max-h-full max-w-full rounded-[8px] object-contain"
+              />
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function ShareMetaPill({ label, value }: { label: string; value: string }) {
+  if (!value) return null;
+
+  return (
+    <div className="rounded-[22px] border border-[#d2b98f]/70 bg-[#fff8ec]/82 px-5 py-3">
+      <p className="text-[20px] font-black uppercase tracking-[0.12em] text-[#9a7441]">
+        {label}
+      </p>
+      <p className="mt-1 line-clamp-2 text-[30px] font-black leading-tight text-[#241913]">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function ShareImageStrip({ images, alt }: { images: string[]; alt: string }) {
+  const extras = images.slice(1, 3);
+  if (!extras.length) return null;
+
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      {extras.map((src, index) => (
+        <div
+          key={`${src}-${index}`}
+          className="flex aspect-[4/3] items-center justify-center rounded-[26px] border border-[#d2b98f]/70 bg-[#f8f0e5] p-3"
+        >
+          <img src={src} alt={`${alt} ${index + 2}`} className="max-h-full max-w-full rounded-[18px] object-contain" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ShareReportTemplate({
+  locale,
+  result,
+  imageUrl,
+  imageUrls = [],
+  reportId,
+  generatedAt,
+  format,
+}: AntiqueReportDocumentProps & { format: "story" | "post" }) {
+  const data = buildReportData({ locale, result, imageUrl, imageUrls, reportId, generatedAt });
+  const isStory = format === "story";
+  const summary = compactReportText(
+    data.lookup || data.description || data.priceReasoning,
+    isStory ? 145 : 120,
+  );
+  const meta = [
+    { label: data.labels.value, value: data.value },
+    { label: data.labels.period, value: data.period },
+    { label: data.labels.origin, value: data.origin },
+    { label: data.labels.material, value: data.material },
+  ].filter((item) => item.value).slice(0, isStory ? 3 : 5);
+
+  return (
+    <article
+      dir={data.dir}
+      className={[
+        "kishib-share-template overflow-hidden bg-[#f4eadc] text-[#241913]",
+        isStory ? "report-share-story h-[1920px] w-[1080px]" : "report-share-post h-[1350px] w-[1080px]",
+      ].join(" ")}
+    >
+      <div className={[
+        "relative flex h-full w-full flex-col",
+        isStory ? "px-[72px] py-[96px]" : "px-[72px] py-[64px]",
+      ].join(" ")}>
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,#fffaf2_0%,rgba(255,255,255,0)_42%),linear-gradient(135deg,rgba(138,79,50,0.16),rgba(255,255,255,0)_38%)]" />
+        <header className="relative z-10 flex items-center justify-between gap-6 border-b border-[#d2b98f]/70 pb-8">
+          <div className="flex items-center gap-5">
+            <img src="/brand/aaa.png" alt="KISHIB" className="h-20 w-20 object-contain" />
+            <div>
+              <p className="text-[28px] font-black tracking-[0.18em] text-[#8A4F32]">KISHIB</p>
+              <p className="text-[24px] font-bold text-[#735f4b]">{data.labels.preliminary}</p>
+            </div>
+          </div>
+          <p className="text-[20px] font-bold text-[#9a7441]">{data.dateText}</p>
+        </header>
+
+        <section className="relative z-10 mt-8">
+          <h2 className={[
+            "line-clamp-3 break-words font-black leading-[1.08] text-[#1e1712]",
+            isStory ? "text-[66px]" : "text-[56px]",
+          ].join(" ")}>
+            {data.title}
+          </h2>
+        </section>
+
+        <section className="relative z-10 mt-8">
+          <div className={[
+            "flex items-center justify-center rounded-[34px] border border-[#d2b98f] bg-[#efe3d2] p-5 shadow-[0_26px_70px_rgba(62,39,22,0.15)]",
+            isStory ? "h-[730px]" : "h-[470px]",
+          ].join(" ")}>
+            {data.primaryImage ? (
+              <img src={data.primaryImage} alt={data.title} className="max-h-full max-w-full rounded-[24px] object-contain" />
+            ) : (
+              <p className="text-[34px] font-bold text-[#735f4b]">{data.labels.noImage}</p>
+            )}
+          </div>
+        </section>
+
+        {isStory ? (
+          <div className="relative z-10 mt-5">
+            <ShareImageStrip images={data.images} alt={data.title} />
+          </div>
+        ) : null}
+
+        <section className={[
+          "relative z-10 grid gap-4",
+          isStory ? "mt-7 grid-cols-1" : "mt-7 grid-cols-2",
+        ].join(" ")}>
+          {meta.map((item) => (
+            <ShareMetaPill key={item.label} label={item.label} value={item.value} />
+          ))}
+        </section>
+
+        {summary ? (
+          <p className={[
+            "relative z-10 mt-7 break-words font-bold leading-[1.45] text-[#4d3d30]",
+            isStory ? "line-clamp-4 text-[34px]" : "line-clamp-3 text-[28px]",
+          ].join(" ")}>
+            {summary}
+          </p>
+        ) : null}
+
+        <footer className="relative z-10 mt-auto flex items-center justify-between border-t border-[#d2b98f]/70 pt-7">
+          <span className="text-[24px] font-black uppercase tracking-[0.16em] text-[#8A4F32]">
+            {data.labels.generatedBy}
+          </span>
+          {data.reportId ? (
+            <span className="text-[20px] font-bold text-[#735f4b]">{data.reportId}</span>
+          ) : null}
+        </footer>
+      </div>
+    </article>
+  );
+}
+
+export function StoryShareTemplate(props: AntiqueReportDocumentProps) {
+  return <ShareReportTemplate {...props} format="story" />;
+}
+
+export function PostShareTemplate(props: AntiqueReportDocumentProps) {
+  return <ShareReportTemplate {...props} format="post" />;
+}
+
 export default function AntiqueReportDocument({
   locale,
   result,
@@ -845,12 +1117,7 @@ export default function AntiqueReportDocument({
 
   const period = result.timePeriod || result.period;
   const value = result.estimatedValue || result.priceRange;
-  const reportImages = [
-    imageUrl,
-    ...imageUrls,
-  ].filter((src, index, list): src is string =>
-    typeof src === "string" && src.trim().length > 0 && list.indexOf(src) === index,
-  );
+  const reportImages = normalizeReportImages(result, imageUrl, imageUrls);
   const primaryImage = reportImages[0];
   const cleanTitle = cleanReportText(result.title) || "KISHIB Evaluation";
   const showPreciousMetalEstimate =
@@ -939,17 +1206,11 @@ export default function AntiqueReportDocument({
               </h2>
             </section>
 
-            {primaryImage ? (
-              <section className="border-b border-[#dfcfb7] pb-3">
-                <div className="flex h-[175px] items-center justify-center bg-[#efe3d2] p-2">
-                  <img
-                    src={primaryImage}
-                    alt={cleanTitle}
-                    className="max-h-[160px] max-w-full object-contain"
-                  />
-                </div>
-              </section>
-            ) : null}
+            <ReportImageGallery
+              images={reportImages}
+              title={labels.objectImage}
+              primaryAlt={cleanTitle}
+            />
 
             <section className="grid grid-cols-2 gap-x-7 gap-y-2.5 border-b border-[#dfcfb7] pb-3">
               <ReportLine label={reportText.itemType} value={result.itemType} />
@@ -966,7 +1227,35 @@ export default function AntiqueReportDocument({
               title={reportText.description}
               body={result.history || result.description}
             />
+            <ReportTextSection
+              title={labels.historicalReading}
+              body={result.historicalReading}
+            />
+            <ReportTextSection
+              title={labels.authenticity}
+              body={result.authenticity}
+            />
             <ReportTextSection title={labels.priceReasoning} body={result.priceReasoning} />
+
+            {safeInitialChecks.length > 0 ? (
+              <SafeInitialChecksBox
+                title={safeInitialChecksCopy.title}
+                note={safeInitialChecksCopy.note}
+                items={safeInitialChecks}
+              />
+            ) : null}
+
+            <section className="grid grid-cols-2 gap-3">
+              <ListSection title={labels.valueDrivers} items={valueDrivers} />
+              <ListSection title={labels.valueReducers} items={valueReducers} />
+            </section>
+
+            <MarkReportSection locale={locale} mark={result.markAnalysis} />
+
+            <ReportTextSection
+              title={labels.disclaimerTitle}
+              body={result.disclaimer || getDefaultDisclaimer(locale)}
+            />
 
             {showPreciousMetalEstimate && result.metalValue ? (
               <section className="border-t border-[#dfcfb7] pt-5">
