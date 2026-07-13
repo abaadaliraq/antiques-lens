@@ -677,6 +677,7 @@ useEffect(() => {
   const resultWithArchiveImages = result as AnalysisResult & {
     imageUrl?: string;
     imageUrls?: string[];
+    uploadedImageUrls?: string[];
     imagePreview?: string;
     imagePreviews?: string[];
     originalImage?: string;
@@ -684,14 +685,18 @@ useEffect(() => {
     uploadedImageUrl?: string;
     sourceImageUrl?: string;
   };
-  const galleryImages = normalizeEvaluationImages(resultWithArchiveImages, [
-    ...(imagePreviews.length ? imagePreviews : []),
-    imagePreview,
-  ]).filter(
+  const galleryImages = normalizeEvaluationImages({
+    ...resultWithArchiveImages,
+    imagePreview: resultWithArchiveImages.imagePreview || imagePreview,
+    imagePreviews: resultWithArchiveImages.imagePreviews?.length
+      ? resultWithArchiveImages.imagePreviews
+      : imagePreviews,
+  }).filter(
     (src) => !failedImageSources.has(src),
   );
 
   const mainImage = galleryImages[0] || null;
+  const additionalImages = galleryImages.slice(1);
   const openedImage =
     openImageIndex !== null ? galleryImages[openImageIndex] : null;
 
@@ -1005,34 +1010,33 @@ useEffect(() => {
 
               <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(24,9,7,0.98)_0%,rgba(35,12,8,0.72)_24%,rgba(35,12,8,0.12)_62%,rgba(35,12,8,0.35)_100%)]" />
 
-              {galleryImages.length > 1 && (
+              {additionalImages.length > 0 && (
                 <div className="absolute inset-x-0 bottom-[132px] z-20 px-4 sm:px-7">
                   <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {galleryImages.map((src, index) => (
-                      <button
-                        type="button"
-                        key={`${src}-${index}`}
-                        onClick={() => openImage(index)}
-                        className={[
-                          "relative h-14 w-14 shrink-0 overflow-hidden rounded-[12px] border bg-[#fff4e2]/10 shadow-lg transition sm:h-16 sm:w-16",
-                          index === 0
-                            ? "border-[#d6b576]/70"
-                            : "border-[#d6b576]/30 hover:border-[#d6b576]/60",
-                        ].join(" ")}
-                        aria-label={`Open image ${index + 1}`}
-                      >
-                        <img
-                          src={src}
-                          alt={`${result.title || labels.result} ${index + 1}`}
-                          onError={() => handleImageError(src)}
-                          className="h-full w-full object-cover"
-                        />
+                    {additionalImages.map((src, index) => {
+                      const imageIndex = index + 1;
 
-                        <span className="absolute bottom-1.5 end-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] text-white/80 backdrop-blur-md">
-                          {index + 1}
-                        </span>
-                      </button>
-                    ))}
+                      return (
+                        <button
+                          type="button"
+                          key={`${src}-${imageIndex}`}
+                          onClick={() => openImage(imageIndex)}
+                          className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[12px] border border-[#d6b576]/30 bg-[#fff4e2]/10 shadow-lg transition hover:border-[#d6b576]/60 sm:h-16 sm:w-16"
+                          aria-label={`Open image ${imageIndex + 1}`}
+                        >
+                          <img
+                            src={src}
+                            alt={`${result.title || labels.result} ${imageIndex + 1}`}
+                            onError={() => handleImageError(src)}
+                            className="h-full w-full object-cover"
+                          />
+
+                          <span className="absolute bottom-1.5 end-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] text-white/80 backdrop-blur-md">
+                            {imageIndex + 1}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1698,8 +1702,7 @@ useEffect(() => {
                 <AntiqueReportDocument
                   locale={locale}
                   result={result}
-                  imageUrl={mainImage || undefined}
-                  imageUrls={galleryImages}
+                  reportImages={galleryImages}
                   reportId={reportId}
                   variant="preview"
                 />
@@ -1713,8 +1716,7 @@ useEffect(() => {
         <AntiqueReportDocument
           locale={locale}
           result={result}
-          imageUrl={mainImage || undefined}
-          imageUrls={galleryImages}
+          reportImages={galleryImages}
           reportId={reportId}
           variant="print"
         />
@@ -1724,8 +1726,7 @@ useEffect(() => {
         <AntiqueReportDocument
           locale={locale}
           result={result}
-          imageUrl={mainImage || undefined}
-          imageUrls={galleryImages}
+          reportImages={galleryImages}
           reportId={reportId}
           variant="print"
         />
