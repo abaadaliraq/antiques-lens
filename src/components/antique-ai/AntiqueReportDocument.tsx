@@ -965,15 +965,15 @@ function ReportImageGallery({
 }
 */
 
-function ShareMetaPill({ label, value }: { label: string; value: string }) {
+function ShareInfoLine({ label, value }: { label: string; value: string }) {
   if (!value) return null;
 
   return (
-    <div className="rounded-[22px] border border-[#d2b98f]/70 bg-[#fff8ec]/82 px-5 py-3">
+    <div className="border-b border-[#d2b98f]/55 pb-4 last:border-b-0">
       <p className="text-[20px] font-black uppercase tracking-[0.12em] text-[#9a7441]">
         {label}
       </p>
-      <p className="mt-1 line-clamp-2 text-[30px] font-black leading-tight text-[#241913]">
+      <p className="mt-1 text-[30px] font-black leading-tight text-[#241913]">
         {value}
       </p>
     </div>
@@ -985,16 +985,31 @@ function ShareImageStrip({ images, alt }: { images: string[]; alt: string }) {
   if (!extras.length) return null;
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="mt-4 flex max-h-[104px] gap-3 overflow-hidden">
       {extras.map((src, index) => (
-        <div
+        <figure
           key={`${src}-${index}`}
-          className="flex aspect-[4/3] items-center justify-center rounded-[26px] border border-[#d2b98f]/70 bg-[#f8f0e5] p-3"
+          className="flex h-[104px] w-[104px] shrink-0 items-center justify-center overflow-hidden border border-[#d2b98f]/60 bg-[#f8f0e5]/45"
         >
-          <img src={src} alt={`${alt} ${index + 2}`} className="max-h-full max-w-full rounded-[18px] object-contain" />
-        </div>
+          <img src={src} alt={`${alt} ${index + 2}`} className="max-h-full max-w-full object-contain" />
+        </figure>
       ))}
     </div>
+  );
+}
+
+function ShareTextBlock({ title, body }: { title: string; body: string }) {
+  if (!body) return null;
+
+  return (
+    <section className="border-t border-[#d2b98f]/60 pt-4">
+      <h3 className="text-[20px] font-black uppercase tracking-[0.12em] text-[#9a7441]">
+        {title}
+      </h3>
+      <p className="mt-2 break-words text-[25px] font-bold leading-[1.48] text-[#2a2119]">
+        {body}
+      </p>
+    </section>
   );
 }
 
@@ -1020,9 +1035,9 @@ function ShareReportTemplate({
   ].filter((item) => item.body);
   const meta = [
     { label: data.labels.value, value: data.value },
-    { label: data.labels.period, value: data.period },
-    { label: data.labels.origin, value: data.origin },
     { label: data.labels.material, value: data.material },
+    { label: data.labels.period, value: data.period },
+    { label: data.labels.authenticity, value: data.authenticity },
   ].filter((item) => item.value).slice(0, 4);
 
   return (
@@ -1052,45 +1067,32 @@ function ShareReportTemplate({
           </h2>
         </section>
 
-        <section className="relative z-10 mt-8">
-          <div className={[
-            "flex items-center justify-center rounded-[34px] border border-[#d2b98f] bg-[#efe3d2] p-5 shadow-[0_26px_70px_rgba(62,39,22,0.15)]",
-            "h-[640px]",
-          ].join(" ")}>
+        <section className="relative z-10 mt-8 grid grid-cols-[minmax(0,1.58fr)_minmax(0,1fr)] gap-9 border-y border-[#d2b98f]/70 py-7">
+          <div className="grid content-start gap-5">
+            {meta.map((item) => (
+              <ShareInfoLine key={item.label} label={item.label} value={item.value} />
+            ))}
+          </div>
+
+          <div className="flex min-h-[420px] flex-col items-center justify-start">
             {data.primaryImage ? (
-              <img src={data.primaryImage} alt={data.title} className="max-h-full max-w-full rounded-[24px] object-contain" />
+              <img src={data.primaryImage} alt={data.title} className="max-h-[420px] w-full object-contain" />
             ) : (
-              <p className="text-[34px] font-bold text-[#735f4b]">{data.labels.noImage}</p>
+              <p className="pt-24 text-[34px] font-bold text-[#735f4b]">{data.labels.noImage}</p>
             )}
+            <ShareImageStrip images={data.images} alt={data.title} />
           </div>
         </section>
 
-        <div className="relative z-10 mt-5">
-          <ShareImageStrip images={data.images} alt={data.title} />
-        </div>
-
-        <section className="relative z-10 mt-7 grid grid-cols-2 gap-4">
-          {meta.map((item) => (
-            <ShareMetaPill key={item.label} label={item.label} value={item.value} />
-          ))}
-        </section>
-
         {summary ? (
-          <p className="relative z-10 mt-7 line-clamp-3 break-words text-[32px] font-bold leading-[1.45] text-[#4d3d30]">
+          <p className="relative z-10 mt-6 break-words border-b border-[#d2b98f]/60 pb-5 text-[32px] font-bold leading-[1.45] text-[#4d3d30]">
             {summary}
           </p>
         ) : null}
 
-        <section className="relative z-10 mt-6 grid gap-4">
+        <section className="relative z-10 mt-5 grid gap-5">
           {details.slice(0, 3).map((item) => (
-            <div key={item.title} className="rounded-[20px] border border-[#d2b98f]/62 bg-[#fff8ec]/70 px-5 py-4">
-              <h3 className="text-[20px] font-black uppercase tracking-[0.12em] text-[#9a7441]">
-                {item.title}
-              </h3>
-              <p className="mt-2 line-clamp-3 break-words text-[25px] font-bold leading-[1.48] text-[#2a2119]">
-                {item.body}
-              </p>
-            </div>
+            <ShareTextBlock key={item.title} title={item.title} body={item.body} />
           ))}
         </section>
 
