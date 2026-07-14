@@ -1543,10 +1543,6 @@ async function handleAnalyze() {
   try {
     const formData = new FormData();
 
-    selectedFiles.slice(0, 6).forEach((file) => {
-      formData.append("images", file);
-    });
-
     if (trimmedPrompt) {
       formData.append("notes", trimmedPrompt);
     }
