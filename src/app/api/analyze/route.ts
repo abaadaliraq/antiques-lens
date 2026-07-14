@@ -187,6 +187,11 @@ const FOLLOW_UP_NOTE_MAX_CHARS = 1200;
 const FOLLOW_UP_HARD_NOTE_MAX_CHARS = 6000;
 const FOLLOW_UP_PROMPT_MAX_CHARS = 8500;
 const USER_NOTE_MAX_CHARS = 200;
+const ANALYSIS_MODEL = process.env.OPENAI_ANALYSIS_MODEL || "gpt-4.1";
+const ANALYSIS_TIMEOUT_MS = 60_000;
+const MAX_IMAGE_URLS = 6;
+const MAX_MARKET_CONTEXT_CHARS = 4000;
+const MAX_MARKET_REFERENCES_CHARS = 3500;
 
 function normalizeLocale(locale: string): Locale {
   if (
@@ -473,12 +478,37 @@ function parseCompactFollowUpContext(value: string): CompactFollowUpContext | nu
   }
 }
 
-function getCleanTooLongMessage(locale: Locale) {
+function getAnalysisErrorMessage(
+  locale: Locale,
+  key: "too_large" | "quota" | "model" | "auth" | "image" | "temporary",
+) {
   if (locale === "en") {
-    return "The evaluation context is too long. Please reduce optional details.";
+    const messages = {
+      too_large: "The evaluation data is larger than allowed. Reduce the number of photos or details.",
+      quota: "The analysis service has temporarily reached its usage limit. Try again later.",
+      model: "The analysis model is currently unavailable.",
+      auth: "Could not connect to the analysis service.",
+      image: "One of the uploaded images could not be read.",
+      temporary: "A temporary issue occurred during analysis. Try again.",
+    } as const;
+
+    return messages[key];
   }
 
-  return "سياق التقييم طويل جداً. يرجى تقليل التفاصيل الاختيارية.";
+  const messages = {
+    too_large: "\u062d\u062c\u0645 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u062a\u0642\u064a\u064a\u0645 \u0623\u0643\u0628\u0631 \u0645\u0646 \u0627\u0644\u0645\u0633\u0645\u0648\u062d. \u0642\u0644\u0644 \u0639\u062f\u062f \u0627\u0644\u0635\u0648\u0631 \u0623\u0648 \u062d\u062c\u0645 \u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644.",
+    quota: "\u062e\u062f\u0645\u0629 \u0627\u0644\u062a\u062d\u0644\u064a\u0644 \u0648\u0635\u0644\u062a \u0625\u0644\u0649 \u062d\u062f \u0627\u0644\u0627\u0633\u062a\u062e\u062f\u0627\u0645 \u0645\u0624\u0642\u062a\u0627\u064b. \u062d\u0627\u0648\u0644 \u0644\u0627\u062d\u0642\u0627\u064b.",
+    model: "\u0646\u0645\u0648\u0630\u062c \u0627\u0644\u062a\u062d\u0644\u064a\u0644 \u063a\u064a\u0631 \u0645\u062a\u0627\u062d \u062d\u0627\u0644\u064a\u0627\u064b.",
+    auth: "\u062a\u0639\u0630\u0631 \u0627\u0644\u0627\u062a\u0635\u0627\u0644 \u0628\u062e\u062f\u0645\u0629 \u0627\u0644\u062a\u062d\u0644\u064a\u0644.",
+    image: "\u062a\u0639\u0630\u0631 \u0642\u0631\u0627\u0621\u0629 \u0625\u062d\u062f\u0649 \u0627\u0644\u0635\u0648\u0631 \u0627\u0644\u0645\u0631\u0641\u0648\u0639\u0629.",
+    temporary: "\u062d\u062f\u062b \u062e\u0644\u0644 \u0645\u0624\u0642\u062a \u0623\u062b\u0646\u0627\u0621 \u0627\u0644\u062a\u062d\u0644\u064a\u0644. \u062d\u0627\u0648\u0644 \u0645\u0631\u0629 \u0623\u062e\u0631\u0649.",
+  } as const;
+
+  return messages[key];
+}
+
+function getCleanTooLongMessage(locale: Locale) {
+  return getAnalysisErrorMessage(locale, "too_large");
 }
 
 function getNoteTooLongMessage(locale: Locale) {
@@ -486,23 +516,116 @@ function getNoteTooLongMessage(locale: Locale) {
     return "The note must not exceed 200 characters.";
   }
 
-  return "يجب ألا تتجاوز الملاحظة 200 حرف.";
+  return "\u064a\u062c\u0628 \u0623\u0644\u0627 \u062a\u062a\u062c\u0627\u0648\u0632 \u0627\u0644\u0645\u0644\u0627\u062d\u0638\u0629 200 \u062d\u0631\u0641.";
+}
+
+type ApiErrorDetails = {
+  name: string;
+  message: string;
+  status?: number;
+  code?: string;
+  type?: string;
+  requestId?: string;
+};
+
+type AnalyzeLogContext = {
+  model: string;
+  rawImageFileCount: number;
+  imageUrlCount: number;
+  imageUrlsAreHttps: boolean;
+  promptTextLength: number;
+  notesLength: number;
+  followUpClaimLength: number;
+  marketContextLength: number;
+  marketReferencesTextLength: number;
+  preciousMetalMarketContextLength: number;
+  brandContextLength: number;
+  artistContextLength: number;
+  isFollowUpUpdate: boolean;
+};
+
+function readErrorField(error: unknown, key: string) {
+  if (!error || typeof error !== "object") return undefined;
+  const value = (error as Record<string, unknown>)[key];
+  return typeof value === "string" || typeof value === "number" ? value : undefined;
+}
+
+function getApiErrorDetails(error: unknown): ApiErrorDetails {
+  const message = error instanceof Error ? error.message : String(error || "");
+  const statusValue = readErrorField(error, "status") ?? readErrorField(error, "statusCode");
+  const status = typeof statusValue === "number" ? statusValue : undefined;
+  const headers = error && typeof error === "object"
+    ? (error as { headers?: { get?: (name: string) => string | null } }).headers
+    : undefined;
+  const nameValue = readErrorField(error, "name");
+
+  return {
+    name: error instanceof Error ? error.name : typeof nameValue === "string" ? nameValue : "UnknownError",
+    message,
+    status,
+    code: typeof readErrorField(error, "code") === "string" ? String(readErrorField(error, "code")) : undefined,
+    type: typeof readErrorField(error, "type") === "string" ? String(readErrorField(error, "type")) : undefined,
+    requestId:
+      typeof readErrorField(error, "request_id") === "string"
+        ? String(readErrorField(error, "request_id"))
+        : typeof readErrorField(error, "requestID") === "string"
+          ? String(readErrorField(error, "requestID"))
+          : headers?.get?.("x-request-id") || undefined,
+  };
+}
+
+function logAnalyzeApiError(error: unknown, context: AnalyzeLogContext) {
+  const details = getApiErrorDetails(error);
+  console.error("[KISHIB analyze] AI request failed", {
+    error: details,
+    request: context,
+  });
 }
 
 function sanitizeApiError(error: unknown, locale: Locale) {
-  const message = error instanceof Error ? error.message : "";
+  const details = getApiErrorDetails(error);
+  const message = details.message || "";
+  const code = (details.code || "").toLowerCase();
+  const type = (details.type || "").toLowerCase();
+  const status = details.status;
 
   if (
-    /request too large|tokens?|context length|platform\.openai|gpt-4|openai/i.test(
-      message,
-    )
+    code === "context_length_exceeded" ||
+    /context length|request too large|maximum context|too many tokens|token limit/i.test(message)
   ) {
-    return getCleanTooLongMessage(locale);
+    return { error: getAnalysisErrorMessage(locale, "too_large"), status: 413 };
   }
 
-  return message || "Failed to analyze item";
-}
+  if (status === 429 || code === "insufficient_quota" || code === "rate_limit_exceeded") {
+    return { error: getAnalysisErrorMessage(locale, "quota"), status: 429 };
+  }
 
+  if (code === "model_not_found" || (status === 404 && /model/i.test(message))) {
+    return { error: getAnalysisErrorMessage(locale, "model"), status: 503 };
+  }
+
+  if (status === 401) {
+    return { error: getAnalysisErrorMessage(locale, "auth"), status: 502 };
+  }
+
+  if (status === 400 && /image|image_url|url|invalid.*image|unsupported.*image/i.test(message)) {
+    return { error: getAnalysisErrorMessage(locale, "image"), status: 400 };
+  }
+
+  if (
+    details.name === "AbortError" ||
+    code === "timeout" ||
+    type === "timeout" ||
+    /timeout|timed out|aborted/i.test(message)
+  ) {
+    return { error: getAnalysisErrorMessage(locale, "temporary"), status: 504 };
+  }
+
+  return {
+    error: getAnalysisErrorMessage(locale, "temporary"),
+    status: status && status >= 400 && status < 500 ? status : 500,
+  };
+}
 function normalizeWeightFromNotes(input?: string | null) {
   const value = (input || "").toLowerCase();
 
@@ -2631,18 +2754,24 @@ function mergeDeepSeekLogicReview(
   return next;
 }
 
-async function fileToDataUrl(file: File) {
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  const base64 = buffer.toString("base64");
-  const mimeType = file.type || "image/jpeg";
-
-  return `data:${mimeType};base64,${base64}`;
-}
-
 export async function POST(request: Request) {
   let requestLocale: Locale = "ar";
   const totalStartedAt = performance.now();
+  const analysisLogContext: AnalyzeLogContext = {
+    model: ANALYSIS_MODEL,
+    rawImageFileCount: 0,
+    imageUrlCount: 0,
+    imageUrlsAreHttps: true,
+    promptTextLength: 0,
+    notesLength: 0,
+    followUpClaimLength: 0,
+    marketContextLength: 0,
+    marketReferencesTextLength: 0,
+    preciousMetalMarketContextLength: 0,
+    brandContextLength: 0,
+    artistContextLength: 0,
+    isFollowUpUpdate: false,
+  };
 
   try {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -2679,11 +2808,42 @@ if (rawNotes.length > USER_NOTE_MAX_CHARS) {
 const notes = rawNotes;
 const rawFollowUpClaim = safeString(formData.get("followUpClaim"));
 const followUpClaim = cleanText(rawFollowUpClaim, FOLLOW_UP_NOTE_MAX_CHARS);
-const marketContext = safeString(formData.get("marketContext"));
+const marketContext = cleanText(safeString(formData.get("marketContext")), MAX_MARKET_CONTEXT_CHARS);
 const followUpContext = parseCompactFollowUpContext(
   safeString(formData.get("followUpContext")),
 );
 const isFollowUpUpdate = Boolean(followUpContext);
+const imageUrlsForAnalysis = uploadedImageUrls.slice(0, MAX_IMAGE_URLS);
+const invalidImageUrl = imageUrlsForAnalysis.find((url) => !/^https:\/\//i.test(url));
+
+analysisLogContext.rawImageFileCount = images.length;
+analysisLogContext.imageUrlCount = imageUrlsForAnalysis.length;
+analysisLogContext.imageUrlsAreHttps = imageUrlsForAnalysis.every((url) => /^https:\/\//i.test(url));
+analysisLogContext.notesLength = notes.length;
+analysisLogContext.followUpClaimLength = followUpClaim.length;
+analysisLogContext.marketContextLength = marketContext.length;
+analysisLogContext.isFollowUpUpdate = isFollowUpUpdate;
+
+if (invalidImageUrl) {
+  console.warn("[KISHIB analyze] Rejected non-https image URL", {
+    imageUrlCount: imageUrlsForAnalysis.length,
+    rawImageFileCount: images.length,
+  });
+  return NextResponse.json(
+    { error: getAnalysisErrorMessage(locale, "image") },
+    { status: 400 },
+  );
+}
+
+if (images.length > 0 && imageUrlsForAnalysis.length === 0) {
+  console.warn("[KISHIB analyze] Raw image files were received without uploaded URLs; refusing base64 vision payload", {
+    rawImageFileCount: images.length,
+  });
+  return NextResponse.json(
+    { error: getAnalysisErrorMessage(locale, "image") },
+    { status: 400 },
+  );
+}
 
 if (
   isFollowUpUpdate &&
@@ -2695,16 +2855,17 @@ if (
   );
 }
 
-console.log("========== ANALYZE DEBUG ==========");
-console.log("marketContext exists:", Boolean(marketContext));
-console.log("marketContext length:", marketContext?.length || 0);
-console.log("marketContext preview:", marketContext?.slice(0, 1500));
-console.log("===================================");
-console.log(
-  "has House of Antiques context:",
-  hasHouseOfAntiquesContext(marketContext)
-);
-
+console.info("[KISHIB analyze] request context", {
+  model: ANALYSIS_MODEL,
+  rawImageFileCount: images.length,
+  imageUrlCount: imageUrlsForAnalysis.length,
+  imageUrlsAreHttps: analysisLogContext.imageUrlsAreHttps,
+  notesLength: notes.length,
+  followUpClaimLength: followUpClaim.length,
+  marketContextLength: marketContext.length,
+  hasHouseOfAntiquesContext: hasHouseOfAntiquesContext(marketContext),
+  isFollowUpUpdate,
+});
 const itemType = safeString(formData.get("itemType"));
 const material = safeString(formData.get("material"));
 const dimensions = safeString(formData.get("dimensions"));
@@ -2760,7 +2921,7 @@ const metalClassification = classifyPreciousMetalConfidence({
 });
 const hasFollowUpClaim = Boolean(followUpClaim);
 logDevelopmentTiming("requestAndImagePreparation", requestPreparationStartedAt, {
-  imageCount: images.length || uploadedImageUrls.length,
+  imageCount: imageUrlsForAnalysis.length,
 });
 const searchNotes = isFollowUpUpdate
   ? [
@@ -2985,13 +3146,17 @@ if (process.env.NODE_ENV !== "production") {
   );
 }
 
-const marketReferencesText =
-  formatMarketReferencesForPrompt(marketReferences);
-
-console.log("marketReferences found:", marketReferences.length);
-console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
+const marketReferencesText = cleanText(
+  formatMarketReferencesForPrompt(marketReferences),
+  MAX_MARKET_REFERENCES_CHARS,
+);
+analysisLogContext.marketReferencesTextLength = marketReferencesText.length;
+console.info("[KISHIB analyze] market references", {
+  count: marketReferences.length,
+  textLength: marketReferencesText.length,
+});
    
-    const hasImage = images.length > 0 || uploadedImageUrls.length > 0;
+    const hasImage = imageUrlsForAnalysis.length > 0;
 
     if (!hasImage && !notes) {
       return NextResponse.json(
@@ -3000,16 +3165,7 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
       );
     }
 
-    const oversizedImage = images.find((file) => file.size > 8 * 1024 * 1024);
-
-    if (oversizedImage) {
-      return NextResponse.json(
-        { error: "Image is too large. Please upload an image smaller than 8MB." },
-        { status: 400 }
-      );
-    }
-
-    const visionImageCount = images.length > 0 ? images.length : uploadedImageUrls.length;
+    const visionImageCount = imageUrlsForAnalysis.length;
 
     let promptText = isFollowUpUpdate && followUpContext
       ? buildCompactFollowUpPrompt({
@@ -3070,6 +3226,12 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
       );
     }
 
+    analysisLogContext.preciousMetalMarketContextLength = preciousMetalMarketContext.length;
+    analysisLogContext.brandContextLength = brandContext.length;
+    analysisLogContext.artistContextLength = artistContext.length;
+    analysisLogContext.promptTextLength = promptText.length;
+    console.info("[KISHIB analyze] OpenAI request prepared", analysisLogContext);
+
     const inputContent: Array<
       | { type: "input_text"; text: string }
       | {
@@ -3085,32 +3247,10 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
     ];
     const geminiImages: GeminiImageInput[] = [];
 
-    const totalVisionImages =
-      images.length > 0
-        ? images.slice(0, 6).length
-        : uploadedImageUrls.slice(0, 6).length;
+    const totalVisionImages = imageUrlsForAnalysis.length;
 
     const visionPreparationStartedAt = performance.now();
-    const visionFiles = images.slice(0, 6);
-    const imageDataUrls = await Promise.all(
-      visionFiles.map((file) => fileToDataUrl(file)),
-    );
-
-    for (const [index, dataUrl] of imageDataUrls.entries()) {
-
-      inputContent.push({
-        type: "input_text",
-        text: `Uploaded image ${index + 1} of ${totalVisionImages}. Inspect it as one view/detail of the same item. If this is a stamp, hallmark, signature, back, side, damage, or material close-up, use it as supporting evidence for the full-object appraisal, not as a separate object.`,
-      });
-      inputContent.push({
-        type: "input_image",
-        image_url: dataUrl,
-        detail: isFollowUpUpdate ? "low" : "auto",
-      });
-      geminiImages.push({ dataUrl });
-    }
-
-    const imageUrlsForVision = images.length > 0 ? [] : uploadedImageUrls.slice(0, 6);
+    const imageUrlsForVision = imageUrlsForAnalysis;
 
     for (const [index, imageUrl] of imageUrlsForVision.entries()) {
       inputContent.push({
@@ -3126,12 +3266,12 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
     }
     logDevelopmentTiming("visionPayloadPreparation", visionPreparationStartedAt, {
       imageCount: totalVisionImages,
-      execution: imageDataUrls.length > 1 ? "parallel" : "single",
+      execution: imageUrlsForVision.length > 1 ? "parallel" : "single",
     });
 
     const primaryAiStartedAt = performance.now();
     const response = await client.responses.create({
-      model: "gpt-4.1",
+      model: ANALYSIS_MODEL,
       input: [
         {
           role: "user",
@@ -3145,6 +3285,8 @@ console.log("marketReferences preview:", marketReferencesText.slice(0, 1200));
       },
       temperature: 0.25,
       max_output_tokens: 1800,
+    }, {
+      timeout: ANALYSIS_TIMEOUT_MS,
     });
     logDevelopmentTiming("primaryAI", primaryAiStartedAt);
 
@@ -3340,13 +3482,14 @@ logDevelopmentTiming("finalJsonProcessing", finalJsonStartedAt);
 logDevelopmentTiming("analyzeRouteTotal", totalStartedAt);
 return finalResponse;
   } catch (error) {
-    console.error("Analyze API error:", error);
+    logAnalyzeApiError(error, analysisLogContext);
+    const safeError = sanitizeApiError(error, requestLocale);
 
     return NextResponse.json(
       {
-        error: sanitizeApiError(error, requestLocale),
+        error: safeError.error,
       },
-      { status: 500 }
+      { status: safeError.status }
     );
   }
 }
