@@ -236,6 +236,7 @@ function copy(locale: AppLocale): Record<string, string> {
 }
 
 const PHOTO_TIPS_STORAGE_KEY = "kishib-photo-tips-dismissed";
+const OPTIONAL_NOTE_MAX_LENGTH = 200;
 
 const concisePhotoHints: Record<AppLocale, string> = {
   ar: "صور أوضح، نتيجة أدق.",
@@ -539,6 +540,7 @@ export default function EvaluationComposer({
           dir={dir}
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
+          maxLength={OPTIONAL_NOTE_MAX_LENGTH}
           rows={2}
           aria-label={labels.placeholder}
           placeholder={t.optional}
@@ -547,6 +549,9 @@ export default function EvaluationComposer({
             dir === "rtl" ? "text-right" : "text-left",
           ].join(" ")}
         />
+        <p className="mt-1 text-end text-[10px] font-medium text-[#8c765e]/82" dir="ltr">
+          {prompt.length} / {OPTIONAL_NOTE_MAX_LENGTH}
+        </p>
 
         <div className="hidden">
           <GemstoneFields

@@ -186,6 +186,7 @@ type CompactFollowUpContext = {
 const FOLLOW_UP_NOTE_MAX_CHARS = 1200;
 const FOLLOW_UP_HARD_NOTE_MAX_CHARS = 6000;
 const FOLLOW_UP_PROMPT_MAX_CHARS = 8500;
+const USER_NOTE_MAX_CHARS = 200;
 
 function normalizeLocale(locale: string): Locale {
   if (
@@ -474,10 +475,18 @@ function parseCompactFollowUpContext(value: string): CompactFollowUpContext | nu
 
 function getCleanTooLongMessage(locale: Locale) {
   if (locale === "en") {
-    return "The added note or evaluation context is too long. Please shorten the note to the key detail and try again.";
+    return "The evaluation context is too long. Please reduce optional details.";
   }
 
-  return "\u0627\u0644\u0645\u0644\u0627\u062d\u0638\u0629 \u0623\u0648 \u0633\u064a\u0627\u0642 \u0627\u0644\u062a\u0642\u064a\u064a\u0645 \u0637\u0648\u064a\u0644 \u062c\u062f\u064b\u0627. \u0627\u062e\u062a\u0635\u0631\u064a \u0627\u0644\u0645\u0639\u0644\u0648\u0645\u0629 \u0625\u0644\u0649 \u0623\u0647\u0645 \u062a\u0641\u0635\u064a\u0644 \u062b\u0645 \u062d\u0627\u0648\u0644\u064a \u0645\u0631\u0629 \u0623\u062e\u0631\u0649.";
+  return "سياق التقييم طويل جداً. يرجى تقليل التفاصيل الاختيارية.";
+}
+
+function getNoteTooLongMessage(locale: Locale) {
+  if (locale === "en") {
+    return "The note must not exceed 200 characters.";
+  }
+
+  return "يجب ألا تتجاوز الملاحظة 200 حرف.";
 }
 
 function sanitizeApiError(error: unknown, locale: Locale) {
@@ -2658,11 +2667,18 @@ const uploadedImageUrls = formData
   .getAll("uploadedImageUrls")
   .filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
   .map((entry) => entry.trim());
-const notes = safeString(formData.get("notes"));
-const rawFollowUpClaim = safeString(formData.get("followUpClaim"));
-const followUpClaim = cleanText(rawFollowUpClaim, FOLLOW_UP_NOTE_MAX_CHARS);
 const locale = normalizeLocale(safeString(formData.get("locale")));
 requestLocale = locale;
+const rawNotes = safeString(formData.get("notes"));
+if (rawNotes.length > USER_NOTE_MAX_CHARS) {
+  return NextResponse.json(
+    { error: getNoteTooLongMessage(locale) },
+    { status: 400 },
+  );
+}
+const notes = rawNotes;
+const rawFollowUpClaim = safeString(formData.get("followUpClaim"));
+const followUpClaim = cleanText(rawFollowUpClaim, FOLLOW_UP_NOTE_MAX_CHARS);
 const marketContext = safeString(formData.get("marketContext"));
 const followUpContext = parseCompactFollowUpContext(
   safeString(formData.get("followUpContext")),

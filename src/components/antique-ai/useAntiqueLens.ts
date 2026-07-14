@@ -56,6 +56,7 @@ import type {
   HouseOfAntiquesMatch,
 } from "./types";
 const MAX_IMAGES = 6;
+const OPTIONAL_NOTE_MAX_LENGTH = 200;
 const USER_LOCALE_STORAGE_KEY = "antiques-lens:locale";
 
 function logDevelopmentTiming(
@@ -1452,7 +1453,14 @@ async function fetchGoogleLensSimilarImages(
 async function handleAnalyze() {
   if (isCancellingAnalysis) return;
 
-  if (!selectedFiles.length && !prompt.trim()) {
+  const trimmedPrompt = prompt.trim();
+
+  if (trimmedPrompt.length > OPTIONAL_NOTE_MAX_LENGTH) {
+    setError("يجب ألا تتجاوز الملاحظة 200 حرف.");
+    return;
+  }
+
+  if (!selectedFiles.length && !trimmedPrompt) {
     setError(t.emptyError);
     return;
   }
@@ -1539,7 +1547,9 @@ async function handleAnalyze() {
       formData.append("images", file);
     });
 
-    formData.append("notes", prompt);
+    if (trimmedPrompt) {
+      formData.append("notes", trimmedPrompt);
+    }
     formData.append("locale", locale);
 
     let uploadedImageUrl = "";
@@ -1555,7 +1565,7 @@ async function handleAnalyze() {
     const initialHouseRequestStartedAt = performance.now();
     const initialHouseRequest = safePostJson(
       "/api/house-comparables",
-      { query: prompt },
+      { query: trimmedPrompt },
       signal,
     ).finally(() => {
       initialHouseDurationMs = performance.now() - initialHouseRequestStartedAt;
@@ -1757,7 +1767,7 @@ async function handleAnalyze() {
       "/api/house-comparables",
       {
         query: [
-          prompt,
+          trimmedPrompt,
           analyzedResult.title,
           analyzedResult.lookup,
           analyzedResult.history,
@@ -2048,7 +2058,7 @@ const archiveItem: ArchiveItem = {
     analyzedArchiveResult?.itemName ||
     analyzedArchiveResult?.objectName ||
     "Untitled item",
-  prompt: prompt || "",
+  prompt: trimmedPrompt,
   locale,
   imagePreview: stableImagePreview,
   imagePreviews: stableImagePreviews,
@@ -2057,7 +2067,7 @@ const archiveItem: ArchiveItem = {
   createdAt: new Date().toISOString(),
   result: {
     ...finalResult,
-    userNote: prompt || "",
+    userNote: trimmedPrompt,
     cloudinaryPublicId: cloudinaryPublicId || undefined,
     ...archiveResultImageFields,
     similarImages: finalSimilarImages,
